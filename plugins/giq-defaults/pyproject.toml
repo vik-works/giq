@@ -28,6 +28,7 @@ dependencies = [
     "giq-speech==0.6.0",
     "giq-ocr==0.6.0",
     "giq-depth==0.6.0",
+    "giq-imajev==0.6.0",
 ]
 
 [build-system]

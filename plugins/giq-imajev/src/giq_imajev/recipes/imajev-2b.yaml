@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# imajev-2b: typed photo+record decisions (Jev contract + images) on the
+# smallest imajev size. Qwen3.5-2B plus a rank-16 LoRA and the 255-code
+# decision readout (Apache-2.0; https://huggingface.co/mohit67890/imajev-2b).
+# One request carries the state and 1-8 typed questions (choice/noul/score,
+# plus multi expanded server-side); each answer comes with probabilities, a
+# trained unknown mass and an abstention flag. Probed on an RTX 4070 12 GB:
+# text-only ticket 790 ms / 140 tokens, photo+record 1.1 s / 224 tokens,
+# 4.25 GiB torch-allocated at peak; the recipe figure below adds the CUDA
+# context the allocator does not see. Sleepy model: loads on demand,
+# evictable. The cautious tier: highest precision when it acts, automates
+# fewer decisions than the 4b sibling (which has no recipe yet).
+name: imajev-2b
+label: imajev 2B Decide
+modalities: [decide]
+engine: imajev
+detail: "typed decisions · photo+record · 255-code readout · cautious tier"
+weights:
+  path: mohit67890-imajev-2b
+  source: hf:mohit67890/imajev-2b
+  revision: 0426f7b1c73804b64fab5802e04f401420ec774c
+  format: safetensors
+  licence: apache-2.0
+  parts:
+    base:
+      path: Qwen-Qwen3.5-2B
+      source: hf:Qwen/Qwen3.5-2B
+      revision: 15852e8c16360a2fea060d615a32b45270f8a8fc
+      format: safetensors
+      licence: apache-2.0
+vram:
+  # Torch-allocated peak on an RTX 4070 12 GB, text-only and photo+record
+  # (4.24-4.25 GiB); 6.0 GB covers the CUDA context nvidia-smi sees on top,
+  # still unmeasured at the card: re-measure with nvidia-smi while resident.
+  gb: 6.0
+  measured: false
+max_batch: 4

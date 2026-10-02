@@ -1,0 +1,58 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The highlight sits under a transparent textarea (text itself
+   transparent, caret visible), so editing stays native. The frame copies
+   Nocturne's .input border, radius and surface; focus moves to the frame
+   border via :focus-within, like .input:focus-visible. */
+
+.pl-giq-imajev-json {
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.pl-giq-imajev-json:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+
+.pl-giq-imajev-json:focus-within { border-color: var(--color-accent); }
+
+.pl-giq-imajev-json-invalid { border-color: var(--critical); }
+
+.pl-giq-imajev-json-edit { position: relative; min-width: 0; }
+
+.pl-giq-imajev-json-hl,
+.pl-giq-imajev-json-input {
+  margin: 0;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.pl-giq-imajev-json-hl { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+.pl-giq-imajev-json-hl > div { display: block; min-height: 1.5em; }
+
+.pl-giq-imajev-json-input {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-accent);
+  resize: vertical;
+  overflow: auto;
+}
+
+.pl-giq-imajev-json-input:focus { outline: none; }
+
+.pl-giq-imajev-json > .field-error { margin: var(--space-2) var(--space-3); }

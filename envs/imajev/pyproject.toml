@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-imajev"
+version = "0.1.0"
+description = "Interpreter for giq's decide child: imajev typed decisions (torch + PEFT LoRA + readout)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Same torch line as giq's own venv (PyPI's 2.11 wheels are cu130), so the
+    # same CUDA 13 driver and comparable VRAM figures. transformers 4.55+ is
+    # what Qwen3.5 needs; peft/accelerate/safetensors load the rank-64 LoRA
+    # and the 256-code readout the recipe names.
+    "torch>=2.11.0,<2.12.0",
+    "torchvision>=0.26.0,<0.27.0",
+    "transformers>=4.55",
+    "peft>=0.15",
+    "safetensors>=0.5",
+    "accelerate>=1.0",
+    "pillow>=11",
+    # What importing giq.adapters.decide / giq.adapters._subprocess pulls in.
+    "pydantic>=2.12",
+    "pyyaml>=6.0",
+    "httpx>=0.28",
+]
+
+[tool.uv]
+# xformers ships wheels built against one torch minor at a time and is not
+# needed here (single-pass scoring, no attention override); excluded as in da3.
+override-dependencies = [
+    "xformers ; sys_platform == 'never'",
+]

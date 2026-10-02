@@ -30,6 +30,9 @@ Besides the two servers, two interpreters are declared as engines, so every
 model in the catalog names what executes it: `python` (giq's own venv — the
 audio stack, Kokoro, both OCR models and depth) and `vllm` (`envs/vllm`, the
 second LLM engine, [below](#vllm)); `GIQ_VLLM_PYTHON` points elsewhere.
+The decide child (giq-imajev) runs on its own interpreter, `imajev`
+(`envs/imajev`, torch + PEFT; `GIQ_IMAJEV_PYTHON` points elsewhere and
+`GIQ_IMAJEV_REPO` at the imajev checkout it reuses).
 
 ## Engine names
 
@@ -42,6 +45,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `vllm` | LLMs from vendor checkpoints (NVFP4, FP8), many users at once | `envs/vllm` |
 | `sd.cpp` | `flux_klein`, `zimage` | `sd-server` |
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
+| `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and

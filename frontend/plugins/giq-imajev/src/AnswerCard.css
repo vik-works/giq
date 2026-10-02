@@ -1,0 +1,71 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* One flat section per question inside the result card — never a card in a
+   card. The header names the question (muted mono, an identifier like the
+   tool trace's code) and tags its type; the verdict reads at the kpi scale
+   (24px, the voice verdict's size); distributions use the shared
+   ProgressBar, the winner on the accent fill. */
+
+.pl-giq-imajev-answer { padding: var(--space-4) 0; border-top: 1px solid var(--color-divider); }
+
+.pl-giq-imajev-answer:first-child { border-top: 0; padding-top: var(--space-1); }
+
+.pl-giq-imajev-answer:last-child { padding-bottom: var(--space-1); }
+
+.pl-giq-imajev-answer-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
+
+.pl-giq-imajev-answer-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-giq-imajev-answer-value {
+  margin-top: var(--space-2);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-giq-imajev-multi-value { font-size: 20px; }
+
+.pl-giq-imajev-score-max { font-size: 16px; font-weight: 400; color: var(--text-muted); }
+
+.pl-giq-imajev-answer > .hint, .pl-giq-imajev-answer > .warn { margin: var(--space-2) 0 0; }
+
+/* Each distribution row stacks its label over a full-width bar, so the bars
+   stay readable on a phone where a multi-column grid would crush them. The
+   winner reads semibold on the accent fill; the rest stays muted. */
+.pl-giq-imajev-probs { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.pl-giq-imajev-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); font-size: 12.5px; }
+
+.pl-giq-imajev-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+
+.pl-giq-imajev-winner .pl-giq-imajev-label { font-weight: 600; color: var(--text-strong); }
+
+.pl-giq-imajev-pct { flex: none; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
+.pl-giq-imajev-winner .pl-giq-imajev-pct { color: var(--text-strong); }
+
+.pl-giq-imajev-probs .progress { margin-top: 4px; }
+
+/* Noul reads as one verdict on a yes meter with its ends named, so the
+   balance scans without numbers. */
+.pl-giq-imajev-meter { margin-top: var(--space-3); }
+
+.pl-giq-imajev-scale { display: flex; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-1); font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.pl-giq-imajev-abstain { display: flex; align-items: center; gap: var(--space-2); }
+
+.pl-giq-imajev-abstain svg { flex: none; }

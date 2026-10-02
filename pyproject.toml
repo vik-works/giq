@@ -4,7 +4,7 @@
 
 [project]
 name = "giq"
-version = "0.5.2"
+version = "0.5.3"
 description = "GPU Inference Queue - efficient GPU worker management for multimodal AI"
 readme = "README.md"
 license = "Apache-2.0"

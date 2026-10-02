@@ -27,6 +27,14 @@ RESIDENTS = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _residents(config_residents):
+    """The policy mechanics below are exercised against a keep-warm set."""
+    from tests.conftest import CLASSIC_RESIDENTS
+
+    config_residents(*CLASSIC_RESIDENTS)
+
+
 @pytest.fixture
 def store():
     """A policy store with a clean DB-backed override table."""

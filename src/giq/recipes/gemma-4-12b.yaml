@@ -31,8 +31,6 @@ params:
   parallel: 4
   # The id served on /v1/models; clients request "gemma-4-12b" by name.
   alias: gemma-4-12b
-residency:
-  priority: 0
 vram:
   # ~9.2 GB server total at 128k ctx with q8_0 KV.
   gb: 9.5

@@ -42,11 +42,12 @@ def two_cards(monkeypatch):
     gpus._cache = None
     gpus.reset_selected_device()
 
-    def configure(*, device=None, bind=None, reserve=None):
+    def configure(*, device=None, bind=None, reserve=None, residents=()):
         monkeypatch.setattr(
             "giq.config.get_config",
             lambda: SimpleNamespace(
-                gpu=SimpleNamespace(device=device, bind=bind or {}, reserve=reserve or {})
+                gpu=SimpleNamespace(device=device, bind=bind or {}, reserve=reserve or {}),
+                residents=list(residents),
             ),
         )
         return patch("giq.gpus.subprocess.run", return_value=FakeResult(TWO_CARDS))
@@ -274,8 +275,9 @@ async def test_a_slot_per_card_survives_the_other_cards_load(two_cards, store):
 def test_the_pinned_budget_is_per_card(two_cards, store):
     """gemma+whisper+ecapa on the big card leaves the small one nearly empty."""
     from giq.policy import PINNED
+    from tests.conftest import CLASSIC_RESIDENTS
 
-    with two_cards():
+    with two_cards(residents=CLASSIC_RESIDENTS):
         store.set("kokoro", PINNED)
         store.set_device("kokoro", "1")
         big = store.pinned_vram_gb(device=BIG)

@@ -7,6 +7,8 @@
 import os
 import tempfile
 
+import pytest
+
 # The suite checks the built-in catalog and giq's defaults, so whatever
 # configures *this* giq in the shell that runs it is dropped, not merely
 # defaulted: an operator's GIQ_HOME, config, recipes directory, residents or
@@ -41,3 +43,19 @@ os.environ["GIQ_INFLIGHT_LOG"] = os.path.join(
 # Operator recipe files would otherwise come from ~/.config/giq/recipes and
 # change the catalog under test; the built-ins are what the suite checks.
 os.environ["GIQ_RECIPES_DIR"] = tempfile.mkdtemp(prefix="giq-test-recipes-")
+
+# A typical keep-warm set: an LLM, the audio stack and voiceprints, 14.1 GB.
+# Nothing is kept warm out of the box, so tests of residency, pinning and the
+# card budget declare the set they exercise, as an operator does.
+CLASSIC_RESIDENTS = ("gemma-4-12b", "whisper-large-v3", "ecapa-tdnn")
+
+
+@pytest.fixture
+def config_residents(monkeypatch):
+    """Set config.yaml's ``residents:`` for one test; call with recipe names."""
+    from giq.config import get_config
+
+    def declare(*names: str) -> None:
+        monkeypatch.setattr(get_config(), "residents", list(names))
+
+    return declare

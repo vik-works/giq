@@ -101,13 +101,16 @@ def test_a_recipe_is_listed_under_every_modality_it_serves():
     assert "zimage" not in [r.name for r in recipes_serving("image_edit")]
 
 
-def test_resident_defaults_are_ordered_and_known():
-    residents = resident_defaults()
-    assert residents  # a giq with no resident set is a misconfiguration
-    for name in residents:
-        assert get_recipe(name) is not None
-    priorities = [get_recipe(name).residency.priority for name in residents]
-    assert priorities == sorted(priorities)
+def test_nothing_is_kept_warm_out_of_the_box():
+    """A new install loads nothing until a job asks for it; keeping a model
+    warm is the operator's decision, in config.yaml or the dashboard."""
+    assert resident_defaults() == []
+    assert all(r.residency.priority is None for r in all_recipes())
+
+
+def test_configured_residents_keep_their_order_and_skip_unknown_names(config_residents):
+    config_residents("whisper-large-v3", "llm/gemma-4-12b", "no-such-recipe", "ecapa-tdnn")
+    assert resident_defaults() == ["whisper-large-v3", "gemma-4-12b", "ecapa-tdnn"]
 
 
 def test_runner_residents_match_the_catalog():

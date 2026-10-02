@@ -96,11 +96,11 @@ engines:
 # `models` (docs/configuration.md, "Image models").
 
 # Models kept loaded whenever nothing else claims the VRAM, in reload-priority
-# order. Jobs for these run on per-model lanes; everything else is "sleepy" and
-# evicts them on demand. Commented out = the recipes' `residency.priority`
-# (the built-ins: gemma-4-12b, whisper-large-v3, ecapa-tdnn). This set must
-# fit the card with room for the largest
-# sleepy model you actually use, or renders will thrash reloads.
+# order. Jobs for these run on per-model lanes; everything else loads on demand
+# and may evict them. Nothing is kept warm out of the box: commented out, only
+# a recipe file of yours with `residency.priority` pins anything. Each card's
+# set must fit it with room for the largest on-demand model you actually use,
+# or renders will thrash reloads. For example:
 # residents:
 #   - gemma-4-12b
 #   - whisper-large-v3

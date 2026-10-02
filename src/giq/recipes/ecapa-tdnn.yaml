@@ -10,8 +10,6 @@ engine: speechbrain
 detail: "speaker voiceprints"
 weights:
   source: hf:speechbrain/spkrec-ecapa-voxceleb
-residency:
-  priority: 2
 vram:
   gb: 0.6
   measured: true

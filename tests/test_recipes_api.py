@@ -47,13 +47,23 @@ async def test_every_recipe_is_listed_once_in_its_own_terms(client):
     assert flux["engine"] == "sd.cpp" and len(flux["weights"]) == 3
     gemma = next(r for r in body["recipes"] if r["name"] == "gemma-4-12b")
     assert gemma["residency"] == {
-        "policy": "pinned",
+        "policy": "auto",
         "source": "default",
         "reason": None,
-        "default_resident": True,
-    }
-    assert body["pinned"][0] == "gemma-4-12b"
+        "default_resident": False,
+    }, "nothing is kept warm out of the box"
+    assert body["pinned"] == []
     assert {"fit", "card", "installed", "instance"} <= set(gemma)
+
+
+async def test_a_configured_resident_is_kept_warm_by_default(client, config_residents):
+    config_residents("gemma-4-12b")
+    gemma = (await client.get("/recipes/gemma-4-12b")).json()
+    assert (gemma["residency"]["policy"], gemma["residency"]["default_resident"]) == (
+        "pinned",
+        True,
+    )
+    assert (await client.get("/recipes")).json()["pinned"] == ["gemma-4-12b"]
 
 
 async def test_residency_is_set_and_cleared_by_name_or_alias(client):

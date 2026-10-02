@@ -16,8 +16,6 @@ weights:
   parts:
     asr: {source: "hf:Systran/faster-whisper-large-v3"}
     diarization: {source: "hf:pyannote/speaker-diarization-community-1"}
-residency:
-  priority: 1
 vram:
   # whisper fp16 + pyannote ≈ 3.9 GB measured.
   gb: 4.0

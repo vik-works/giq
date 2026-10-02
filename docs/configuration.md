@@ -255,9 +255,12 @@ loads for a job is *on demand*:
   and unloads after two idle minutes.
 - `off` — refuses jobs and cannot load by any path.
 
-Overrides persist in `stats.db` and outrank `config.yaml`'s `residents:`, which
-outranks the recipes' `residency.priority` (among the built-ins:
-`gemma-4-12b`, `whisper-large-v3`, `ecapa-tdnn`).
+**Nothing is kept warm out of the box:** no built-in recipe sets a
+`residency.priority`, so a new install loads a model only when a job asks for
+it. Keep models warm by listing them under `residents:` in `config.yaml`, in
+reload-priority order, or with the dashboard. Overrides persist in `stats.db`
+and outrank `config.yaml`'s `residents:`, which outranks a recipe's own
+`residency.priority` (set it in a recipe file of yours).
 Before a load, giq gates on the recipe's declared VRAM figure (measured on
 real hardware where the recipe says so) plus a margin against the card's
 free VRAM, and evicts keep-warm instances on that card when that is what it

@@ -33,20 +33,22 @@ dependencies = [
     "einops>=0.8.2",
 
     # --- torch trio: upgrade these three together, never one alone -----------
-    # torchvision pins torch exactly (0.26 -> 2.11), but torchaudio 2.11
-    # declares NO torch requirement at all, so a bare `torchaudio` floats to
-    # the newest wheel and loads against whatever libtorch is present. That is
-    # not theoretical: it happened here and broke _torchaudio.abi3.so.
+    # The line is vllm's: giq's own venv runs the torch the vllm engine pins
+    # (torch 2.13, torchvision 0.28, torchaudio 2.11 in vllm 0.30), so a card
+    # sees one torch, VRAM figures compare across engines, and the next vllm
+    # upgrade sets the pace for both instead of leaving giq a step behind.
     #
-    # torchaudio's newest release is 2.11, and pyannote (>=2.8) and speechbrain
-    # (>=2.1) both require it — so torchaudio's release cadence, not anything
-    # giq does, is what caps torch. torch 2.12/2.13 exist and are unreachable
-    # until torchaudio follows or those two drop it.
+    # torchvision pins torch exactly (0.28 -> 2.13). torchaudio's newest
+    # release is 2.11, and pyannote and speechbrain need it; 2.11 declares NO
+    # torch requirement, so it is pinned here rather than left to float — a
+    # torchaudio built for another libtorch once broke _torchaudio.abi3.so.
+    # 2.11 on torch 2.13 is the pairing vllm ships, and its compiled extension
+    # loads and runs (resample, MFCC) on that line.
     #
     # This line is cu130 and needs a CUDA 13 driver (>= 580). Moving it
-    # re-dates every `measured: true` VRAM figure in src/giq/instances/.
-    "torch>=2.11.0,<2.12.0",
-    "torchvision>=0.26.0,<0.27.0",
+    # re-dates every `measured: true` VRAM figure in src/giq/recipes/.
+    "torch>=2.13.0,<2.14.0",
+    "torchvision>=0.28.0,<0.29.0",
     "torchaudio>=2.11.0,<2.12.0",
     "torchsde>=0.2.6",
 

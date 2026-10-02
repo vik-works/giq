@@ -51,7 +51,7 @@ Usage: $0 [options]
   --ui-only          install the dashboard into --prefix and nothing else;
                      runs without root (the files are then yours)
   --with-vllm        also sync envs/vllm (the second LLM engine, several GB)
-                     and build its GPU kernels with `giq prepare vllm`
+                     and build its GPU kernels with giq prepare vllm
   -h, --help         this text
 
 The dashboard comes from, first match wins: --ui-tarball, --ui-release, a
@@ -90,7 +90,7 @@ UV=
 
 # Temporary files and directories, removed however the script ends.
 CLEANUP=()
-# shellcheck disable=SC2329 # invoked by the trap
+# shellcheck disable=SC2317,SC2329 # invoked by the trap (older shellcheck says 2317)
 cleanup() { [ ${#CLEANUP[@]} -eq 0 ] || rm -rf -- "${CLEANUP[@]}"; }
 trap cleanup EXIT
 
@@ -141,8 +141,9 @@ github_slug() {
 # The checks that can fail before anything is changed.
 ui_preflight() {
     if [ -n "$UI_TARBALL" ]; then
-        [ -f "$UI_TARBALL" ] && [ -r "$UI_TARBALL" ] ||
+        if [ ! -f "$UI_TARBALL" ] || [ ! -r "$UI_TARBALL" ]; then
             die "--ui-tarball $UI_TARBALL: no such readable file"
+        fi
         UI_TARBALL=$(readlink -f "$UI_TARBALL")
         [ -z "$UI_RELEASE" ] || warn "--ui-tarball wins: ignoring --ui-release $UI_RELEASE"
         UI_RELEASE=

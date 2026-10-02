@@ -22,7 +22,7 @@ export const isSandboxTab = (s: string | null | undefined): s is SandboxTab =>
   !!s && (SANDBOX_TABS as readonly string[]).includes(s);
 
 /* Which panel exercises each worker, for a link that names no tab and for
-   the models view's menu. Workers with no panel (OCR, depth, multiview) are
+   the models view's menu. Workers with no panel (OCR, depth) are
    absent: their "Test in sandbox" is offered disabled, with the reason. */
 export const SANDBOX_TAB_FOR_WORKER: Partial<Record<Modality, SandboxTab>> = {
   llm: "chat",

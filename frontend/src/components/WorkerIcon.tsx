@@ -4,7 +4,6 @@
 
 import {
   ChatTextIcon,
-  CubeIcon,
   EyeIcon,
   FileTextIcon,
   GraphicsCardIcon,
@@ -34,7 +33,6 @@ export const WORKER_ICONS: Record<string, PhosphorIcon> = {
   embed: VectorThreeIcon,
   ocr: FileTextIcon,
   depth: MountainsIcon,
-  multiview: CubeIcon,
   gpu: GraphicsCardIcon,
 };
 

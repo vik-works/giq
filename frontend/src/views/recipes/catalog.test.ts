@@ -66,11 +66,11 @@ describe("engines", () => {
       engines: [
         { name: "llama.cpp", binary: "x", present: true, version: "version: 0.2.0 (build 1)", error: null },
         { name: "sd.cpp", binary: "y", present: true, version: "stable-diffusion.cpp commit 2251699", error: null },
-        { name: "da3", binary: null, present: false, version: null, error: "gone" },
+        { name: "retired-engine", binary: null, present: false, version: null, error: "gone" },
       ],
     });
     expect(v.get("llama.cpp")).toBe("0.2.0 (build 1)");
     expect(v.get("sd.cpp")).toBe("commit 2251699");
-    expect(v.get("da3")).toBeNull();
+    expect(v.get("retired-engine")).toBeNull();
   });
 });

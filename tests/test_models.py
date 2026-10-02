@@ -35,7 +35,6 @@ def test_worker_type_values():
     assert Modality.tts == "tts"
     assert Modality.stt == "stt"
     assert Modality.depth == "depth"
-    assert Modality.multiview == "multiview"
 
 
 def test_job_status_values():

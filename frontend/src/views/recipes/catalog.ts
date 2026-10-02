@@ -105,5 +105,4 @@ export const ENGINE_NOTE_KEY: Record<string, string> = {
   kokoro: "kokoro",
   transformers: "transformers",
   "transformers-4.57": "transformers457",
-  da3: "da3",
 };

@@ -88,26 +88,6 @@ def _builtin() -> tuple[EngineSpec, ...]:
             ),
             detail="python + transformers 4.57, for unlimited-ocr only",
         ),
-        # A third interpreter, for the multiview child. Depth Anything 3 is a git
-        # package that pins numpy<2 and declares a research toolkit (open3d,
-        # pycolmap, evo, e3nn, moviepy) as hard dependencies; giq's venv keeps
-        # none of that. envs/da3 is a uv project on the same torch line.
-        EngineSpec(
-            "da3",
-            env_python("da3"),
-            # The package has no release version (hatch-vcs on a git install says
-            # 0.0.0); the commit it was installed from is the identity that matters.
-            version_args=(
-                "-c",
-                "import json, torch, importlib.metadata as m; "
-                "d = m.distribution('depth-anything-3'); "
-                "u = json.loads(d.read_text('direct_url.json') or '{}'); "
-                "print('depth-anything-3 commit', "
-                "u.get('vcs_info', {}).get('commit_id', '?')[:12], "
-                "'torch', torch.__version__)",
-            ),
-            detail="python + Depth Anything 3, for the multiview child",
-        ),
         # The second LLM engine. `vllm serve` runs from this env's console
         # script (next to the interpreter); the interpreter is what is
         # declared and probed, because asking the script for its version
@@ -137,7 +117,6 @@ ENGINE_OF_BACKEND: dict[str, str] = {
     "kokoro": _SELF,
     "transformers": _SELF,
     "transformers-4.57": "transformers-4.57",
-    "da3": "da3",
     "vllm": "vllm",
 }
 
@@ -166,7 +145,6 @@ _ENV_OVERRIDE = {
     "sd.cpp": "GIQ_SDCPP_BINARY",
     "llama.cpp": "GIQ_LLAMA_BINARY",
     "transformers-4.57": "GIQ_UNLIMITED_OCR_PYTHON",
-    "da3": "GIQ_DA3_PYTHON",
     "vllm": "GIQ_VLLM_PYTHON",
 }
 

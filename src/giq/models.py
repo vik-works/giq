@@ -33,10 +33,6 @@ class Modality(StrEnum):
     # Monocular depth (Depth Anything V2 in a child process): one RGB image
     # in, a 16-bit depth map at the input resolution out.
     depth = "depth"
-    # Multi-view geometry (Depth Anything 3 in a child process on its own
-    # interpreter): N images of one scene in, per-view depth with camera
-    # poses and intrinsics out, optionally fused into a point cloud.
-    multiview = "multiview"
 
 
 class JobStatus(StrEnum):
@@ -97,8 +93,6 @@ class JobRequest(BaseModel):
     - image_edit: tasks are ImageEditTask dicts
     - ocr: {id, pdf_b64 | images_b64[], dpi?, pages?, raw?, strip?, merge?}
     - depth: {id, image_b64, visualize?}
-    - multiview: {id, images_b64[], extrinsics?, intrinsics?, process_res?, use_ray_pose?,
-      ref_view_strategy?, glb?, conf_percentile?, max_points?}
     """
 
     # `worker` is the name before ADR-003, still accepted on input so existing
@@ -177,50 +171,6 @@ class DepthResult(BaseModel):
     metric: bool = False
     # 8-bit colour-mapped PNG (near red, far blue), only when the task asked.
     visualization_b64: str | None = None
-    error: str | None = None
-
-
-class MultiviewView(BaseModel):
-    """One input view's share of a multiview result.
-
-    The depth map is at the model's working resolution (``width`` x
-    ``height``, the input scaled to ``process_res`` on its long side and
-    rounded to a multiple of 14), not the input's; ``intrinsics`` is for that
-    size. ``depth_b64`` and ``conf_b64`` are 16-bit PNGs spanning their
-    ``*_min``..``*_max`` linearly, as with ``DepthResult``. ``extrinsics`` is
-    the 3x4 world-to-camera matrix in OpenCV convention (COLMAP's), in the
-    model's own scale unless the task supplied poses.
-    """
-
-    index: int
-    width: int = 0
-    height: int = 0
-    depth_b64: str | None = None
-    depth_min: float | None = None
-    depth_max: float | None = None
-    conf_b64: str | None = None
-    conf_min: float | None = None
-    conf_max: float | None = None
-    extrinsics: list[list[float]] = Field(default_factory=list)  # 3x4, w2c
-    intrinsics: list[list[float]] = Field(default_factory=list)  # 3x3
-
-
-class MultiviewResult(BaseModel):
-    """Result of a multiview task: consistent depth and poses for N views.
-
-    Depth here is real depth along the ray (not inverse), so views unproject
-    directly with their intrinsics and extrinsics into one world frame. The
-    scale is arbitrary but shared across views (``metric`` is false) unless
-    the task passed extrinsics, in which case it is theirs. ``glb_b64`` is
-    the model's own fused, confidence-filtered point cloud with camera
-    wireframes, only when the task asked.
-    """
-
-    id: str
-    views: list[MultiviewView] = Field(default_factory=list)
-    metric: bool = False
-    process_res: int = 0
-    glb_b64: str | None = None
     error: str | None = None
 
 

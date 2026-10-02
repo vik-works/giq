@@ -91,23 +91,6 @@ def test_a_layout_ocr_instance_without_its_layout_fails_at_construction(operator
         OcrAdapter(OcrConfig(model="glm-ocr-ft"))
 
 
-def test_a_multiview_instance_under_a_new_name_loads_its_own_weights(operator_dir):
-    from giq.adapters.multiview import MultiviewAdapter, MultiviewConfig
-
-    _add(
-        operator_dir,
-        "da3.yaml",
-        "name: da3-ft\nmodalities: [multiview]\nengine: da3\n"
-        "weights: {path: ~/ckpt/da3-ft}\nvram: {gb: 7.0}\n",
-    )
-    w = MultiviewAdapter(MultiviewConfig(model="da3-ft"))
-    assert w.child_args()[-2:] == [
-        "--weights",
-        str(weights.resolve_path("multiview", "~/ckpt/da3-ft")),
-    ]
-    assert not w.child_args()[-1].startswith("~")
-
-
 def test_an_instance_without_weights_fails_at_construction(operator_dir):
     from giq.adapters.depth import DepthAdapter, DepthConfig
 

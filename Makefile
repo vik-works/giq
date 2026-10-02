@@ -25,7 +25,6 @@ HOST ?= 127.0.0.1
 sync:
 	uv sync
 	cd envs/unlimited-ocr && uv sync
-	cd envs/da3 && uv sync
 	@if [ -n "$(SKIP_UI)" ]; then :; \
 	elif command -v npm >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)?0:1)' 2>/dev/null; then $(MAKE) ui; \
 	else echo "Node.js 22.12+ with npm not found: skipping the dashboard build. Install it and run 'make ui'."; fi

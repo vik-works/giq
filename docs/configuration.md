@@ -58,17 +58,16 @@ Environment variables:
 | `GIQ_CONFIG` | `$GIQ_HOME/config.yaml`, else `./config.yaml` | Config file |
 | `GIQ_LLAMA_BINARY` | `llama-server` on PATH | llama.cpp server binary |
 | `GIQ_SDCPP_BINARY` | `sd-server` on PATH | stable-diffusion.cpp server binary |
-| `GIQ_UNLIMITED_OCR_PYTHON`, `GIQ_DA3_PYTHON` | `envs/*/.venv` | Interpreters for the OCR and multiview children |
+| `GIQ_UNLIMITED_OCR_PYTHON` | `envs/unlimited-ocr/.venv` | Interpreter for the Unlimited-OCR child |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |
-| `GIQ_DEPTH_MODELS_DIR`, `GIQ_MULTIVIEW_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth / multiview recipes |
+| `GIQ_DEPTH_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth recipes |
 | `GIQ_AUDIO_WHISPER_MODEL`, `GIQ_AUDIO_DIAR_MODEL`, `GIQ_EMBED_MODEL` | the recipe's | Repository or path the audio and voiceprint children load, outranking the recipe's `weights` |
 | `GIQ_GPU_DEVICE` | biggest card | Default GPU, index or NVML UUID |
 | `GIQ_TOKEN` | unset | Shared access token (see [Access](access-and-privacy.md#access)) |
 | `GIQ_STATS_DB` | `<data dir>/stats.db` | Stats database |
 | `GIQ_INFLIGHT_LOG` | `<data dir>/inflight.log` | In-flight job log (job shapes only, see [Privacy](access-and-privacy.md#privacy)) |
 | `GIQ_OCR_MAX_UPLOAD_MB`, `GIQ_OCR_MAX_PAGES` | 64, 200 | Upload limits (see [OCR](api.md#ocr)) |
-| `GIQ_MULTIVIEW_MAX_VIEWS`, `GIQ_MULTIVIEW_MAX_TOKENS` | 32, 41472 | Multiview request limits |
 
 ## Recipes
 
@@ -125,8 +124,8 @@ max_batch: 32
 | Key | What |
 |-----|------|
 | `name` | What clients send as `model`; unique across modalities. Letters, digits, `.`, `_`, `-`. |
-| `modalities` | What it serves, one or more of `llm`, `text2image`, `image_edit`, `tts`, `stt`, `audio`, `embed`, `ocr`, `depth`, `multiview` |
-| `engine` | The runtime, which must be able to serve every listed modality: `llama.cpp` or `vllm` (llm); `sd.cpp` (both image modalities); `kokoro`, `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `transformers`, `transformers-4.57`, `da3` for the rest |
+| `modalities` | What it serves, one or more of `llm`, `text2image`, `image_edit`, `tts`, `stt`, `audio`, `embed`, `ocr`, `depth` |
+| `engine` | The runtime, which must be able to serve every listed modality: `llama.cpp` or `vllm` (llm); `sd.cpp` (both image modalities); `kokoro`, `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `transformers`, `transformers-4.57` for the rest |
 | `label`, `detail` | Dashboard presentation; `label` defaults to the name |
 | `weights.path` | The weights file (a checkpoint directory for `vllm`), relative to `GIQ_MODELS_DIR`; `~` or absolute is used as written. Required for `llama.cpp` and `vllm`; `vllm` also needs `format: safetensors` or `modelopt` |
 | `weights.parts` | The other files the model needs, by the name its modality's engine reads them under (see [Weights](#weights)) |
@@ -178,7 +177,7 @@ weights:
 | `llm` | the GGUF | — (the projector is `params.mmproj`) |
 | `text2image`, `image_edit` | — | `diffusion`, `text_encoder`, `vae` (required), `lora` |
 | `ocr` | the snapshot directory | `layout` (engine `transformers`: GLM-OCR's layout model) |
-| `depth`, `multiview` | the snapshot directory | — |
+| `depth` | the snapshot directory | — |
 | `stt` | a CTranslate2 directory, else the `hf:` source | — |
 | `audio` | — | `asr`, `diarization` (`hf:` sources) |
 | `embed`, `tts` | the `hf:` source | — |
@@ -192,9 +191,8 @@ The environment variables that located these snapshots before recipe
 files existed still work, and outrank the file: `GIQ_OCR_MODEL_DIR`,
 `GIQ_GLM_OCR_MODEL_DIR` and `GIQ_GLM_LAYOUT_DIR` replace the paths of the
 built-in `unlimited-ocr` and `glm-ocr` (and only theirs — an OCR recipe
-under another name is not redirected), `GIQ_DEPTH_MODELS_DIR` and
-`GIQ_MULTIVIEW_MODELS_DIR` replace the models directory for their modality's
-relative paths, and `GIQ_AUDIO_WHISPER_MODEL`, `GIQ_AUDIO_DIAR_MODEL` and
+under another name is not redirected), `GIQ_DEPTH_MODELS_DIR`
+replaces the models directory for depth recipes' relative paths, and `GIQ_AUDIO_WHISPER_MODEL`, `GIQ_AUDIO_DIAR_MODEL` and
 `GIQ_EMBED_MODEL` replace what the audio and voiceprint children load.
 `GET /weights` lists every checkpoint where giq resolved it, and whether it
 is there.

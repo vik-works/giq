@@ -11,7 +11,7 @@ dependencies = [
     # vLLM pins its own torch line (2.13, cu130 on PyPI) one step ahead of
     # giq's 2.11 and brings flashinfer, xformers-free kernels and its own
     # transformers floor — none of which giq's venv should carry, so the
-    # engine gets its own interpreter like da3 and unlimited-ocr. It runs as
+    # engine gets its own interpreter, like unlimited-ocr. It runs as
     # a separate `vllm serve` process that giq talks to over HTTP, exactly as
     # it talks to llama-server.
     "vllm==0.30.0",

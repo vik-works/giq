@@ -62,7 +62,7 @@ On Debian 13 (trixie), x86_64:
 ```
 $GIQ_HOME/              /projects/giq in the unit
   config.yaml           the one config
-  models/               model weights (GGUFs, OCR/depth/multiview snapshots)
+  models/               model weights (GGUFs, OCR and depth snapshots)
   recipes/              your recipe files (ADR-002, ADR-003)
   engines/              engine builds: engines/<engine>/bin/<binary>
   state/                stats.db, inflight.log

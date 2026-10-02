@@ -111,8 +111,7 @@
     "fasterWhisper": "faster-whisper, in giq's own process",
     "kokoro": "Kokoro in a child process",
     "transformers": "transformers 5 in a child process, offline",
-    "transformers457": "A child process on its own transformers 4.57 interpreter, offline",
-    "da3": "Depth Anything 3 in a child process on its own interpreter"
+    "transformers457": "A child process on its own transformers 4.57 interpreter, offline"
   },
   "budget": {
     "default": "default",

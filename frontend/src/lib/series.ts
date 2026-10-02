@@ -18,7 +18,6 @@ const KNOWN = new Set<string>([
   "stt",
   "ocr",
   "depth",
-  "multiview",
 ]);
 
 /** The fixed colour of a worker (its series slot). Colour follows the entity, not its rank. */
@@ -37,7 +36,6 @@ export const WORKER_ORDER: readonly string[] = [
   "stt",
   "ocr",
   "depth",
-  "multiview",
 ];
 
 export const workerRank = (w: string): number => {

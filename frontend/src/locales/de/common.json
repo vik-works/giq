@@ -96,8 +96,7 @@
     "tts": "Text zu Sprache",
     "embed": "Stimmabdruck",
     "ocr": "Dokument-OCR",
-    "depth": "Tiefe",
-    "multiview": "Multiview"
+    "depth": "Tiefe"
   },
   "policy": {
     "pinned": "warm halten",

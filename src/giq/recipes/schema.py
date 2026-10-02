@@ -61,7 +61,6 @@ MODALITY_ENGINES: dict[str, frozenset[str]] = {
     "embed": frozenset({"speechbrain"}),
     "ocr": frozenset({"transformers", "transformers-4.57"}),
     "depth": frozenset({"transformers"}),
-    "multiview": frozenset({"da3"}),
 }
 
 # llama.cpp's KV cache types (`--cache-type-k/-v`).

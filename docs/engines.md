@@ -26,14 +26,12 @@ Note that recent llama.cpp builds link shared libraries with an absolute
 RUNPATH into the build directory — point the config at the build, don't copy
 the binary out of it.
 
-Besides the two servers, four interpreters are declared as engines, so every
+Besides the two servers, three interpreters are declared as engines, so every
 model in the catalog names what executes it: `python` (giq's own venv — the
-audio stack, Kokoro, GLM-OCR and depth),
-`transformers-4.57` (`envs/unlimited-ocr`, for Unlimited-OCR only) and `da3`
-(`envs/da3`, for the multiview child) and `vllm` (`envs/vllm`, the second
-LLM engine, [below](#vllm)). `make sync` builds the first two `envs/*`
-interpreters; `GIQ_UNLIMITED_OCR_PYTHON` / `GIQ_DA3_PYTHON` /
-`GIQ_VLLM_PYTHON` point elsewhere.
+audio stack, Kokoro, GLM-OCR and depth), `transformers-4.57`
+(`envs/unlimited-ocr`, for Unlimited-OCR only) and `vllm` (`envs/vllm`, the
+second LLM engine, [below](#vllm)). `make sync` builds `envs/unlimited-ocr`;
+`GIQ_UNLIMITED_OCR_PYTHON` / `GIQ_VLLM_PYTHON` point elsewhere.
 
 ## Engine names
 
@@ -47,7 +45,6 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `sd.cpp` | `flux_klein`, `zimage` | `sd-server` |
 | `transformers` | GLM-OCR, depth | `python` |
 | `transformers-4.57` | Unlimited-OCR | `envs/unlimited-ocr` |
-| `da3` | multiview | `envs/da3` |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and
@@ -110,8 +107,9 @@ default so that pinning is the operator's decision.
 
 ### The interpreter: `envs/vllm`
 
-vllm pins its own torch (2.13 on CUDA 13), a step ahead of giq's venv, so it
-has its own uv project like `envs/da3`. It is not part of `make sync` —
+vllm pins its own torch, transformers and fastapi ranges, so it has its own
+uv project. giq's venv runs the same torch line (2.13 on CUDA 13). It is not
+part of `make sync` —
 several GB of wheels most installs do not need:
 
 ```bash

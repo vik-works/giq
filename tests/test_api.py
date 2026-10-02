@@ -169,7 +169,6 @@ async def test_capabilities(client: AsyncClient):
         "stt",
         "ocr",
         "depth",
-        "multiview",
     ):
         assert worker in data["modalities"], f"{worker} missing from /capabilities"
     # Two LLM engines since vllm joined llama.cpp, reported like the image runtimes.
@@ -611,115 +610,6 @@ async def test_depth_refuses_what_is_not_an_image(client: AsyncClient, depth_com
     r = await client.post(
         "/depth", files={"file": ("a.webp", b"RIFF\x00\x00\x00\x00WAVEfmt ", "image/webp")}
     )
-    assert r.status_code == 400
-
-
-# --- /multiview --------------------------------------------------------------
-
-_MV_VIEW = {
-    "index": 0,
-    "width": 504,
-    "height": 378,
-    "depth_b64": "iVBORw0=",
-    "depth_min": 0.5,
-    "depth_max": 9.0,
-    "conf_b64": "iVBORw0=",
-    "conf_min": 1.0,
-    "conf_max": 3.0,
-    "extrinsics": [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]],
-    "intrinsics": [[400, 0, 252], [0, 400, 189], [0, 0, 1]],
-}
-_MV_RESULT = {
-    "id": "multiview-0",
-    "views": [_MV_VIEW, {**_MV_VIEW, "index": 1}],
-    "metric": False,
-    "process_res": 504,
-    "glb_b64": "Z2xURg==",
-    "error": None,
-}
-
-
-@pytest.fixture
-def multiview_completes(monkeypatch):
-    from giq.queue import Job
-    from giq.services.orchestration import Orchestrator
-
-    seen: dict = {}
-    real_submit = Orchestrator.submit_job
-
-    async def submit(self, request):
-        seen["task"] = request.tasks[0]
-        seen["model"] = request.model
-        seen["worker"] = request.modality
-        return await real_submit(self, request)
-
-    async def wait(self, job_id, timeout=None):
-        job = Job(
-            job_id=job_id,
-            request=JobRequest(modality=Modality.multiview, model="da3-base", tasks=[]),
-        )
-        job.status = JobStatus.completed
-        job.results = [_MV_RESULT]
-        return job
-
-    monkeypatch.setattr(Orchestrator, "submit_job", submit)
-    monkeypatch.setattr(Orchestrator, "wait_for_job", wait)
-    return seen
-
-
-_TWO_VIEWS = [("files", ("a.png", PNG, "image/png")), ("files", ("b.png", PNG, "image/png"))]
-
-
-@pytest.mark.asyncio
-async def test_multiview_takes_repeated_files_parts(client: AsyncClient, multiview_completes):
-    r = await client.post("/multiview", files=_TWO_VIEWS)
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert len(body["views"]) == 2 and body["views"][1]["index"] == 1
-    assert body["views"][0]["extrinsics"][0] == [1, 0, 0, 0] and body["process_res"] == 504
-    assert body["metric"] is False and body["job_id"] and "glb_b64" not in body
-    assert multiview_completes["worker"] == Modality.multiview
-    task = multiview_completes["task"]
-    assert len(task["images_b64"]) == 2 and task["glb"] is False and task["process_res"] == 504
-    assert task["use_ray_pose"] is False
-
-
-@pytest.mark.asyncio
-async def test_multiview_glb_is_opt_in(client: AsyncClient, multiview_completes):
-    r = await client.post("/multiview", params={"glb": "true"}, files=_TWO_VIEWS)
-    assert r.json()["glb_b64"] == "Z2xURg==" and multiview_completes["task"]["glb"] is True
-    r = await client.post("/multiview", params={"response_format": "glb"}, files=_TWO_VIEWS)
-    assert r.headers["content-type"] == "model/gltf-binary"
-    assert r.content == base64.b64decode("Z2xURg==")
-
-
-@pytest.mark.asyncio
-async def test_multiview_options_and_refusals(
-    client: AsyncClient, multiview_completes, monkeypatch
-):
-    # A second multiview model added for the test (the public registry has
-    # only da3-base) shows the query parameter reaches the job.
-    from giq.registry import get_recipe
-    from tests._recipes import with_recipes
-
-    base = get_recipe("da3-base")
-    assert base is not None
-    with_recipes(monkeypatch, base.model_copy(update={"name": "da3-test-large"}))
-    r = await client.post(
-        "/multiview",
-        params={"model": "da3-test-large", "process_res": 756, "use_ray_pose": "true"},
-        files=_TWO_VIEWS,
-    )
-    assert r.status_code == 200 and multiview_completes["model"] == "da3-test-large"
-    assert multiview_completes["task"]["process_res"] == 756
-    assert multiview_completes["task"]["use_ray_pose"] is True
-    r = await client.post("/multiview", params={"model": "colmap"}, files=_TWO_VIEWS)
-    assert r.status_code == 400 and "da3-base" in r.json()["detail"]
-    r = await client.post("/multiview", files=[("files", ("a.pdf", b"%PDF-1.4", "image/png"))])
-    assert r.status_code == 400 and "file 0" in r.json()["detail"]
-    r = await client.post("/multiview", content=PNG, headers={"content-type": "image/png"})
-    assert r.status_code == 400
-    r = await client.post("/multiview", files={"file": ("a.png", PNG, "image/png")})
     assert r.status_code == 400
 
 

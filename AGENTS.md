@@ -12,7 +12,7 @@ this file; keep agent instructions here, in one place.
 ## What giq is
 
 A GPU inference queue: one FastAPI service that owns the GPU(s) and serves
-LLM, image, OCR, depth, multiview, audio and embedding recipes behind a job
+LLM, image, OCR, depth, audio and embedding recipes behind a job
 queue and an OpenAI-compatible API. The terms — engine, weights, recipe,
 instance, residency, modality — are ADR-003's
 (`docs/ADR-003-domain.md`); use them, one meaning each, in code, API,

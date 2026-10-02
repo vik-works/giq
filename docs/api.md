@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 giq listens on `http://localhost:8084` by default. Everything goes through
 one job queue: the job API below, the OpenAI-compatible routes under `/v1`,
-and the convenience endpoints for OCR, depth and multiview all submit jobs to
+and the convenience endpoints for OCR and depth all submit jobs to
 it. Access rules (Host/Origin checks, the optional token) are described in
 [access-and-privacy.md](access-and-privacy.md).
 
@@ -107,7 +107,6 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/dash` | GET | Dashboard (overview, recipes, inventory, usage, sandbox; English/German; light/dark/system theme) |
 | `/ocr` | POST | One PDF (multipart `file`) in, one HTML document out — see [OCR](#ocr) |
 | `/depth` | POST | One image in, one 16-bit depth map out — see [Depth](#depth) |
-| `/multiview` | POST | N images of one scene in; per-view depth, poses, intrinsics, optional GLB — see [Multiview](#multiview) |
 
 ## Modalities
 
@@ -190,14 +189,6 @@ generation ends as `response.failed` with `giq_job_failed`.
   are CC-BY-NC-4.0 and not registered)
 - Task: `{id, image_b64, visualize?}`
 - Result: `{id, depth_b64, width, height, depth_min, depth_max, metric, visualization_b64?}`
-
-### Multiview (`multiview`)
-- Recipes: `da3-base` (Apache-2.0, the default) — Depth Anything 3, on its
-  own interpreter (`envs/da3`, engine `da3`)
-- Task: `{id, images_b64[], extrinsics?, intrinsics?, process_res?, use_ray_pose?,
-  ref_view_strategy?, glb?, conf_percentile?, max_points?}`
-- Result: `{id, views[{index, width, height, depth_b64, depth_min, depth_max,
-  conf_b64, conf_min, conf_max, extrinsics, intrinsics}], metric, process_res, glb_b64?}`
 
 ### Audio, voiceprints, speech
 
@@ -298,55 +289,6 @@ sits beside them. Small: 1.2 GB peak, measured on an RTX 5090 with a
 1280x2276 photo; it answers in under a second including the PNG encode.
 Licences are part of the choice: only Small is Apache-2.0, so Base and Large
 (CC-BY-NC-4.0, non-commercial) are not registered.
-
-## Multiview
-
-N images of one scene in; a depth map, a camera pose and intrinsics per
-view out, all in one shared frame, through Depth Anything 3 (ByteDance-Seed,
-arXiv 2511.10647): one transformer over every view's tokens at once, with or
-without known poses. This is what a scan from many angles needs and what the
-single-image `depth` modality cannot give, since its maps have an unknown
-scale and shift per frame.
-
-```bash
-curl -s -F files=@v1.jpg -F files=@v2.jpg -F files=@v3.jpg \
-  'http://localhost:8084/multiview' | jq '.views[] | {index, width, height, extrinsics}'
-curl -s -F files=@v1.jpg -F files=@v2.jpg 'http://localhost:8084/multiview?response_format=glb' > scene.glb
-# or through the job API, which also takes known poses:
-curl -s -X POST localhost:8084/run?wait=true -H 'Content-Type: application/json' \
-  -d '{"modality":"multiview","model":"da3-base",
-       "tasks":[{"id":"1","images_b64":["..."],"glb":true}]}'
-```
-
-Query parameters: `model` (`da3-base`, the default and only registered one),
-`process_res` (long side the views are resized to, 252-1008, default 504),
-`use_ray_pose` (slower, more accurate poses), `glb` (add the model's own
-fused, confidence-filtered point cloud with camera wireframes),
-`response_format` (`json` or `glb`). Images go as repeated multipart
-`files` parts, in any order; the model picks its own reference view.
-
-What comes back per view: a 16-bit PNG of **depth along the ray** (real
-depth, not inverse) at the model's working resolution, spanning
-`depth_min..depth_max`; a confidence map the same way; the 3x4
-world-to-camera matrix in OpenCV convention; and the 3x3 intrinsics for
-that resolution. The scale is arbitrary but shared, so the views unproject
-into one cloud; pass `extrinsics` and `intrinsics` through `/run` and the
-prediction is aligned to them instead. `metric` is false (the metric
-checkpoints are not registered).
-
-Limits: 32 views and 41472 patch tokens per request (32 square views at
-504 px, or fewer at a higher `process_res`); over either is a refusal
-before the model runs. Measured on an RTX 5090: Base 1 GB idle, 4.4 GB peak
-for 32 landscape views at 504 px, 6.6 GB at the token cap. Declared 7 GB.
-
-Runtime: the package is not on PyPI, pins numpy below 2, and declares a
-research toolkit (open3d, pycolmap, evo, e3nn, moviepy) as hard
-dependencies, so it runs on its own interpreter, `envs/da3` (a uv project
-on the same torch line; `make sync` builds it), declared as engine `da3`.
-The Giant models need xformers and are not registered. Licences: Base is
-Apache-2.0. Large-1.1 is not registered: its model card says Apache-2.0
-while the repository README lists Large as CC BY-NC 4.0, and a licence that
-unclear is not one giq offers for commercial use.
 
 ## Weights
 

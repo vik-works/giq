@@ -17,8 +17,7 @@ export type Modality =
   | "audio"
   | "embed"
   | "ocr"
-  | "depth"
-  | "multiview";
+  | "depth";
 
 export const WORKER_TYPES: readonly Modality[] = [
   "llm",
@@ -30,7 +29,6 @@ export const WORKER_TYPES: readonly Modality[] = [
   "stt",
   "ocr",
   "depth",
-  "multiview",
 ];
 
 export type JobStatus = "pending" | "running" | "completed" | "failed";

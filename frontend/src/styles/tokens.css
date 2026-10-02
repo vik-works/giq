@@ -88,9 +88,10 @@
   --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
 }
 
-/* Worker → series slot. Ten workers, eight slots: the two rarest workers
-   (depth, multiview) share the neutral "other" rather than a generated ninth
-   hue that no palette check has passed; their icon and label still name them. */
+/* Worker → series slot. Nine workers, eight slots: the rarest (depth)
+   shares the neutral "other" rather than a generated ninth hue that no
+   palette check has passed; its icon and label still name it. A modality
+   giq no longer serves (multiview, in old job history) falls to "other" too. */
 :root {
   --s-llm: var(--series-1);
   --s-text2image: var(--series-2);
@@ -101,7 +102,6 @@
   --s-stt: var(--series-7);
   --s-ocr: var(--series-8);
   --s-depth: var(--series-other);
-  --s-multiview: var(--series-other);
 }
 
 @media (prefers-color-scheme: light) {

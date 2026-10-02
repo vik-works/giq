@@ -80,7 +80,6 @@ The six domain terms are ADR-003's; use them in no other sense.
 | Voiceprint (`embed`) | Stimmabdruck |
 | Document OCR | Dokument-OCR |
 | Depth | Tiefe |
-| Multiview | Multiview |
 | vision (capability) | Bildverständnis |
 
 ## Serving and queue

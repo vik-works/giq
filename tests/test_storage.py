@@ -153,12 +153,3 @@ def test_depth_snapshot_resolves_by_directory(tmp_path, monkeypatch):
     monkeypatch.setenv("GIQ_DEPTH_MODELS_DIR", str(root))
     assert installed("depth-anything-v2-small")
     assert _of("depth-anything-v2-small")["size_bytes"] == 99
-
-
-def test_multiview_snapshot_resolves_by_directory(tmp_path, monkeypatch):
-    root = tmp_path / "models"
-    snap = root / "depth-anything-DA3-BASE"
-    snap.mkdir(parents=True)
-    (snap / "model.safetensors").write_bytes(b"m" * 42)
-    monkeypatch.setenv("GIQ_MULTIVIEW_MODELS_DIR", str(root))
-    assert installed("da3-base") and _of("da3-base")["size_bytes"] == 42

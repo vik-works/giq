@@ -1089,10 +1089,6 @@ class Runner:
             from giq.adapters.depth import DepthAdapter, DepthConfig
 
             return DepthAdapter(config=DepthConfig(model=model), device=device)
-        if modality == Modality.multiview:
-            from giq.adapters.multiview import MultiviewAdapter, MultiviewConfig
-
-            return MultiviewAdapter(config=MultiviewConfig(model=model), device=device)
         raise ValueError(f"no adapter for {model}'s modality {modality}")
 
     async def _process_resident_job(self, job: Job, key: str) -> None:

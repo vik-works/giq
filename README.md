@@ -15,7 +15,7 @@ through a single job queue.
 ## Features
 
 - **One way in.** Every request — the job API, the OpenAI-compatible routes,
-  the OCR/depth/multiview endpoints — goes through one job queue, so clients
+  the OCR and depth endpoints — goes through one job queue, so clients
   never race each other for VRAM. Jobs carry batches of tasks.
 - **OpenAI-compatible API.** `/v1/chat/completions` with streaming and tool
   calls, `/v1/responses`, `/v1/models`, `/v1/audio/transcriptions`,
@@ -25,8 +25,7 @@ through a single job queue.
   `--mmproj`, speculative decoding via `--spec-type`); text-to-image and image
   edit via stable-diffusion.cpp; speech to text with diarization
   (faster-whisper + pyannote); text to speech (Kokoro); speaker voiceprints
-  (ECAPA-TDNN); OCR (Unlimited-OCR, GLM-OCR); depth (Depth Anything V2);
-  multiview depth and camera poses (Depth Anything 3).
+  (ECAPA-TDNN); OCR (Unlimited-OCR, GLM-OCR); depth (Depth Anything V2).
 - **Recipes, not code.** Every model giq serves is a recipe: one YAML file
   naming its weights, the engine that runs them, the engine's parameters and
   a measured VRAM figure. Clients ask for a recipe by name; your own files
@@ -120,7 +119,7 @@ LLMs a [llama.cpp](https://github.com/ggml-org/llama.cpp) build
 ```bash
 git clone <this repository> giq
 cd giq
-make sync        # uv sync, the OCR and multiview interpreters, and the dashboard
+make sync        # uv sync, the Unlimited-OCR interpreter, and the dashboard
 uv run python -m giq.main          # loopback, port 8084
 
 # or with options
@@ -162,7 +161,7 @@ curl -X POST 'http://localhost:8084/run?wait=true' \
 ## Documentation
 
 - [API](docs/api.md) — the job API, every endpoint, task shapes per modality, OCR,
-  depth, multiview and vision
+  depth and vision
 - [Configuration](docs/configuration.md) — `config.yaml`, environment
   variables, residency, multiple GPUs, the systemd service
 - [Access and privacy](docs/access-and-privacy.md) — what is recorded, the

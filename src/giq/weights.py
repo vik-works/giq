@@ -51,7 +51,6 @@ DIR_OVERRIDES: dict[tuple[str, str | None], str] = {
 # A root that replaces the models directory for one modality's relative paths.
 ROOT_OVERRIDES: dict[str, str] = {
     "depth": "GIQ_DEPTH_MODELS_DIR",
-    "multiview": "GIQ_MULTIVIEW_MODELS_DIR",
 }
 
 HF_PREFIX = "hf:"

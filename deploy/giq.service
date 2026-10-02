@@ -29,7 +29,7 @@ SupplementaryGroups=video render
 
 # One data root; every directory giq uses resolves under it (docs/deployment.md
 # has the table). Models are local files: nothing may reach for the Hub while
-# serving, and the OCR/depth/multiview children refuse it on their own too.
+# serving, and the OCR and depth children refuse it on their own too.
 Environment=GIQ_HOME=/projects/giq
 Environment=GIQ_HOST=127.0.0.1 GIQ_PORT=8084
 Environment=PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1

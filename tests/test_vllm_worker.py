@@ -743,3 +743,22 @@ async def test_warm_up_starts_with_time_to_compile_and_always_stops(tmp_path, mo
     with pytest.raises(TimeoutError):
         await vllm.warm_up(NAME, device="GPU-test")
     assert calls == [("start", vllm.WARMUP_TIMEOUT_SECONDS), ("stop", None)]
+
+
+def test_a_restart_keeps_the_previous_run_log(tmp_path):
+    """giq restarts a crashed resident on its own; the new run must not wipe
+    the stack trace that says why the old one died."""
+    from giq.adapters.engine import open_engine_log
+
+    log = tmp_path / "vllm-m.log"
+    log.write_text("EngineCore: torch.OutOfMemoryError\n")
+    with open_engine_log(log) as f:
+        f.write("second run\n")
+    assert log.read_text() == "second run\n"
+    assert (tmp_path / "vllm-m.log.1").read_text() == "EngineCore: torch.OutOfMemoryError\n"
+
+    # An empty log (a run that wrote nothing) does not displace the one kept.
+    log.write_text("")
+    with open_engine_log(log) as f:
+        f.write("third run\n")
+    assert (tmp_path / "vllm-m.log.1").read_text() == "EngineCore: torch.OutOfMemoryError\n"

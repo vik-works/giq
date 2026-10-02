@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, ClassVar
 import httpx
 
 from giq import recipes
-from giq.adapters.engine import Concurrency, ServedLLM, StartError
+from giq.adapters.engine import Concurrency, ServedLLM, StartError, open_engine_log
 from giq.gpus import device_env, device_port, server_port
 from giq.loopguard import LoopGuard
 from giq.models import JobResult
@@ -640,7 +640,7 @@ class LlamaCppAdapter(ServedLLM):
         # model on a card the VRAM gate isn't even reading.
         log_path = Path(self.config.log_path or os.devnull)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "w", encoding="utf-8") as log:
+        with open_engine_log(log_path) as log:
             self._process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=log,

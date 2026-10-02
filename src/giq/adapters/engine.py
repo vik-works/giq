@@ -14,9 +14,11 @@ branches through the scheduler (ADR-002, D4).
 
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import IO, TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     import httpx
@@ -33,6 +35,20 @@ class StartError(RuntimeError):
     llama-server that died at spawn was reported as "Job timed out after
     300s" thirty seconds in. A start that fails says what failed.
     """
+
+
+def open_engine_log(path: Path) -> IO[str]:
+    """The log a server's new run writes to, with the previous run kept as ``.1``.
+
+    A start truncated the log, and the start that matters most is the one
+    after a crash: giq restarts a resident engine on its own, and the new run
+    wiped the stack trace that said why the old one died. One previous run is
+    kept rather than all of them, so a crash-looping engine cannot fill the
+    disk.
+    """
+    if path != Path(os.devnull) and path.exists() and path.stat().st_size:
+        path.replace(path.with_name(path.name + ".1"))
+    return open(path, "w", encoding="utf-8")
 
 
 @dataclass(frozen=True)

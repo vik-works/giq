@@ -67,7 +67,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import httpx
 
-from giq.adapters.engine import Concurrency, ServedLLM, StartError
+from giq.adapters.engine import Concurrency, ServedLLM, StartError, open_engine_log
 from giq.gpus import compute_capability, device_env, device_port, resolve_device, server_port
 from giq.models import JobResult
 from giq.paths import cache_dir, model_path, state_dir
@@ -622,7 +622,7 @@ class VllmAdapter(ServedLLM):
             f"{f' (RAM cap {params.memory_max})' if prefix else ''}, log {log_path}"
         )
         logger.debug(f"Command: {' '.join(prefix + cmd)}")
-        with open(log_path, "w", encoding="utf-8") as log:
+        with open_engine_log(log_path) as log:
             # A session of its own: vllm forks its engine core, and stop()
             # signals the whole group so no child is left holding the card.
             self._process = await asyncio.create_subprocess_exec(

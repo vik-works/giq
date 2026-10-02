@@ -173,6 +173,8 @@ def test_the_builtin_instances():
     assert throughput.params.speculative is None and throughput.params.max_num_seqs == 16
     assert chat.params.speculative is not None and chat.params.speculative.tokens == 3
     assert chat.params.max_num_seqs == 4
+    # 8192 ran a 32 GB card out of memory under concurrent long prompts.
+    assert chat.params.max_num_batched_tokens == 4096
     for recipe in (throughput, chat):
         assert recipe.residency.priority is None, "vllm starts take minutes: the operator pins"
         assert recipe.params.kv_cache_memory_bytes is not None, "a KV size, not a card fraction"

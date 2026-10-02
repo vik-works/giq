@@ -32,11 +32,19 @@ weights:
   format: modelopt
   licence: apache-2.0
 capabilities: [chat, vision]
-# Up to 4 requests and an 8192-token scheduling budget from the interactive
-# profile; three draft tokens rather than its two (see above).
+# Up to 4 requests from the interactive profile; three draft tokens rather
+# than its two (see above), and half its scheduling budget.
 profile: interactive
 params:
   speculative: {method: mtp, tokens: 3}
+  # 4096 tokens a step, not the profile's 8192. With a KV size in bytes vllm
+  # skips its memory profiling, so nothing checks that a step's activations
+  # fit beside the weights and the KV pool — and on a 32 GB card they do not:
+  # three agents reading their tool results at once ran the engine out of
+  # memory at 8192 (31.2 of 31.8 GiB, then a dead engine). At 4096 the same
+  # three ran to 40k tokens of history each (peak 30.7 GiB), and one agent's
+  # time to first token and decode rate were unchanged up to 60k.
+  max_num_batched_tokens: 4096
   # Half a gigabyte less KV than the batch recipe: the MTP head's weights
   # come out of the same card. Three drafts need 5.03 GiB to hold one full
   # 128k request, so 5 GiB refuses to start; 5.5 is ~160k tokens.

@@ -391,14 +391,16 @@ async def test_policy_round_trip_over_http(client, store):
         "override",
         "demo day",
     )
-    assert any("kokoro" in c["pinned"] for c in body["cards"])
+    # The resident set itself, not the per-card budgets: a machine without a
+    # GPU (a CI runner) has no cards to list it under.
+    assert "kokoro" in (await client.get("/recipes")).json()["pinned"]
     assert all(c["pinned_gb"] <= c["total_gb"] for c in body["cards"])
 
     r = await client.delete("/recipes/kokoro/residency")
     assert r.status_code == 200
     residency = r.json()["recipe"]["residency"]
     assert (residency["policy"], residency["source"]) == ("auto", "default")
-    assert not any("kokoro" in c["pinned"] for c in r.json()["cards"])
+    assert "kokoro" not in (await client.get("/recipes")).json()["pinned"]
 
 
 @pytest.mark.asyncio

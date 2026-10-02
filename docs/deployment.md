@@ -44,8 +44,8 @@ On Debian 13 (trixie), x86_64:
   engine processes at startup with `pkill` (procps) and `fuser` (psmisc).
 - **uv**, installed system-wide so the unprivileged build user can run it:
   `curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh`.
-  uv fetches the Python versions giq needs (3.11 for the side environments,
-  which Debian 13 does not ship).
+  uv fetches the Python versions giq needs (3.11 or 3.12 for giq, 3.12 for
+  vllm), which Debian 13, on 3.13, does not ship.
 - **The dashboard**, built with Node.js 22.12+. Debian 13's `nodejs` is
   older, so on a server it usually comes prebuilt instead; see
   [Dashboard on the server](#dashboard-on-the-server). Without one the API
@@ -107,7 +107,7 @@ used only when neither `GIQ_HOME` nor a more specific setting names one.
 `GET /storage` includes a `paths` object with every resolved location, so
 you can check what a running giq uses.
 
-The side environments (`envs/*/.venv`) and the dashboard build are code,
+The vllm environment (`envs/vllm/.venv`) and the dashboard build are code,
 not data: they stay in the checkout.
 
 ## Engines

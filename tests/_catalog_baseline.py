@@ -288,7 +288,7 @@ BUILTIN_SPECS = [
     },
     {
         "aliases": (),
-        "backend": "transformers-4.57",
+        "backend": "transformers",
         "detail": "PDF / page images → layout-tagged text · 32k ctx · dozens of pages per pass",
         "engine": None,
         "label": "Unlimited-OCR",

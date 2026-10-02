@@ -58,7 +58,6 @@ Environment variables:
 | `GIQ_CONFIG` | `$GIQ_HOME/config.yaml`, else `./config.yaml` | Config file |
 | `GIQ_LLAMA_BINARY` | `llama-server` on PATH | llama.cpp server binary |
 | `GIQ_SDCPP_BINARY` | `sd-server` on PATH | stable-diffusion.cpp server binary |
-| `GIQ_UNLIMITED_OCR_PYTHON` | `envs/unlimited-ocr/.venv` | Interpreter for the Unlimited-OCR child |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |
 | `GIQ_DEPTH_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth recipes |
@@ -125,7 +124,7 @@ max_batch: 32
 |-----|------|
 | `name` | What clients send as `model`; unique across modalities. Letters, digits, `.`, `_`, `-`. |
 | `modalities` | What it serves, one or more of `llm`, `text2image`, `image_edit`, `tts`, `stt`, `audio`, `embed`, `ocr`, `depth` |
-| `engine` | The runtime, which must be able to serve every listed modality: `llama.cpp` or `vllm` (llm); `sd.cpp` (both image modalities); `kokoro`, `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `transformers`, `transformers-4.57` for the rest |
+| `engine` | The runtime, which must be able to serve every listed modality: `llama.cpp` or `vllm` (llm); `sd.cpp` (both image modalities); `kokoro`, `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `transformers` for the rest |
 | `label`, `detail` | Dashboard presentation; `label` defaults to the name |
 | `weights.path` | The weights file (a checkpoint directory for `vllm`), relative to `GIQ_MODELS_DIR`; `~` or absolute is used as written. Required for `llama.cpp` and `vllm`; `vllm` also needs `format: safetensors` or `modelopt` |
 | `weights.parts` | The other files the model needs, by the name its modality's engine reads them under (see [Weights](#weights)) |
@@ -183,9 +182,12 @@ weights:
 | `embed`, `tts` | the `hf:` source | — |
 
 A part the modality's adapter does not read is refused, like an unknown key. The OCR child
-is chosen by the engine: `transformers-4.57` runs Unlimited-OCR's pipeline,
-`transformers` runs GLM-OCR behind its layout model — so an OCR recipe of
-your own is another checkpoint of one of the two.
+is chosen by the checkpoint: the architecture its `config.json` names
+(`UnlimitedOCRForCausalLM` runs Unlimited-OCR's pipeline,
+`GlmOcrForConditionalGeneration` GLM-OCR's behind its layout model), so an
+OCR recipe of your own is another checkpoint of one of the two. Both run on
+the `transformers` engine; `transformers-4.57`, Unlimited-OCR's former
+interpreter, is read as `transformers` with a warning.
 
 The environment variables that located these snapshots before recipe
 files existed still work, and outrank the file: `GIQ_OCR_MODEL_DIR`,

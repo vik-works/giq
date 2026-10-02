@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # baidu/Unlimited-OCR, 3B bf16, from a local snapshot pinned to the revision
-# whose remote code was reviewed. Its generation needs transformers 4.57,
-# hence its own interpreter (envs/unlimited-ocr). The snapshot holds the
-# weights, tokenizer and the remote code, loaded by path with the hub
-# disabled; GIQ_OCR_MODEL_DIR overrides the path.
+# whose remote code was reviewed. The remote code was written against
+# transformers 4.57; giq's child adapts it to giq's own transformers (see
+# giq.adapters._ocr_child), with output identical to 4.57's. The snapshot
+# holds the weights, tokenizer and the remote code, loaded by path with the
+# hub disabled; GIQ_OCR_MODEL_DIR overrides the path.
 name: unlimited-ocr
 label: Unlimited-OCR
 modalities: [ocr]
-engine: transformers-4.57
+engine: transformers
 detail: "PDF / page images → layout-tagged text · 32k ctx · dozens of pages per pass"
 weights:
   path: baidu-Unlimited-OCR

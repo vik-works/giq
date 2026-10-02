@@ -104,5 +104,4 @@ export const ENGINE_NOTE_KEY: Record<string, string> = {
   "faster-whisper": "fasterWhisper",
   kokoro: "kokoro",
   transformers: "transformers",
-  "transformers-4.57": "transformers457",
 };

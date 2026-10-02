@@ -71,9 +71,12 @@ PATCH_SIZE, DOWNSAMPLE = 16, 4
 
 def _reinit_buffers(model):
     """transformers 5 materializes modules on the meta device and only fills
-    tensors present in the checkpoint; a persistent buffer the checkpoint
-    lacks (CLIP's position_ids here — 4.57 warned it was "newly initialized")
-    is left as uninitialized memory. Rebuild it as its module's __init__ did."""
+    tensors present in the checkpoint; a buffer the checkpoint lacks is left
+    as uninitialized memory. Two are rebuilt as their modules' __init__
+    built them: CLIP's position_ids (4.57 warned it was "newly
+    initialized"), and every rotary embedding's inv_freq — computed, never
+    stored, and NaN here, which turned the decoder's first attention and
+    every logit after it into NaN."""
     import torch
 
     for mod in model.modules():
@@ -82,6 +85,13 @@ def _reinit_buffers(model):
         if isinstance(ids, torch.Tensor) and table is not None:
             n = table.num_embeddings
             mod.position_ids = torch.arange(n, device=ids.device).expand(1, -1)
+        freq = getattr(mod, "inv_freq", None)
+        if isinstance(freq, torch.Tensor) and hasattr(mod, "compute_default_rope_parameters"):
+            init = getattr(mod, "rope_init_fn", None) or mod.compute_default_rope_parameters
+            inv_freq, mod.attention_scaling = init(mod.config, freq.device)
+            mod.inv_freq = inv_freq
+            if isinstance(getattr(mod, "original_inv_freq", None), torch.Tensor):
+                mod.original_inv_freq = inv_freq.clone()
 
 
 def _complete_config(cfg, tok):
@@ -111,13 +121,90 @@ def _complete_config(cfg, tok):
     return cfg
 
 
+def _generation_inputs_as_in_457(model):
+    """Feed the remote code's ``prepare_inputs_for_generation`` what 4.57 fed it.
+
+    Two things changed under it in transformers 5, and each breaks generation:
+
+    - A cache with no maximum answers ``get_max_length() == -1``; 4.57 said
+      ``None``, which is what the hook tests for. Seeing -1 it takes the cache
+      for full and crops the attention mask by ``mask[:, -(-1):]``, one
+      position short of ``input_ids`` (a 279-against-280 mismatch in
+      prefill). For the length of the call the cache gives 4.57's answer;
+      transformers' own code never sees it.
+    - ``generate()`` now passes ``position_ids`` for the whole sequence. The
+      hook only trims position ids it computed itself, so a decode step got
+      one new token with every position, and the rotary embedding broadcast
+      that token's key to the full length. The ids are trimmed to the tokens
+      actually passed, as the hook trims its own.
+    """
+    import functools
+
+    from transformers import Cache
+
+    cls = type(model)
+    original = cls.prepare_inputs_for_generation
+
+    @functools.wraps(original)
+    def prepare(self, input_ids, past_key_values=None, *args, **kwargs):
+        patched = None
+        if isinstance(past_key_values, Cache) and hasattr(past_key_values, "get_max_length"):
+            try:
+                unbounded = past_key_values.get_max_length() == -1
+            except ValueError:  # no layers yet: nothing bounds it either
+                unbounded = True
+            if unbounded:
+                patched = past_key_values
+                patched.get_max_length = lambda: None
+        try:
+            inputs = original(self, input_ids, past_key_values, *args, **kwargs)
+        finally:
+            if patched is not None:
+                del patched.get_max_length
+        ids, positions = inputs.get("input_ids"), inputs.get("position_ids")
+        if ids is not None and positions is not None and positions.shape[-1] > ids.shape[-1]:
+            inputs["position_ids"] = positions[..., -ids.shape[-1] :]
+        return inputs
+
+    cls.prepare_inputs_for_generation = prepare
+
+
+def _tokenizer(weights: str):
+    """The snapshot's tokenizer.json exactly as it is, without a class rebuild.
+
+    The config names LlamaTokenizerFast, and transformers 5 maps that to its
+    unified LlamaTokenizer, which rebuilds the vocabulary with Llama's
+    SentencePiece-style rules. DeepSeek's tokenizer is byte-level BPE with
+    its own pre-tokenizer, so every text token came out different ("Multi
+    page parsing." as 6 ids instead of 4) and the model answered with a run
+    of begin-of-sentence tokens. Loaded from the file, it matches 4.57's
+    ids token for token, special tokens included."""
+    import json
+
+    from transformers import PreTrainedTokenizerFast
+
+    with open(os.path.join(weights, "tokenizer_config.json"), encoding="utf-8") as f:
+        cfg = json.load(f)
+
+    def special(name):
+        value = cfg.get(name)
+        return value.get("content") if isinstance(value, dict) else value
+
+    return PreTrainedTokenizerFast(
+        tokenizer_file=os.path.join(weights, "tokenizer.json"),
+        bos_token=special("bos_token"),
+        eos_token=special("eos_token"),
+        pad_token=special("pad_token"),
+    )
+
+
 def _load(weights: str):
     import torch
-    from transformers import AutoConfig, AutoModel, AutoTokenizer
+    from transformers import AutoConfig, AutoModel
 
     if not os.path.isdir(weights):
         raise RuntimeError(f"model directory does not exist: {weights}")
-    tok = AutoTokenizer.from_pretrained(weights, trust_remote_code=True, local_files_only=True)
+    tok = _tokenizer(weights)
     cfg = _complete_config(
         AutoConfig.from_pretrained(weights, trust_remote_code=True, local_files_only=True), tok
     )
@@ -131,6 +218,7 @@ def _load(weights: str):
     )
     model = model.eval().cuda()
     _reinit_buffers(model)
+    _generation_inputs_as_in_457(model)
     model.disable_torch_init()
     return tok, model
 

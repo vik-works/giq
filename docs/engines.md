@@ -26,12 +26,10 @@ Note that recent llama.cpp builds link shared libraries with an absolute
 RUNPATH into the build directory — point the config at the build, don't copy
 the binary out of it.
 
-Besides the two servers, three interpreters are declared as engines, so every
+Besides the two servers, two interpreters are declared as engines, so every
 model in the catalog names what executes it: `python` (giq's own venv — the
-audio stack, Kokoro, GLM-OCR and depth), `transformers-4.57`
-(`envs/unlimited-ocr`, for Unlimited-OCR only) and `vllm` (`envs/vllm`, the
-second LLM engine, [below](#vllm)). `make sync` builds `envs/unlimited-ocr`;
-`GIQ_UNLIMITED_OCR_PYTHON` / `GIQ_VLLM_PYTHON` point elsewhere.
+audio stack, Kokoro, both OCR models and depth) and `vllm` (`envs/vllm`, the
+second LLM engine, [below](#vllm)); `GIQ_VLLM_PYTHON` points elsewhere.
 
 ## Engine names
 
@@ -43,8 +41,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `llama.cpp` | LLMs | `llama-server` |
 | `vllm` | LLMs from vendor checkpoints (NVFP4, FP8), many users at once | `envs/vllm` |
 | `sd.cpp` | `flux_klein`, `zimage` | `sd-server` |
-| `transformers` | GLM-OCR, depth | `python` |
-| `transformers-4.57` | Unlimited-OCR | `envs/unlimited-ocr` |
+| `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and

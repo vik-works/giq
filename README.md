@@ -119,7 +119,7 @@ LLMs a [llama.cpp](https://github.com/ggml-org/llama.cpp) build
 ```bash
 git clone <this repository> giq
 cd giq
-make sync        # uv sync, the Unlimited-OCR interpreter, and the dashboard
+make sync        # uv sync and the dashboard
 uv run python -m giq.main          # loopback, port 8084
 
 # or with options

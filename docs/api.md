@@ -237,10 +237,8 @@ line of text could go in. Two limits bound the RAM: `GIQ_OCR_MAX_UPLOAD_MB`
 (default 64, the most a base64 task can be and still fit the parent→child
 pipe; over it is a 413) and `GIQ_OCR_MAX_PAGES` (default 200, refused before
 rendering). Both models run from local snapshots pinned to reviewed
-revisions with the Hugging Face hub disabled in the child process
-(Unlimited-OCR on its own transformers 4.57 interpreter, `envs/unlimited-ocr`,
-because its remote code does not run on the transformers 5 the rest of giq
-uses; `make sync` builds both); neither
+revisions with the Hugging Face hub disabled in the child process, both on
+giq's own transformers; neither
 engine touches the network (verified with strace), and zai-org's own
 `glmocr` SDK is not used because it defaults to forwarding documents to
 Zhipu's cloud API. Unlimited-OCR: ~80 tokens/s, a dozen pages in one pass,

@@ -32,13 +32,13 @@ including tool-calling chat, goes through it. Keep it that way.
 - `src/giq/paths.py` — every filesystem location, resolved from env > `config.yaml` `paths:` > `GIQ_HOME` > defaults
 - `deploy/` — the systemd unit and Debian install script (see `docs/deployment.md`)
 - `frontend/` — the dashboard: React + TypeScript + Vite, built into `src/giq/static/ui/` (gitignored, shipped in the wheel) and served at `/dash`. `src/components/` shared UI and charts, `src/state/` the app-wide pollers, `src/api/` the typed client, `src/views/<view>/` one folder per page, `src/locales/<lang>/<ns>.json` strings
-- `envs/` — separate uv projects for children whose dependencies clash with giq's venv
+- `envs/vllm/` — the vllm engine's own uv project: vllm pins its torch, transformers and fastapi, so it runs as a separate server process on its own interpreter, like llama-server
 - `tests/` — pytest; `docs/` — user docs (API, configuration, access and privacy, engines, development), ADRs, and `docs/images/` (README screenshots)
 
 ## Commands
 
 ```bash
-make sync     # uv sync for giq and every envs/* project
+make sync     # uv sync and the dashboard (envs/vllm: `cd envs/vllm && uv sync`)
 make test     # pytest
 make check    # ruff + ty
 make fmt      # ruff format

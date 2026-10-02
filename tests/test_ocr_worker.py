@@ -96,38 +96,49 @@ def test_estimated_vram_comes_from_the_registry():
     assert OcrAdapter(OcrConfig()).estimated_vram_gb == 9.0
 
 
-def test_the_engine_picks_the_child():
-    assert OcrAdapter(OcrConfig(model="unlimited-ocr")).child_module == "giq.adapters._ocr_child"
-    assert OcrAdapter(OcrConfig(model="glm-ocr")).child_module == "giq.adapters._glm_ocr_child"
+def _checkpoint(tmp_path, name, architecture):
+    d = tmp_path / name
+    d.mkdir()
+    (d / "config.json").write_text(json.dumps({"architectures": [architecture]}))
+    return d
+
+
+def test_the_checkpoint_picks_the_child(tmp_path, monkeypatch):
+    """Both OCR pipelines run on the transformers engine; which child reads a
+    checkpoint is the architecture its config.json names."""
+    unlimited = _checkpoint(tmp_path, "unlimited", "UnlimitedOCRForCausalLM")
+    glm = _checkpoint(tmp_path, "glm", "GlmOcrForConditionalGeneration")
+    monkeypatch.setenv("GIQ_OCR_MODEL_DIR", str(unlimited))
+    monkeypatch.setenv("GIQ_GLM_OCR_MODEL_DIR", str(glm))
+    monkeypatch.setenv("GIQ_GLM_LAYOUT_DIR", str(tmp_path / "layout"))
+
+    cmd = OcrAdapter(OcrConfig(model="unlimited-ocr"))._command()
+    assert cmd[1:4] == ["-u", "-m", "giq.adapters._ocr_child"]
+    cmd = OcrAdapter(OcrConfig(model="glm-ocr"))._command()
+    assert cmd[1:4] == ["-u", "-m", "giq.adapters._glm_ocr_child"]
     with pytest.raises(ValueError):
         OcrAdapter(OcrConfig(model="no-such-ocr"))
+
+
+def test_an_unknown_architecture_is_refused_at_spawn(tmp_path, monkeypatch):
+    other = _checkpoint(tmp_path, "other", "SomethingElseForCausalLM")
+    monkeypatch.setenv("GIQ_OCR_MODEL_DIR", str(other))
+    with pytest.raises(ValueError, match="SomethingElseForCausalLM"):
+        OcrAdapter(OcrConfig(model="unlimited-ocr"))._command()
 
 
 def test_glm_vram_comes_from_the_registry():
     assert OcrAdapter(OcrConfig(model="glm-ocr")).estimated_vram_gb == 4.0
 
 
-def test_unlimited_ocr_runs_on_its_own_interpreter(monkeypatch):
-    """Its remote code needs transformers 4.57; giq's venv is on 5. The child
-    is spawned with the declared engine's python and can import giq from src."""
-    import os
-    import sys
+def test_both_children_run_on_giqs_own_interpreter(tmp_path, monkeypatch):
+    """No second interpreter and no PYTHONPATH: the child imports giq the way
+    giq itself does, which is what lets a wheel install run it."""
 
-    from giq.engines import binary_for
-
+    monkeypatch.setenv(
+        "GIQ_OCR_MODEL_DIR", str(_checkpoint(tmp_path, "u", "UnlimitedOCRForCausalLM"))
+    )
+    monkeypatch.delenv("PYTHONPATH", raising=False)
     w = OcrAdapter(OcrConfig(model="unlimited-ocr"))
-    monkeypatch.setattr("giq.engines.require_binary", lambda name: binary_for(name))
-    cmd = w._command()
-    assert cmd[0] == binary_for("transformers-4.57") and cmd[0] != sys.executable
-    assert cmd[1:4] == ["-u", "-m", "giq.adapters._ocr_child"]
-    env = w._spawn_env()
-    assert env["PYTHONPATH"].split(os.pathsep)[0].endswith("/src")
-
-    assert cmd[4] == "--weights" and cmd[5].endswith("/baidu-Unlimited-OCR")
-
-    g = OcrAdapter(OcrConfig(model="glm-ocr"))
-    assert g._command()[0] == sys.executable
-    args = g._command()[4:]
-    assert args[0] == "--weights" and args[1].endswith("/zai-GLM-OCR")
-    assert args[2] == "--layout" and args[3].endswith("/PaddlePaddle-PP-DocLayoutV3")
-    assert "PYTHONPATH" not in g._spawn_env() or not g._spawn_env()["PYTHONPATH"].endswith("/src")
+    assert w._command()[0] == sys.executable
+    assert "PYTHONPATH" not in w._spawn_env()

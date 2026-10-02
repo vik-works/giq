@@ -78,8 +78,9 @@ dependencies = [
 
     # --- document OCR --------------------------------------------------------
     # transformers 5 is what GLM-OCR (5.1+) and PP-DocLayoutV3 (5.3+) need.
-    # Unlimited-OCR's remote code targets 4.57 but ships shims for the 5.x
-    # cache API; its generation still needs 4.57, hence envs/unlimited-ocr.
+    # Unlimited-OCR's remote code was written against 4.57; giq's OCR child
+    # adapts it to 5.x (giq.adapters._ocr_child) with output identical to
+    # 4.57's, so it runs here too.
     "transformers>=5.16.1",
     # easydict is imported by Unlimited-OCR's remote code; pypdfium2 rasterizes
     # PDFs (BSD/Apache — the README's PyMuPDF is AGPL, which is why not that);

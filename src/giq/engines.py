@@ -73,21 +73,6 @@ def _builtin() -> tuple[EngineSpec, ...]:
             version_args=("--help",),
             detail="sd-server (stable-diffusion.cpp)",
         ),
-        # A second interpreter, for one child. baidu/Unlimited-OCR's remote code
-        # was written against transformers 4.57; on the 5.x line giq moved to for
-        # GLM-OCR it loads but generation fails inside its custom
-        # decoder. Its venv lives in the repo (envs/unlimited-ocr, `uv sync`
-        # there) and is declared here so a missing one fails loudly and the
-        # catalog says which transformers actually runs the model.
-        EngineSpec(
-            "transformers-4.57",
-            env_python("unlimited-ocr"),
-            version_args=(
-                "-c",
-                "import transformers; print('transformers', transformers.__version__)",
-            ),
-            detail="python + transformers 4.57, for unlimited-ocr only",
-        ),
         # The second LLM engine. `vllm serve` runs from this env's console
         # script (next to the interpreter); the interpreter is what is
         # declared and probed, because asking the script for its version
@@ -116,15 +101,16 @@ ENGINE_OF_BACKEND: dict[str, str] = {
     "faster-whisper": _SELF,
     "kokoro": _SELF,
     "transformers": _SELF,
-    "transformers-4.57": "transformers-4.57",
     "vllm": "vllm",
 }
 
 # Old spellings of an engine name, accepted on input with a warning. There is
 # one name per engine — the one /engines, the catalog and the dashboard show —
 # and recipe files, ModelSpec and config.yaml all use it; `sdcpp` is what
-# config.yaml's image_models said before that.
-ENGINE_ALIASES: dict[str, str] = {"sdcpp": "sd.cpp"}
+# config.yaml's image_models said before that. `transformers-4.57` was the
+# second interpreter Unlimited-OCR ran on until it moved to giq's own
+# transformers; a recipe file that still names it gets that.
+ENGINE_ALIASES: dict[str, str] = {"sdcpp": "sd.cpp", "transformers-4.57": "transformers"}
 
 _warned_aliases: set[tuple[str, str]] = set()
 
@@ -144,7 +130,6 @@ def canonical_engine(name: str, where: str) -> str:
 _ENV_OVERRIDE = {
     "sd.cpp": "GIQ_SDCPP_BINARY",
     "llama.cpp": "GIQ_LLAMA_BINARY",
-    "transformers-4.57": "GIQ_UNLIMITED_OCR_PYTHON",
     "vllm": "GIQ_VLLM_PYTHON",
 }
 

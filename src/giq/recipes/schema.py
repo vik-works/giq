@@ -59,7 +59,7 @@ MODALITY_ENGINES: dict[str, frozenset[str]] = {
     "stt": frozenset({"faster-whisper"}),
     "audio": frozenset({"faster-whisper+pyannote"}),
     "embed": frozenset({"speechbrain"}),
-    "ocr": frozenset({"transformers", "transformers-4.57"}),
+    "ocr": frozenset({"transformers"}),
     "depth": frozenset({"transformers"}),
 }
 

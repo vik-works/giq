@@ -95,7 +95,7 @@ cleanup() { [ ${#CLEANUP[@]} -eq 0 ] || rm -rf -- "${CLEANUP[@]}"; }
 trap cleanup EXIT
 
 # The build runs unprivileged with a fixed environment: uv's managed Pythons
-# go under the prefix (the side envs need 3.11, which Debian does not ship),
+# go under the prefix (giq needs 3.11 or 3.12, and Debian 13 ships 3.13),
 # where the service user can read them — the default, the build user's home,
 # is hidden from the service by ProtectHome and readable by nobody else.
 # Without root (only --ui-only gets that far) the invoking user is the builder.
@@ -453,7 +453,7 @@ else
 fi
 
 # --- vllm (optional) ------------------------------------------------------------------
-# The interpreter is synced like the other side envs, by the build user under
+# The interpreter is synced like giq's own, by the build user under
 # the same uv rules. The kernels are built as giq, because they land in
 # GIQ_HOME/cache, where the service compiles the small ones it still needs on
 # first use and must be able to write. The build gets a RAM ceiling from a

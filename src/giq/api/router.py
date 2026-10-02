@@ -408,8 +408,8 @@ async def get_capabilities() -> Capabilities:
                 )
                 continue
             cap.recipes.append(recipe.name)
-            # One modality can span engines (ocr runs on transformers or its
-            # pinned 4.57 venv depending on `engine:`), so report every one in play.
+            # One modality can span engines (llm runs on llama.cpp or vllm),
+            # so report every one in play.
             if recipe.engine not in cap.engine:
                 cap.engine = f"{cap.engine}, {recipe.engine}"
             if batch is not None:

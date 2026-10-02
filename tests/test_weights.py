@@ -44,17 +44,19 @@ def _add(directory, filename: str, text: str) -> None:
 
 def test_an_ocr_instance_under_a_new_name_loads_its_own_weights(operator_dir, monkeypatch):
     from giq.adapters.ocr import OcrAdapter, OcrConfig
+    from giq.registry import get_recipe
 
     # The built-in's override is scoped to the built-in's name.
     monkeypatch.setenv("GIQ_OCR_MODEL_DIR", "/elsewhere/unlimited")
+    # Written for Unlimited-OCR's former interpreter: still loads, as transformers.
     _add(
         operator_dir,
         "ocr-ft.yaml",
         "name: unlimited-ocr-ft\nmodalities: [ocr]\nengine: transformers-4.57\n"
         "weights: {path: /srv/models/unlimited-ft}\nvram: {gb: 9.0}\n",
     )
+    assert get_recipe("unlimited-ocr-ft").engine == "transformers"
     w = OcrAdapter(OcrConfig(model="unlimited-ocr-ft"))
-    assert w.child_module == "giq.adapters._ocr_child"
     assert w.child_args() == ["--weights", "/srv/models/unlimited-ft"]
     assert OcrAdapter(OcrConfig()).child_args() == ["--weights", "/elsewhere/unlimited"]
 
@@ -69,7 +71,6 @@ def test_a_layout_ocr_instance_reads_its_layout_part(operator_dir):
         "weights:\n  path: glm-ft\n  parts: {layout: layout-v4}\nvram: {gb: 4.0}\n",
     )
     w = OcrAdapter(OcrConfig(model="glm-ocr-ft"))
-    assert w.child_module == "giq.adapters._glm_ocr_child"
     assert w.child_args() == [
         "--weights",
         str(models_dir() / "glm-ft"),
@@ -78,17 +79,26 @@ def test_a_layout_ocr_instance_reads_its_layout_part(operator_dir):
     ]
 
 
-def test_a_layout_ocr_instance_without_its_layout_fails_at_construction(operator_dir):
+def test_a_layout_ocr_instance_without_its_layout_is_refused_at_start(operator_dir, tmp_path):
+    """The checkpoint says it is GLM-OCR, which cannot run without its layout
+    stage; known once the weights are read, which is at start."""
+    import json
+
     from giq.adapters.ocr import OcrAdapter, OcrConfig
 
+    ckpt = tmp_path / "glm-ft"
+    ckpt.mkdir()
+    (ckpt / "config.json").write_text(
+        json.dumps({"architectures": ["GlmOcrForConditionalGeneration"]})
+    )
     _add(
         operator_dir,
         "glm-ft.yaml",
         "name: glm-ocr-ft\nmodalities: [ocr]\nengine: transformers\n"
-        "weights: {path: glm-ft}\nvram: {gb: 4.0}\n",
+        f"weights: {{path: {ckpt}}}\nvram: {{gb: 4.0}}\n",
     )
     with pytest.raises(ValueError, match="weights.parts.layout"):
-        OcrAdapter(OcrConfig(model="glm-ocr-ft"))
+        OcrAdapter(OcrConfig(model="glm-ocr-ft"))._command()
 
 
 def test_an_instance_without_weights_fails_at_construction(operator_dir):

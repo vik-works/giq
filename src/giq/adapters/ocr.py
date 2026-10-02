@@ -19,8 +19,6 @@ few minutes at ~80 tok/s, so the batch timeout is generous.
 
 from __future__ import annotations
 
-import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
@@ -36,21 +34,36 @@ from giq.weights import recipe_of, require_path
 # should be.
 OCR_VRAM_GB = 9.0
 
-# Which child runs an OCR recipe, by its engine. giq has two OCR pipelines
-# and each child is written for one architecture: `transformers-4.57` runs
-# Unlimited-OCR's remote code (it needs that transformers, see engines.py),
-# `transformers` runs GLM-OCR behind a PP-DocLayoutV3 layout stage, which it
-# reads from weights.parts.layout. An operator's OCR recipe is another
-# checkpoint of one of the two, served under a name of its own.
-CHILD_OF_ENGINE: dict[str, str] = {
-    "transformers-4.57": "giq.adapters._ocr_child",
-    "transformers": "giq.adapters._glm_ocr_child",
+# Which child reads a checkpoint is the checkpoint's own to say: the
+# architecture its config.json declares. giq has two OCR pipelines and each
+# child is written for one: Unlimited-OCR's remote code, and GLM-OCR behind a
+# PP-DocLayoutV3 layout stage (weights.parts.layout). An operator's OCR recipe
+# is another checkpoint of one of the two, and is read the same way. Both run
+# in giq's own interpreter on its transformers.
+CHILD_OF_ARCHITECTURE: dict[str, str] = {
+    "UnlimitedOCRForCausalLM": "giq.adapters._ocr_child",
+    "GlmOcrForConditionalGeneration": "giq.adapters._glm_ocr_child",
 }
-# The parts each child loads besides the main weights.
+# The parts a child cannot run without, besides the main weights.
 PARTS_OF_CHILD: dict[str, tuple[str, ...]] = {"giq.adapters._glm_ocr_child": ("layout",)}
-# `giq` must be importable in the other interpreter: its venv does not
-# install giq, so the child gets this checkout's src on PYTHONPATH.
-_GIQ_SRC = str(Path(__file__).resolve().parents[2])
+
+
+def child_of(weights: str) -> str:
+    """The child module for the checkpoint at ``weights``, by its architecture."""
+    import json
+
+    config = Path(weights).expanduser() / "config.json"
+    try:
+        architectures = json.loads(config.read_text(encoding="utf-8")).get("architectures")
+    except FileNotFoundError:
+        raise RuntimeError(f"{config} not found: are the OCR weights on disk?") from None
+    architecture = (architectures or [None])[0]
+    if architecture not in CHILD_OF_ARCHITECTURE:
+        raise ValueError(
+            f"{weights}: no OCR child reads {architecture!r} "
+            f"(one of {', '.join(sorted(CHILD_OF_ARCHITECTURE))})"
+        )
+    return CHILD_OF_ARCHITECTURE[architecture]
 
 
 def _instance(model: str):
@@ -68,28 +81,20 @@ class OcrConfig:
 class OcrAdapter(SubprocessAdapter):
     """An OCR model in a child process; documents assembled in the parent."""
 
-    child_module: ClassVar[str] = "giq.adapters._ocr_child"  # per engine; see CHILD_OF_ENGINE
+    child_module: ClassVar[str] = "giq.adapters._ocr_child"  # per checkpoint; see child_of
     modality: ClassVar[str] = "ocr"
     # A long document is several passes of a few minutes each.
     run_batch_timeout: ClassVar[float] = 3600.0
 
     def __init__(self, config: OcrConfig, device: str | None = None):
         super().__init__(config, device)
-        # Unknown model, foreign engine or missing weights: fail here, not at spawn.
-        self.engine = _instance(config.model).engine
-        try:
-            # Recipe attribute shadows the ClassVar: _command() reads self.child_module.
-            self.child_module = CHILD_OF_ENGINE[self.engine]
-        except KeyError:
-            raise ValueError(
-                f"ocr/{config.model}: no OCR child runs engine {self.engine!r} "
-                f"(one of {', '.join(sorted(CHILD_OF_ENGINE))})"
-            ) from None
+        # Unknown model or no weights in its recipe: fail here, not at spawn.
+        # The parts are what the recipe declares; the schema admits only the
+        # ones an OCR child reads.
+        recipe = _instance(config.model)
         self.weights = require_path(config.model)
-        self.parts = {
-            part: require_path(config.model, part)
-            for part in PARTS_OF_CHILD.get(self.child_module, ())
-        }
+        declared = recipe.weights.parts if recipe.weights is not None else {}
+        self.parts = {part: require_path(config.model, part) for part in declared}
 
     def child_args(self) -> list[str]:
         args = ["--weights", self.weights]
@@ -101,28 +106,17 @@ class OcrAdapter(SubprocessAdapter):
     def estimated_vram_gb(self) -> float:
         return vram_for(self.config.model, default=OCR_VRAM_GB)
 
-    def _own_interpreter(self) -> bool:
-        # giq's own interpreter runs the engines ENGINE_OF_BACKEND maps to it.
-        from giq.engines import ENGINE_OF_BACKEND, SELF
-
-        return ENGINE_OF_BACKEND.get(self.engine, SELF) == SELF
-
-    def _interpreter(self) -> str:
-        if self._own_interpreter():
-            return sys.executable
-        from giq.engines import ENGINE_OF_BACKEND, require_binary
-
-        return require_binary(ENGINE_OF_BACKEND[self.engine])
-
     def _command(self) -> list[str]:
-        return [self._interpreter(), "-u", "-m", self.child_module, *self.child_args()]
-
-    def _spawn_env(self) -> dict[str, str]:
-        env = super()._spawn_env()
-        if not self._own_interpreter():
-            extra = env.get("PYTHONPATH")
-            env["PYTHONPATH"] = _GIQ_SRC + (os.pathsep + extra if extra else "")
-        return env
+        # The weights have to be on disk by now, so this is where the
+        # checkpoint can say which child reads it. Instance attribute shadows
+        # the ClassVar the base class's command and log lines read.
+        self.child_module = child_of(self.weights)
+        if missing := [p for p in PARTS_OF_CHILD.get(self.child_module, ()) if p not in self.parts]:
+            raise ValueError(
+                f"ocr/{self.config.model}: its checkpoint needs weights.parts.{missing[0]}, "
+                "which the recipe does not declare"
+            )
+        return super()._command()
 
     async def run_batch(
         self, tasks: list[dict[str, Any]], params: dict[str, Any] | None = None

@@ -16,6 +16,10 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  # By hand: re-running a release's build, and a start GitHub has to answer —
+  # when Actions is blocked a dispatch returns the reason, a push returns
+  # nothing.
+  workflow_dispatch:
 
 permissions:
   contents: read

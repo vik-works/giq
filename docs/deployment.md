@@ -147,7 +147,7 @@ and version giq resolved. Details on engines: [engines.md](engines.md).
 
 ```bash
 sudo deploy/install-debian.sh            # defaults below
-sudo deploy/install-debian.sh --home /srv/giq --prefix /opt/giq --ref v0.5.1
+sudo deploy/install-debian.sh --home /srv/giq --prefix /opt/giq --ref v0.5.2
 ```
 
 | Option | Default |
@@ -272,22 +272,22 @@ the commit the server runs:
 
 ```bash
 make ui-dist                     # dist/giq-ui-<version>.tar.gz and .sha256
-scp dist/giq-ui-0.5.1.tar.gz dist/giq-ui-0.5.1.tar.gz.sha256 server:/tmp/
+scp dist/giq-ui-0.5.2.tar.gz dist/giq-ui-0.5.2.tar.gz.sha256 server:/tmp/
 ```
 
 On the server:
 
 ```bash
-cd /tmp && sha256sum -c giq-ui-0.5.1.tar.gz.sha256
-sudo /opt/giq/deploy/install-debian.sh --ui-only --ui-tarball /tmp/giq-ui-0.5.1.tar.gz
+cd /tmp && sha256sum -c giq-ui-0.5.2.tar.gz.sha256
+sudo /opt/giq/deploy/install-debian.sh --ui-only --ui-tarball /tmp/giq-ui-0.5.2.tar.gz
 # or as part of an install or update, with the same options as before:
-sudo deploy/install-debian.sh --ref v0.5.1 --ui-tarball /tmp/giq-ui-0.5.1.tar.gz
+sudo deploy/install-debian.sh --ref v0.5.2 --ui-tarball /tmp/giq-ui-0.5.2.tar.gz
 ```
 
 From a tagged release instead:
 
 ```bash
-sudo GIQ_GITHUB_TOKEN=github_pat_… deploy/install-debian.sh --ref v0.5.1 --ui-release v0.5.1
+sudo GIQ_GITHUB_TOKEN=github_pat_… deploy/install-debian.sh --ref v0.5.2 --ui-release v0.5.2
 ```
 
 Re-run with the matching tarball after every update that changes the

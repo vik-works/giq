@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from giq.models import JobRequest, JobResult, JobStatus
+from giq.models import JobRequest, JobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,9 @@ class Job:
     job_id: str
     request: JobRequest
     status: JobStatus = JobStatus.pending
-    results: list[JobResult] = field(default_factory=list)
+    # As stored, whatever the adapter returned: dicts (a result model's
+    # model_dump(), a child's own dict, or the engine's raw chat completion).
+    results: list[dict[str, Any]] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     started_at: datetime | None = None
     completed_at: datetime | None = None

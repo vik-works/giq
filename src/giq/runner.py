@@ -501,6 +501,18 @@ class Instance:
         return self.active_count > 0
 
 
+def _as_dicts(results: list) -> list[dict]:
+    """Batch results as stored on a job: dicts, whichever an adapter returned.
+
+    The child-process adapters (audio, voiceprints, depth) pass the child's
+    dicts through; the others return result models. The resident path
+    accepted both and the on-demand path only models — harmless while the
+    audio stack was kept warm by default, a 500 on every transcription
+    once nothing was.
+    """
+    return [r if isinstance(r, dict) else r.model_dump() for r in results]
+
+
 class Runner:
     """Processes jobs from queue, manages adapter lifecycle."""
 
@@ -963,8 +975,7 @@ class Runner:
                         ),
                         timeout=timeout,
                     )
-                    # Convert to dicts for storage
-                    job.results = [r.model_dump() for r in results]
+                    job.results = _as_dicts(results)
                     job.status = JobStatus.completed
             else:
                 job.status = JobStatus.failed
@@ -1132,10 +1143,7 @@ class Runner:
                             res.adapter.run_batch(job.request.tasks, job.request.params),
                             timeout=timeout,
                         )
-                        # Subprocess residents return raw dicts; LLM returns models.
-                        job.results = [
-                            r if isinstance(r, dict) else r.model_dump() for r in results
-                        ]
+                        job.results = _as_dicts(results)
                     job.status = JobStatus.completed
                 finally:
                     res.active_count -= 1

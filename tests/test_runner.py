@@ -305,3 +305,29 @@ async def test_eviction_waits_for_in_flight_lane(queue: JobQueue, monkeypatch: p
     embed.lane.release()
     await asyncio.wait_for(evict, timeout=10.0)
     assert RESIDENTS[2] not in runner._residents
+
+
+@pytest.mark.asyncio
+async def test_an_on_demand_child_job_with_dict_results_completes(
+    queue: JobQueue, monkeypatch: pytest.MonkeyPatch
+):
+    """The audio and voiceprint children return plain dicts. Once nothing was
+    kept warm by default they ran on demand, where the runner called
+    model_dump() on every result and failed each transcription with a 500."""
+    runner = Runner(queue)
+
+    class ChildAdapter:
+        async def run_batch(self, tasks, params=None):
+            return [{"id": t["id"], "text": "hello", "error": None} for t in tasks]
+
+    monkeypatch.setattr(runner, "_evict_residents_for", AsyncMock())
+    monkeypatch.setattr(runner, "_ensure_worker", AsyncMock(return_value=ChildAdapter()))
+    job = Job(
+        job_id="audio1",
+        request=JobRequest(modality=Modality.audio, model="whisper-large-v3", tasks=[{"id": "t1"}]),
+    )
+    await queue.add(job)
+    await runner._process_job(job)
+
+    assert job.status == JobStatus.completed, job.error
+    assert job.results == [{"id": "t1", "text": "hello", "error": None}]

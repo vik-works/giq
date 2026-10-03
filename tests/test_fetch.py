@@ -57,11 +57,10 @@ def models(tmp_path, monkeypatch):
 def _child(monkeypatch, script: str) -> None:
     """Every transfer runs ``script`` with DEST set to its destination."""
 
-    def command(move: Transfer) -> list[str]:
+    def command(move: Transfer, report: bool = False) -> list[str]:
         return [sys.executable, "-c", f"DEST = {str(move.dest)!r}\n{script}"]
 
     monkeypatch.setattr(fetch, "child_command", command)
-    monkeypatch.setattr(fetch, "POLL_SECONDS", 0.05)
 
 
 def _plan(models: Path, name: str = "d-gone") -> Plan:
@@ -196,3 +195,21 @@ async def test_removing_a_recipe_keeps_what_another_recipe_loads(client, monkeyp
     shared = (await client.delete("/recipes/d-two/weights")).json()
     assert shared["deleted"] == [] and shared["kept"][0]["used_by"] == ["d-three"]
     assert (models / "shared").exists()
+
+
+@pytest.mark.asyncio
+async def test_progress_is_what_the_child_reports(models, monkeypatch):
+    _child(
+        monkeypatch,
+        "import time\nprint('{\"bytes\": 7}', flush=True)\n"
+        "print('noise', flush=True)\ntime.sleep(30)",
+    )
+    downloads = fetch.Downloads()
+    download = downloads.start(_plan(models))
+    for _ in range(100):
+        if download.bytes_done == 7:
+            break
+        await asyncio.sleep(0.05)
+    assert download.bytes_done == 7, "a line that is not progress is ignored"
+    downloads.cancel(download.id)
+    await _settled(download)

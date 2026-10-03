@@ -5,8 +5,8 @@
 """Fetching a recipe's weights (ADR-005 D4).
 
 A fetch carries out the transfers its plan listed, one child process each
-(:mod:`giq._fetch_child`): the Hub library downloads there, progress is the
-files growing on disk, and cancelling ends the child. The partial files
+(:mod:`giq._fetch_child`): the Hub library downloads there and reports its
+byte counters as JSON lines, and cancelling ends the child. The partial files
 stay, so the next fetch of the same recipe resumes.
 
 Fetches use no GPU, so they never touch the job queue. They run one at a
@@ -26,7 +26,6 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Literal
 
 from giq.plan import Plan, Transfer
@@ -34,9 +33,6 @@ from giq.plan import Plan, Transfer
 logger = logging.getLogger(__name__)
 
 State = Literal["queued", "running", "done", "failed", "cancelled"]
-
-# How often a running transfer's files are measured.
-POLL_SECONDS = 1.0
 
 
 @dataclass
@@ -77,30 +73,6 @@ class Download:
         }
 
 
-def _size(path: Path) -> int:
-    if path.is_file():
-        return path.stat().st_size
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for name in files:
-            try:
-                total += os.stat(os.path.join(root, name)).st_size
-            except OSError:
-                pass  # a file renamed or finished under our feet
-    return total
-
-
-def _growing(move: Transfer) -> Path:
-    """Where a transfer's bytes accumulate while it runs."""
-    from giq._fetch_child import partial_dir
-    from giq.storage import on_disk
-    from giq.weights import Location
-
-    if move.dest is None:
-        return on_disk(Location(move.part, repo=move.repo))
-    return partial_dir(move.dest)
-
-
 def _arrived(move: Transfer) -> bool:
     if move.dest is not None:
         return move.dest.exists()
@@ -115,12 +87,15 @@ def _child_env() -> dict[str, str]:
     return {**os.environ, **cache_env()}
 
 
-def child_command(move: Transfer) -> list[str]:
+def child_command(move: Transfer, report: bool = False) -> list[str]:
+    """The child for one transfer; with ``report`` it prints its progress
+    as JSON lines instead of drawing the Hub library's bars."""
     spec = {
         "repo": move.repo,
         "revision": move.revision,
         "file": move.file,
         "dest": str(move.dest) if move.dest else None,
+        "report": report,
     }
     return [sys.executable, "-m", "giq._fetch_child", json.dumps(spec)]
 
@@ -209,7 +184,7 @@ class Downloads:
             ok = await self._transfer(download, move, done)
             if not ok:
                 break
-            done += max(move.bytes, _size(move.dest) if move.dest else 0)
+            done = max(done + move.bytes, download.bytes_done)
             download.bytes_done = done
         download.current = None
         download.finished_at = time.time()
@@ -232,25 +207,26 @@ class Downloads:
 
     async def _transfer(self, download: Download, move: Transfer, before: int) -> bool:
         proc = await asyncio.create_subprocess_exec(
-            *child_command(move),
-            stdout=asyncio.subprocess.DEVNULL,
+            *child_command(move, report=True),
+            stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=_child_env(),
         )
         download._proc = proc
-        growing = _growing(move)
-        start = await asyncio.to_thread(_size, growing) if move.dest is None else 0
-        wait = asyncio.create_task(proc.communicate())
-        while not wait.done():
-            await asyncio.wait({wait}, timeout=POLL_SECONDS)
-            grown = await asyncio.to_thread(_size, growing) if growing.exists() else 0
-            download.bytes_done = before + max(0, grown - start)
-        _, stderr = wait.result()
+        assert proc.stdout is not None and proc.stderr is not None
+        stderr = asyncio.create_task(proc.stderr.read())
+        async for line in proc.stdout:
+            try:
+                received = int(json.loads(line)["bytes"])
+            except (ValueError, KeyError, TypeError):
+                continue
+            download.bytes_done = before + received
+        await proc.wait()
         download._proc = None
         if proc.returncode == 0 or download._cancelled:
             return proc.returncode == 0
         download.state = "failed"
-        download.error = f"{move.repo}: {_child_error(stderr or b'')}"
+        download.error = f"{move.repo}: {_child_error(await stderr)}"
         logger.error(f"fetch {download.id} ({download.recipe}) failed: {download.error}")
         return False
 

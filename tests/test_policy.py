@@ -458,14 +458,29 @@ async def test_pinning_a_second_llm_is_refused(client, store):
 
 
 @pytest.mark.asyncio
-async def test_swapping_the_pinned_llm_works(client, store):
-    """Unpin then pin: the natural way to change which LLM is resident."""
+async def test_swapping_the_pinned_llm_works(client, store, monkeypatch):
+    """Unpin then pin: the natural way to change which LLM is resident. The
+    other LLM is a small one, so the pin fits even the fallback VRAM figure a
+    machine without a GPU reports."""
+    from giq.registry import get_recipe
+    from tests._recipes import with_recipes
+
+    base = get_recipe("gemma-4-12b")
+    assert base is not None
+    small = base.model_copy(
+        update={
+            "name": "small-llm",
+            "aliases": (),
+            "vram": base.vram.model_copy(update={"gb": 3.0}),
+        }
+    )
+    with_recipes(monkeypatch, small)
     assert (
         await client.put("/recipes/gemma-4-12b/residency", json={"policy": "auto"})
     ).status_code == 200
-    r = await client.put("/recipes/gemma-4-26b-a4b-it/residency", json={"policy": "pinned"})
-    assert r.status_code == 200
-    assert store.resident_llm() == "gemma-4-26b-a4b-it"
+    r = await client.put("/recipes/small-llm/residency", json={"policy": "pinned"})
+    assert r.status_code == 200, r.text
+    assert store.resident_llm() == "small-llm"
 
 
 @pytest.mark.asyncio

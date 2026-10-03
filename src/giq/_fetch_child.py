@@ -42,7 +42,7 @@ def _reporting_bars() -> Any:
     """A tqdm class that counts the bytes the Hub library downloads and
     prints them as JSON lines, at most twice a second; the bars themselves
     are drawn nowhere."""
-    from tqdm.auto import tqdm
+    from tqdm import tqdm
 
     bars: list[Any] = []
     lock = threading.Lock()

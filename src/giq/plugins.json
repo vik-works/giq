@@ -104,6 +104,21 @@
         "depth-anything-v2-small"
       ],
       "needs": "torch and transformers"
+    },
+    {
+      "name": "giq-imajev",
+      "package": "giq-imajev",
+      "summary": "Typed photo+record decisions with imajev",
+      "engines": [
+        "imajev"
+      ],
+      "modalities": [
+        "decide"
+      ],
+      "recipes": [
+        "imajev-2b"
+      ],
+      "needs": "its own interpreter, set up once: cd envs/imajev && uv sync; plus the imajev checkout (GIQ_IMAJEV_REPO)"
     }
   ]
 }

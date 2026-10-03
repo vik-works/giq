@@ -35,6 +35,10 @@ class Modality(StrEnum):
     # Monocular depth (Depth Anything V2 in a child process): one RGB image
     # in, a 16-bit depth map at the input resolution out.
     depth = "depth"
+    # Typed decisions (imajev in a child process on its own interpreter):
+    # a record plus 0-2 images and 1-8 typed questions in, calibrated
+    # probabilities with an explicit unknown out. See DecideResult.
+    decide = "decide"
 
 
 class JobStatus(StrEnum):
@@ -95,6 +99,7 @@ class JobRequest(BaseModel):
     - image_edit: tasks are ImageEditTask dicts
     - ocr: {id, pdf_b64 | images_b64[], dpi?, pages?, raw?, strip?, merge?}
     - depth: {id, image_b64, visualize?}
+    - decide: {id, state, questions, images_b64[]?, rotations?, calibration?}
     """
 
     # `worker` is the name before ADR-003, still accepted on input so existing
@@ -185,6 +190,35 @@ class DepthResult(BaseModel):
     metric: bool = False
     # 8-bit colour-mapped PNG (near red, far blue), only when the task asked.
     visualization_b64: str | None = None
+    error: str | None = None
+
+
+class DecideAnswer(BaseModel):
+    """One typed answer: Jev's shape plus the trained unknown."""
+
+    type: str
+    choice: str | None = None
+    noul: float | None = None
+    score: float | None = None
+    labels: list[str] | None = None
+    probabilities: dict[str, float] = Field(default_factory=dict)
+    legend: dict[str, str] | None = None
+    threshold: float | None = None
+    confidence: float | None = None
+    unknown_probability: float = 0.0
+    unknown_probabilities: dict[str, float] | None = None
+    abstained: bool = False
+    calibration_version: str | None = None
+
+
+class DecideResult(BaseModel):
+    """Result of a decide task: the model's typed answers, one per question."""
+
+    id: str
+    answers: dict[str, DecideAnswer] = Field(default_factory=dict)
+    tokens_in: int | None = None
+    images: int | None = None
+    rotations: int | None = None
     error: str | None = None
 
 

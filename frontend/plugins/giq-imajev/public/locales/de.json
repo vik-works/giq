@@ -1,0 +1,46 @@
+{
+  "tab": {
+    "decide": "Entscheiden"
+  },
+  "field": {
+    "model": "Modell"
+  },
+  "run": {
+    "decide": "Entscheiden",
+    "deciding": "Entscheide…"
+  },
+  "out": {
+    "latency": "Latenz {{value}}"
+  },
+  "decide": {
+    "defaultState": "Ticket: doppelt abgebucht, bitte erstatten.",
+    "defaultQuestions": "{\n  \"queue\": {\n    \"type\": \"choice\",\n    \"instructions\": \"Ticket zuordnen.\",\n    \"criteria\": {\"billing\": null, \"shipping\": null}\n  }\n}",
+    "state": "Stand",
+    "stateHint": "Der Datensatz, den die Fragen lesen: eine Zeichenkette, oder JSON für einen strukturierten Datensatz.",
+    "questions": "Fragen",
+    "questionsHint": "Typisierte Fragen als JSON: Choice, Ja / Nein, Score, Multi.",
+    "imageRef": "Referenzbild (optional)",
+    "imageTarget": "Zielbild (optional)",
+    "badJson": "Fragen müssen ein JSON-Objekt sein; ein Stand mit { oder [ muss gültiges JSON sein.",
+    "jsonError": "Ungültiges JSON: {{error}}",
+    "none": "Kein Decide-Modell ist registriert — der Bereich hat niemanden zu fragen.",
+    "noWeights": "{{model}} ist registriert, aber seine Gewichte liegen nicht auf dem Datenträger.",
+    "loadsFirst": "Das Entscheiden lädt zuerst das Modell — die erste Antwort dauert eine Weile.",
+    "abstained": "Enthalten — unzureichende Belege.",
+    "confidence": "Konfidenz: {{value}}",
+    "unknown": "Nicht erkennbar: {{value}}",
+    "yes": "Ja",
+    "no": "Nein",
+    "noneSelected": "Keins über der Schwelle",
+    "noulMeter": "{{yes}} Ja, {{no}} Nein",
+    "threshold": "Ausgewählt über {{value}}",
+    "tokens": "{{n}} Eingabe-Token",
+    "job": "Job {{id}}",
+    "type": {
+      "choice": "Choice",
+      "noul": "Ja / Nein",
+      "score": "Score",
+      "multi": "Multi"
+    }
+  }
+}

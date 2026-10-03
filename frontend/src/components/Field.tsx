@@ -12,15 +12,18 @@ export interface FieldProps {
   /** A validation message under the control (replaces the old alert()). */
   error?: string | null;
   hint?: ReactNode;
+  /** An explanation under the label, above the control. */
+  hintTop?: ReactNode;
   className?: string;
 }
 
 /** Nocturne's .field: a label over one control, with an optional inline error. */
-export function Field({ label, children, error, hint, className }: FieldProps) {
+export function Field({ label, children, error, hint, hintTop, className }: FieldProps) {
   const id = useId();
   return (
     <div className={`field form-field${className ? " " + className : ""}`}>
       <label htmlFor={id}>{label}</label>
+      {hintTop != null && <p className="hint hint-top">{hintTop}</p>}
       {children(id)}
       {error && (
         <p className="field-error" role="alert">

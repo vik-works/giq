@@ -58,9 +58,11 @@ Environment variables:
 | `GIQ_CONFIG` | `$GIQ_HOME/config.yaml`, else `./config.yaml` | Config file |
 | `GIQ_LLAMA_BINARY` | `llama-server` on PATH | llama.cpp server binary |
 | `GIQ_SDCPP_BINARY` | `sd-server` on PATH | stable-diffusion.cpp server binary |
+| `GIQ_IMAJEV_PYTHON`, `GIQ_IMAJEV_REPO` | `envs/imajev/.venv/bin/python`, `~/work/imajev` | Interpreter and reused checkout for the decide child (giq-imajev) |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |
 | `GIQ_DEPTH_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth recipes |
+| `GIQ_DECIDE_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of decide recipes |
 | `GIQ_AUDIO_WHISPER_MODEL`, `GIQ_AUDIO_DIAR_MODEL`, `GIQ_EMBED_MODEL` | the recipe's | Repository or path the audio and voiceprint children load, outranking the recipe's `weights` |
 | `GIQ_GPU_DEVICE` | biggest card | Default GPU, index or NVML UUID |
 | `GIQ_TOKEN` | unset | Shared access token (see [Access](access-and-privacy.md#access)) |

@@ -39,6 +39,7 @@ version.
 | `giq-speech` | modalities `audio`, `stt`, `tts`, `embed`; `/v1/audio/*`; their sandbox panels | torch; a Hugging Face token for pyannote's diarization |
 | `giq-ocr` | modality `ocr`; `POST /ocr` | torch, transformers |
 | `giq-depth` | modality `depth`; `POST /depth` | torch, transformers |
+| `giq-imajev` | engine `imajev`; modality `decide`; `POST /decide`; its sandbox panel | its own interpreter (`envs/imajev`), plus the imajev checkout (`GIQ_IMAJEV_REPO`) |
 | `giq-defaults` | all of the above | |
 
 Each brings its own built-in recipes, so a recipe appears in the Add page

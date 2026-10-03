@@ -115,6 +115,7 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/dash` | GET | Dashboard (overview, recipes, inventory, usage, sandbox; English/German; light/dark/system theme) |
 | `/ocr` | POST | One PDF (multipart `file`) in, one HTML document out — see [OCR](#ocr) |
 | `/depth` | POST | One image in, one 16-bit depth map out — see [Depth](#depth) |
+| `/decide` | POST | A record plus 0-2 images and typed questions in, calibrated probabilities out — see [Decide](#decide) |
 
 ## Modalities
 
@@ -297,6 +298,41 @@ sits beside them. Small: 1.2 GB peak, measured on an RTX 5090 with a
 1280x2276 photo; it answers in under a second including the PNG encode.
 Licences are part of the choice: only Small is Apache-2.0, so Base and Large
 (CC-BY-NC-4.0, non-commercial) are not registered.
+
+## Decide
+
+A record plus 0-2 photos and 1-8 typed questions in, calibrated
+probabilities out, through imajev-2b (Qwen3.5-2B plus a rank-16 LoRA and a
+255-code decision readout; Apache-2.0): Jev's question shapes (`choice`,
+`noul`, `score`, `multi`) over your own record, each answer with a
+probability per option plus `unknown_probability` (the trained *can't tell*)
+and `abstained`. Act above a threshold you measured on your own cases; send
+abstentions and low-confidence answers to a person.
+
+```bash
+curl -s -X POST localhost:8084/decide -H 'Content-Type: application/json' \
+  -d '{"state": "Ticket: charged twice for one order.",
+       "questions": {"queue": {"type": "choice", "instructions": "Route the ticket.",
+                               "criteria": {"billing": null, "shipping": null}}}},
+       "rotations": 1}'
+curl -s -F request='{"state": {"listing": {"color": "red"}},
+                      "questions": {"wrong_field": {"type": "choice",
+                        "instructions": "Which listing field does the photo contradict?",
+                        "criteria": {"listing.color": null, "none": null}}}}' \
+     -F image0=@photo.jpg localhost:8084/decide
+# or through the job API, up to max_batch tasks per job:
+curl -s -X POST localhost:8084/run?wait=true -H 'Content-Type: application/json' \
+  -d '{"modality":"decide","model":"imajev-2b",
+       "tasks":[{"id":"1","state": {...},"questions": {...},"rotations": 1}]}'
+```
+
+Query parameters: `model` (`imajev-2b`, the default and only registered one).
+`rotations` (1 default; 4 averages four option orders, about 3x the latency)
+and `calibration` (artifact name, default `calibration.json`) ride in the
+payload. Limits: 128 KB state, 4096 tokens, 0-2 images (JPEG/PNG/WebP, 20 MB
+and 20 Mpixel each). Sleepy model: loads on demand, evictable; 6.0 GB
+estimate (4.25 GiB torch-allocated peak on an RTX 4070 plus CUDA context;
+re-measure with nvidia-smi while resident before claiming measured).
 
 ## Weights
 

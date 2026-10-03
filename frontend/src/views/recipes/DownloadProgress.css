@@ -1,0 +1,12 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.rc-add-progress { display: grid; gap: 4px; }
+.rc-add-progress-line {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.rc-add-progress-from { font-size: 11px; color: var(--text-subtle); overflow-wrap: anywhere; }

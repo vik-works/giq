@@ -2,8 +2,15 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { del, needsForce, putJSON } from "./client";
-import type { DeleteWeightsResult, Policy, RecipeWriteResponse } from "./types";
+import { del, getJSON, needsForce, postJSON, putJSON } from "./client";
+import type {
+  DeleteWeightsResult,
+  Download,
+  Policy,
+  RecipePlan,
+  RecipeWriteResponse,
+  RemoveRecipeWeightsResult,
+} from "./types";
 
 /* The writes on recipes and weights (ADR-003), free of React so the force
    protocol is testable with a mocked fetch. The Overview's lane actions and
@@ -70,4 +77,24 @@ export function setCard(
 /** DELETE /weights/{id}: remove one checkpoint; the recipes that used it stay, uninstalled. */
 export function deleteWeights(id: string): Promise<DeleteWeightsResult> {
   return del<DeleteWeightsResult>(`/weights/${encodeURIComponent(id)}`);
+}
+
+/** GET /recipes/{name}/plan: what fetching it takes, with the Hub's sizes, access and licence. */
+export function planRecipe(name: string): Promise<RecipePlan> {
+  return getJSON<RecipePlan>(`${path(name)}/plan`);
+}
+
+/** POST /recipes/{name}/fetch: start fetching its missing weights. */
+export function fetchRecipe(name: string): Promise<Download> {
+  return postJSON<Download>(`${path(name)}/fetch`);
+}
+
+/** DELETE /downloads/{id}: stop a fetch; what arrived stays, so the next one resumes. */
+export function cancelDownload(id: string): Promise<Download> {
+  return del<Download>(`/downloads/${encodeURIComponent(id)}`);
+}
+
+/** DELETE /recipes/{name}/weights: its weights, except those another recipe also loads. */
+export function removeRecipeWeights(name: string): Promise<RemoveRecipeWeightsResult> {
+  return del<RemoveRecipeWeightsResult>(`${path(name)}/weights`);
 }

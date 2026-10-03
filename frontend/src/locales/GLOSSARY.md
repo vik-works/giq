@@ -66,6 +66,12 @@ The six domain terms are ADR-003's; use them in no other sense.
 | params | Parameter | an engine's settings in a recipe |
 | built-in (recipe) | mitgeliefert | "mitgeliefertes Rezept" |
 | left out (a file giq could not use) | ausgelassen | |
+| fetch (weights) | herunterladen | "Fetch 4.4 GB" → "4,4 GB herunterladen"; the act is a "Download" |
+| add (a recipe to this machine) | hinzufügen | "Add recipes" → "Rezepte hinzufügen" |
+| ready / can be fetched / place by hand / cannot run here | bereit / herunterladbar / manuell ablegen / läuft hier nicht | a recipe's availability (ADR-005) |
+| on this machine | auf dieser Maschine | |
+| plugin | Plugin | plural "Plugins" |
+| operator | Betreiber | whoever runs giq's server |
 
 ## Modalities
 

@@ -187,6 +187,9 @@ export interface RecipeEntry {
   voices: string[];
   /** Every file it loads is on disk. */
   installed: boolean;
+  /** Whether it runs on this machine (ADR-005), and the checks it is judged on. */
+  availability: Availability;
+  checks: PlanCheck[];
   /** ids into /weights. */
   weights: string[];
   residency: Residency;
@@ -196,6 +199,91 @@ export interface RecipeEntry {
   last_used: number | null;
   /** The instance running it now, if any. */
   instance: { id: string; state: InstanceState; residency: InstanceResidency } | null;
+}
+
+/** ready: runs here · fetchable: giq can fetch its weights · manual: place them by hand · unfit: cannot run here. */
+export type Availability = "ready" | "fetchable" | "manual" | "unfit";
+
+export interface PlanCheck {
+  /** engine | card | compute | weights | disk | access | licence | pinned */
+  check: string;
+  status: "ok" | "warn" | "fail";
+  message: string;
+}
+
+// --- GET /recipes/{name}/plan ------------------------------------------------------
+
+export interface PlanTransfer {
+  part: string | null;
+  repo: string;
+  revision: string | null;
+  file: string | null;
+  dest: string | null;
+  files: number;
+  bytes: number;
+}
+
+export interface RecipePlan {
+  recipe: string;
+  availability: Availability;
+  /** Nothing but the missing weights stands in the way. */
+  can_fetch: boolean;
+  /** The service may write where the files go; else the operator runs `command`. */
+  service_can_fetch: boolean;
+  command: string;
+  download_bytes: number;
+  checks: PlanCheck[];
+  transfers: PlanTransfer[];
+}
+
+// --- /downloads ----------------------------------------------------------------------
+
+export type DownloadState = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export interface Download {
+  id: string;
+  recipe: string;
+  state: DownloadState;
+  bytes_total: number;
+  bytes_done: number;
+  current: string | null;
+  error: string | null;
+  queued_at: number;
+  started_at: number | null;
+  finished_at: number | null;
+}
+
+export interface DownloadsResponse {
+  downloads: Download[];
+}
+
+// --- GET /plugins ---------------------------------------------------------------------
+
+export interface PluginEntry {
+  name: string;
+  package: string;
+  summary: string;
+  engines: string[];
+  modalities: string[];
+  recipes: string[];
+  needs: string;
+  curated: boolean;
+  installed: boolean;
+  status: { loaded: boolean; reason: string | null; version: string; source: string } | null;
+  /** The command that installs it; null once installed. */
+  install: string | null;
+}
+
+export interface RemoveRecipeWeightsResult {
+  recipe: string;
+  deleted: string[];
+  /** Weights another recipe also loads, left in place. */
+  kept: { id: string; used_by: string[] }[];
+  freed_bytes: number;
+}
+
+export interface PluginsResponse {
+  plugins: PluginEntry[];
 }
 
 export interface CardBudget {

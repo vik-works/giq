@@ -4,9 +4,11 @@
 
 import type { ReactNode } from "react";
 import {
+  DownloadsProvider,
   EnginesProvider,
   GpusProvider,
   InstancesProvider,
+  PluginsProvider,
   RecipesProvider,
   StatusProvider,
   StorageProvider,
@@ -22,7 +24,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           <RecipesProvider>
             <WeightsProvider>
               <StorageProvider>
-                <EnginesProvider>{children}</EnginesProvider>
+                <EnginesProvider>
+                  <DownloadsProvider>
+                    <PluginsProvider>{children}</PluginsProvider>
+                  </DownloadsProvider>
+                </EnginesProvider>
               </StorageProvider>
             </WeightsProvider>
           </RecipesProvider>

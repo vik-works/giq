@@ -16,14 +16,14 @@
     "title": "Rezepte",
     "noMatch": "Kein Rezept passt zu diesem Filter.",
     "clearFilters": "Filter zurücksetzen",
-    "absent": "Nicht auf dem Datenträger · {{count}}",
-    "absentHint": "giq kennt diese Rezepte, aber ihre Gewichte fehlen. Das Rezept bleibt – die Gewichte erneut herunterladen genügt, um eines zurückzuholen.",
-    "absentTitle": "{{key}} – {{engine}} · {{vram}} VRAM · {{last}}. Keine Gewichte auf dem Datenträger; erst herunterladen, dann ist es lauffähig.",
     "lastUsed": "zuletzt genutzt {{ago}}",
-    "neverUsed": "nie genutzt"
+    "neverUsed": "nie genutzt",
+    "add_one": "Rezepte hinzufügen · {{count}} weiteres",
+    "add_other": "Rezepte hinzufügen · {{count}} weitere",
+    "addNone": "Rezepte hinzufügen",
+    "nothingHere": "Noch kein Rezept hat seine Gewichte auf dieser Maschine. Eines hinzufügen, um zu beginnen."
   },
   "card": {
-    "notOnDisk": "nicht auf dem Datenträger",
     "keptWarm": "warm gehalten",
     "keptWarmTitle": "Wird gerade warm gehalten: bleibt geladen und lädt nach einer Verdrängung neu.",
     "vision": "Bildverständnis",
@@ -132,5 +132,56 @@
     "title_other": "{{count}} Rezeptdateien ausgelassen",
     "body": "Diese Dateien aus {{dir}} konnte giq nicht verwenden und läuft ohne sie; ein mitgeliefertes Rezept gleichen Namens bleibt in Betrieb. Dateien korrigieren, dann giq neu starten.",
     "several": "mehrere Dateien"
+  },
+  "add": {
+    "title": "Rezepte hinzufügen",
+    "back": "Auf dieser Maschine",
+    "search": "Rezepte und Plugins durchsuchen",
+    "intro": "Rezepte, die giq kennt, deren Gewichte aber nicht auf dieser Maschine liegen, und Plugins, die weitere hinzufügen. Erst prüfen, was eines braucht – Downloadgröße, Zugriff, Lizenz, Speicherplatz –, bevor etwas heruntergeladen wird.",
+    "nothing": "Alles, was giq kennt, liegt auf dieser Maschine.",
+    "noMatch": "Nichts passt zu dieser Suche.",
+    "engines": "Weitere Engines",
+    "unfit_one": "{{count}} Rezept läuft auf dieser Maschine nicht",
+    "unfit_other": "{{count}} Rezepte laufen auf dieser Maschine nicht",
+    "availability": {
+      "ready": "bereit",
+      "fetchable": "herunterladbar",
+      "manual": "manuell ablegen",
+      "unfit": "läuft hier nicht"
+    },
+    "status": {
+      "ok": "ok",
+      "warn": "Hinweis",
+      "fail": "blockiert"
+    },
+    "checking": "Prüfe…",
+    "get": "{{size}} herunterladen",
+    "getUnknown": "Herunterladen",
+    "getFailed": "Herunterladen von {{recipe}} fehlgeschlagen",
+    "failed": "Der letzte Download ist fehlgeschlagen: {{error}}",
+    "queued": "Wartet hinter einem anderen Download",
+    "progress": "{{done}} von {{total}}",
+    "progressUnknown": "bisher {{done}}",
+    "progressLabel": "{{recipe}} wird heruntergeladen",
+    "cancel": "Stoppen",
+    "cancelHelp": "Stoppt den Download. Was angekommen ist, bleibt; erneut herunterladen setzt fort.",
+    "cancelFailed": "Stoppen des Downloads fehlgeschlagen",
+    "operator": "Der Dienst darf dort, wo die Gewichte hingehören, nicht schreiben. Auf dem Server als Betreiber ausführen:",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "pluginRecipes": "Bringt {{recipes}}",
+    "pluginNeeds": "Braucht {{needs}}",
+    "pluginRestart": "Auf dem Server installieren, dann giq neu starten.",
+    "checkName": {
+      "engine": "Engine",
+      "card": "Karte",
+      "compute": "GPU-Typ",
+      "weights": "Gewichte",
+      "disk": "Datenträger",
+      "access": "Zugriff",
+      "licence": "Lizenz",
+      "pinned": "Revision"
+    },
+    "checkPlan": "Prüfen, was es braucht"
   }
 }

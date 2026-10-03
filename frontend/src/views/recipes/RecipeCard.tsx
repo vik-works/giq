@@ -12,6 +12,7 @@ import { EngineName } from "./EngineName";
 import type { CardChoice } from "../../lib/cards";
 import type { RecipeEntry, WeightsItem } from "../../api/types";
 import { primaryModality } from "../../lib/recipes";
+import { verdict } from "./adding";
 import { FIT_TONE, weightsOf } from "./catalog";
 import { RecipeCardMenu } from "./RecipeCardMenu";
 import { RecipeFacts } from "./RecipeFacts";
@@ -53,7 +54,15 @@ export function RecipeCard({ r, weights, cards, versions, actions }: RecipeCardP
               {t("card.vision")}
             </Tag>
           )}
-          <Tag tone={FIT_TONE[r.fit] ?? "neutral"}>{t(`common:fit.${r.fit}`, { defaultValue: r.fit })}</Tag>
+          {/* On disk but not runnable here: the engine binary is missing, or no
+              card can take it. The reason is the server's, as the title. */}
+          {r.availability === "unfit" ? (
+            <Tag tone="critical" title={verdict(r) ?? undefined}>
+              {t("add.availability.unfit")}
+            </Tag>
+          ) : (
+            <Tag tone={FIT_TONE[r.fit] ?? "neutral"}>{t(`common:fit.${r.fit}`, { defaultValue: r.fit })}</Tag>
+          )}
         </span>
         <RecipeCardMenu r={r} />
       </header>

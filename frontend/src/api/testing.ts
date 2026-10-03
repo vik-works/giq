@@ -33,6 +33,8 @@ export function recipeEntry(over: Over = {}): RecipeEntry {
     max_batch: null,
     voices: [],
     installed: true,
+    availability: "ready",
+    checks: [],
     weights: [],
     fit: "fits_now",
     last_used: null,

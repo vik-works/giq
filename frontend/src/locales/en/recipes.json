@@ -16,14 +16,14 @@
     "title": "Recipes",
     "noMatch": "No recipes match this filter.",
     "clearFilters": "Clear filters",
-    "absent": "Not on disk · {{count}}",
-    "absentHint": "Known to giq but without weights. The recipe stays, so fetching the weights again is all it takes to bring one back.",
-    "absentTitle": "{{key}} — {{engine}} · {{vram}} VRAM · {{last}}. No weights on disk; fetch them to make it runnable.",
     "lastUsed": "last used {{ago}}",
-    "neverUsed": "never used"
+    "neverUsed": "never used",
+    "add_one": "Add recipes · {{count}} more",
+    "add_other": "Add recipes · {{count}} more",
+    "addNone": "Add recipes",
+    "nothingHere": "No recipe has its weights on this machine yet. Add one to start."
   },
   "card": {
-    "notOnDisk": "not on disk",
     "keptWarm": "kept warm",
     "keptWarmTitle": "Kept warm right now: it stays loaded and reloads after eviction.",
     "vision": "vision",
@@ -132,5 +132,56 @@
     "title_other": "{{count}} recipe files left out",
     "body": "giq could not use these files from {{dir}} and serves without them; a built-in recipe of the same name keeps serving. Fix the files, then restart giq.",
     "several": "several files"
+  },
+  "add": {
+    "title": "Add recipes",
+    "back": "On this machine",
+    "search": "Search recipes and plugins",
+    "intro": "Recipes giq knows whose weights are not on this machine, and plugins that would add more. Check one to see what it takes — download size, access, licence, disk — before anything is fetched.",
+    "nothing": "Everything giq knows is on this machine.",
+    "noMatch": "Nothing matches this search.",
+    "engines": "More engines",
+    "unfit_one": "{{count}} recipe cannot run on this machine",
+    "unfit_other": "{{count}} recipes cannot run on this machine",
+    "availability": {
+      "ready": "ready",
+      "fetchable": "can be fetched",
+      "manual": "place by hand",
+      "unfit": "cannot run here"
+    },
+    "status": {
+      "ok": "ok",
+      "warn": "note",
+      "fail": "blocks"
+    },
+    "checking": "Checking…",
+    "get": "Fetch {{size}}",
+    "getUnknown": "Fetch",
+    "getFailed": "Fetching {{recipe}} failed",
+    "failed": "The last fetch failed: {{error}}",
+    "queued": "Queued behind another fetch",
+    "progress": "{{done}} of {{total}}",
+    "progressUnknown": "{{done}} so far",
+    "progressLabel": "Fetching {{recipe}}",
+    "cancel": "Stop",
+    "cancelHelp": "Stops the fetch. What arrived stays, so fetching again resumes.",
+    "cancelFailed": "Stopping the fetch failed",
+    "operator": "The service may not write where the weights go. Run this on the server as the operator:",
+    "copy": "Copy",
+    "copied": "Copied",
+    "pluginRecipes": "Brings {{recipes}}",
+    "pluginNeeds": "Needs {{needs}}",
+    "pluginRestart": "Install it on the server, then restart giq.",
+    "checkName": {
+      "engine": "engine",
+      "card": "card",
+      "compute": "GPU type",
+      "weights": "weights",
+      "disk": "disk",
+      "access": "access",
+      "licence": "licence",
+      "pinned": "revision"
+    },
+    "checkPlan": "Check what it takes"
   }
 }

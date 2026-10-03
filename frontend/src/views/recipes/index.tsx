@@ -10,6 +10,9 @@ import { PageHeader } from "../../components/PageHeader";
 import { WorkerIcon } from "../../components/WorkerIcon";
 import { useEngines, useGpus, useRecipes, useStorage, useWeights } from "../../state";
 import { cardChoices } from "../../lib/cards";
+import { useHashRoute } from "../../lib/useHashRoute";
+import { AddRecipes } from "./AddRecipes";
+import { onThisMachine } from "./adding";
 import { ENGINE_NOTE_KEY, engineVersions, facetCounts, matches, toggled } from "./catalog";
 import { FacetFilter } from "./FacetFilter";
 import { RecipeErrors } from "./RecipeErrors";
@@ -20,12 +23,29 @@ import "./RecipesView.css";
 
 const EMPTY: ReadonlySet<string> = new Set();
 
-/* The Recipes page: filters on the left, the recipes in the middle, what is
-   kept warm per card on the right. Residency used to be a full-width section
-   above the catalog, which pushed the recipes — the reason to open the page —
-   below the fold. On a narrow screen the filters stay on top and the context
-   moves under the catalog. What is on disk is the Inventory's. */
+/* The Recipes page: filters on the left, the recipes on this machine in the
+   middle, what is kept warm per card on the right. Residency used to be a
+   full-width section above the catalog, which pushed the recipes — the
+   reason to open the page — below the fold. On a narrow screen the filters
+   stay on top and the context moves under the catalog. What is on disk is
+   the Inventory's; what could be added is #/recipes/add (ADR-005). */
 export default function RecipesView() {
+  const { sub } = useHashRoute();
+  const { t } = useTranslation("recipes");
+  if (sub === "add") {
+    return (
+      <>
+        <PageHeader title={t("add.title")} />
+        <div className="rc-view">
+          <AddRecipes />
+        </div>
+      </>
+    );
+  }
+  return <OnThisMachine />;
+}
+
+function OnThisMachine() {
   const { t } = useTranslation("recipes");
   const recipes = useRecipes();
   const weights = useWeights();
@@ -36,7 +56,8 @@ export default function RecipesView() {
   const [modality, setModality] = useState<ReadonlySet<string>>(EMPTY);
   const [engine, setEngine] = useState<ReadonlySet<string>>(EMPTY);
 
-  const all = recipes.data?.recipes ?? [];
+  const known = recipes.data?.recipes ?? [];
+  const all = known.filter(onThisMachine);
   const shown = all.filter((r) => matches(r, { modality, engine }));
   const cards = useMemo(() => cardChoices(gpus.data?.gpus, recipes.data?.cards), [gpus.data, recipes.data]);
   const versions = useMemo(() => engineVersions(engines.data), [engines.data]);
@@ -83,6 +104,7 @@ export default function RecipesView() {
                 entries={shown}
                 weights={weights.data?.weights}
                 total={all.length}
+                addable={known.length - all.length}
                 filtered={modality.size > 0 || engine.size > 0}
                 onClearFilters={clear}
                 cards={cards}

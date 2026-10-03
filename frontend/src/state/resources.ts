@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type {
+  DownloadsResponse,
   EnginesResponse,
   GpusResponse,
   InstancesResponse,
+  PluginsResponse,
   RecipesResponse,
   Status,
   StorageResponse,
@@ -56,5 +58,19 @@ export const [StorageProvider, useStorage] = createPolledResource<StorageRespons
 export const [EnginesProvider, useEngines] = createPolledResource<EnginesResponse>(
   "Engines",
   "/engines",
+  0,
+);
+
+/** GET /downloads every 3 s: the fetches since the service started, with their progress. */
+export const [DownloadsProvider, useDownloads] = createPolledResource<DownloadsResponse>(
+  "Downloads",
+  "/downloads",
+  LIVE_POLL_MS,
+);
+
+/** GET /plugins once: installed plugins and the curated ones that are not (a restart changes it). */
+export const [PluginsProvider, usePlugins] = createPolledResource<PluginsResponse>(
+  "Plugins",
+  "/plugins",
   0,
 );

@@ -101,6 +101,10 @@ class Engine:
     # `giq prepare <engine> …`: one-off build steps before it serves; takes
     # the remaining arguments, returns an exit code.
     prepare: Callable[[list[str]], int] | None = None
+    # Why a card cannot run this recipe, given the card's compute capability
+    # ("12.0"), or None when it can. A recipe no card can run is shown as
+    # unfit for this machine (ADR-005).
+    check: Callable[[Any, str], str | None] | None = None
 
     @property
     def runtime(self) -> str:

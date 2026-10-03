@@ -292,12 +292,28 @@ class PauseResponse(BaseModel):
     vram_total_gb: float
 
 
-class ModalityCapability(BaseModel):
-    """What giq serves for one modality."""
+class AvailableRecipe(BaseModel):
+    """A recipe this machine could have for a modality, and what it takes."""
 
-    # Every engine in play for it, comma-separated (llm runs on two).
+    name: str
+    # fetchable | manual (ADR-005); unfit recipes are not offered.
+    availability: str
+    # The one line that matters: what stands between it and running.
+    verdict: str
+
+
+class ModalityCapability(BaseModel):
+    """What giq serves for one modality (ADR-005 D7)."""
+
+    # Every engine of the ready recipes, comma-separated (llm runs on two).
     engine: str
+    # The recipes that run here now, preferred first: kept warm first, then
+    # on demand by name. What a client may pass as `model`.
     recipes: list[str]
+    # The recipe a request naming none runs on: the first of `recipes`.
+    default: str | None = None
+    # What it could have: recipes whose weights are not here yet.
+    available: list[AvailableRecipe] = []
     max_batch: int | None = None
     voices: list[str] | None = None  # TTS only
     # How the dashboard names and draws it, as its plugin registered it.

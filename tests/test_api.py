@@ -149,8 +149,16 @@ async def test_service_status(client: AsyncClient):
     assert isinstance(data["jobs_pending"], list)
 
 
+@pytest.fixture
+def all_ready(monkeypatch):
+    """Every recipe runs here, as on a machine with every weight on disk."""
+    from giq import availability
+
+    monkeypatch.setattr(availability, "availability", lambda recipe: ("ready", []))
+
+
 @pytest.mark.asyncio
-async def test_capabilities(client: AsyncClient):
+async def test_capabilities(client: AsyncClient, all_ready):
     """Test getting capabilities."""
     response = await client.get("/capabilities")
     assert response.status_code == 200
@@ -180,6 +188,34 @@ async def test_capabilities(client: AsyncClient):
     assert "flux_klein" in data["modalities"]["text2image"]["recipes"]
     assert "flux_klein" in data["modalities"]["image_edit"]["recipes"]
     assert "recipes" in data["modalities"]["llm"]
+
+
+@pytest.mark.asyncio
+async def test_capabilities_advertise_only_what_runs_here(client: AsyncClient, monkeypatch):
+    """ADR-005 D7: a recipe without its weights is offered, not advertised."""
+    from giq import availability
+    from giq.availability import Check
+
+    def judged(recipe):
+        if recipe.name == "glm-ocr":
+            return "ready", []
+        return "fetchable", [Check("weights", "warn", "not on disk; giq can fetch them")]
+
+    monkeypatch.setattr(availability, "availability", judged)
+    ocr = (await client.get("/capabilities/ocr")).json()
+    assert ocr["recipes"] == ["glm-ocr"] and ocr["default"] == "glm-ocr"
+    assert ocr["available"] == [
+        {
+            "name": "unlimited-ocr",
+            "availability": "fetchable",
+            "verdict": "not on disk; giq can fetch them",
+        }
+    ]
+    caps = (await client.get("/capabilities")).json()["modalities"]
+    assert caps["depth"]["recipes"] == [] and caps["depth"]["default"] is None, (
+        "a modality with nothing ready is still listed"
+    )
+    assert (await client.get("/capabilities/painting")).status_code == 404
 
 
 def test_the_token_budget_defaults_to_the_models_context():
@@ -463,7 +499,7 @@ async def test_ocr_endpoint_reports_a_failed_task(client: AsyncClient, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_ocr_runs_through_the_generic_job_path(client: AsyncClient):
+async def test_ocr_runs_through_the_generic_job_path(client: AsyncClient, all_ready):
     """The worker is a first-class job type: /run accepts it and /capabilities
     advertises it, so a consumer on another node needs nothing special."""
     r = await client.post(

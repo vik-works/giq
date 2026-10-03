@@ -193,15 +193,27 @@ def delete_weights(weights_id: str, *, busy: set[str]) -> dict:
     }
 
 
-def installed(name: str) -> bool:
-    """Are recipe ``name``'s weights on disk? Every file, part and shard.
+def on_disk(loc: Location) -> Path:
+    """Where a location's files are, or go: a path as it is, a repository as
+    its HF-cache directory."""
+    return _on_disk(loc, hf_cache_dir())
+
+
+def missing(name: str) -> list[Location]:
+    """Recipe ``name``'s locations that are not (wholly) on disk.
 
     A presence check, not a size: the catalog asks it for every recipe on
     every poll, and walking a checkpoint directory to sum it is the storage
     report's job.
     """
     hub = hf_cache_dir()
-    found = locations(name)
-    return bool(found) and all(
-        p.exists() for loc in found for p in _expand_gguf(_on_disk(loc, hub))
-    )
+    return [
+        loc
+        for loc in locations(name)
+        if not all(p.exists() for p in _expand_gguf(_on_disk(loc, hub)))
+    ]
+
+
+def installed(name: str) -> bool:
+    """Are recipe ``name``'s weights on disk? Every file, part and shard."""
+    return bool(locations(name)) and not missing(name)

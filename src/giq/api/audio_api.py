@@ -47,17 +47,21 @@ class RenderResponse(BaseModel):
     expires_in: int
 
 
-def _recipe_for(model: str, modality: str, default: str) -> str:
-    """The recipe a request's ``model`` names, or ``default``.
+def _recipe_for(model: str, modality: str, fallback: str) -> str:
+    """The recipe a request's ``model`` names, or the modality's default.
 
     OpenAI clients send OpenAI's own names (``tts-1``, ``whisper-1``), which
     are no recipe of ours; those, like any name the catalog does not know,
-    get the default. A recipe that exists but does not serve this modality
-    is a mistake worth a 400 rather than a silent substitute.
+    get the modality's default (ADR-005 D7): the first ready recipe, kept
+    warm first. With none ready, ``fallback``, whose child fetches its
+    weights on first load. A recipe that exists but does not serve this
+    modality is a mistake worth a 400 rather than a silent substitute.
     """
+    from giq.availability import default_recipe
+
     recipe = get_recipe(model)
     if recipe is None:
-        return default
+        return default_recipe(modality) or fallback
     if not recipe.serves(modality):
         raise HTTPException(status_code=400, detail=f"recipe {model!r} does not serve {modality}")
     return recipe.name

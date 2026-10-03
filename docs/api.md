@@ -86,14 +86,16 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/test/{modality}` | POST | A smoke test: the modality's canned job on `?recipe=` (default: the first installed recipe serving it); a test that evicts the resident set (`text2image`) needs `?confirm=true` |
 | `/gpus` | GET | Per-card telemetry; `selected` marks the default card |
 | `/engines` | GET | Declared inference engines and the build each one reports |
-| `/capabilities` | GET | Per modality: the recipes that serve it, their engines, batch ceilings and voices |
+| `/capabilities` | GET | Per modality: the recipes that run here now, preferred first (`recipes`, kept warm first), the one a request naming none runs on (`default`), what could be fetched or placed (`available`, with a one-line verdict), engines, batch ceilings and voices. Every registered modality is listed, also with nothing ready |
+| `/capabilities/{modality}` | GET | One modality's entry |
 | `/control/pause` | POST | Stop serving, unload everything, free VRAM |
 | `/control/resume` | POST | Resume serving; residents reload |
 | `/stats/summary`, `/stats/timeline`, `/stats/usage`, `/stats/jobs` | GET | Job history (see [Privacy](access-and-privacy.md#privacy) for what is recorded) |
 | `/stats/gpus`, `/stats/vram`, `/stats/gpus/eras` | GET | GPU telemetry history and per-card job totals |
 | `/storage` | GET | Per-mount disk usage, the resolved directories and the operator's recipe files — see [Storage](#storage) |
-| `/recipes` | GET | Every recipe: modalities, engine, installed, residency, card, fit, the instance running it, weights ids; per-card pinned budgets; reload order |
+| `/recipes` | GET | Every recipe: modalities, engine, installed, availability (`ready`, `fetchable`, `manual`, `unfit`) with the checks behind it, residency, card, fit, the instance running it, weights ids; per-card pinned budgets; reload order |
 | `/recipes/{name}` | GET | One recipe, by name or alias |
+| `/recipes/{name}/plan` | GET | What fetching it takes: this machine's checks plus, from the Hugging Face Hub, the download size, gated access and licence; the transfers a fetch would make, and the `giq add` command |
 | `/recipes/{name}/residency` | PUT, DELETE | `{"policy": "pinned" \| "auto" \| "off", "reason"?, "force"?}`; DELETE returns to the default |
 | `/recipes/{name}/card` | PUT | `{"device": index \| uuid \| null, "force"?}` — bind to a card, or unbind |
 | `/instances` | GET | Every recipe running on a card: residency (`resident`/`on_demand`), state, card, port, pid, lanes, VRAM |
@@ -199,7 +201,9 @@ diarization), speaker voiceprints (`ecapa-tdnn`) and text to speech
 to text without diarization (`stt`: `faster-whisper-tiny` …
 `faster-whisper-large-v3`; the bare sizes still work as aliases) is a batch
 modality behind `/run`. `/capabilities` lists every modality's recipes, and
-Kokoro's voices.
+Kokoro's voices. A `/v1/audio/*` request whose `model` is no recipe (OpenAI's
+`whisper-1`, `tts-1`) runs on the modality's `default`, or on the recipe named
+above when nothing is ready yet; its child fetches the weights on first load.
 
 ## OCR
 

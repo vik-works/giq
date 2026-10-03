@@ -5,7 +5,8 @@
 """The recipes, as an operator manages them (ADR-003).
 
 ``GET /recipes`` is the catalog in the domain's own terms: each recipe with
-its modalities and engine, whether its weights are installed, its residency
+its modalities and engine, whether its weights are installed and whether it
+can run here at all (its availability, ADR-005), its residency
 and card, whether it fits that card now, and the instance running it if
 there is one. The writes set residency and card by recipe name.
 
@@ -23,6 +24,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from giq.availability import availability
 from giq.engines import runtime_of
 from giq.gpus import get_gpus, resolve_device, selected_device
 from giq.policy import RESIDENT_SET_HEADROOM_GB, get_policy_store
@@ -117,6 +119,7 @@ def recipe_entry(recipe: Recipe, m: _Machine) -> dict[str, Any]:
     gpu = resolve_device(where) if where else None
     fit, needed = _fit(recipe, where, m)
     inst = m.instances.get(recipe.name)
+    avail, found = availability(recipe)
     return {
         "name": recipe.name,
         "label": recipe.display,
@@ -136,6 +139,9 @@ def recipe_entry(recipe: Recipe, m: _Machine) -> dict[str, Any]:
         "max_batch": recipe.max_batch,
         "voices": list(recipe.voices),
         "installed": installed(recipe.name),
+        # ready | fetchable | manual | unfit (ADR-005), and what it is judged on.
+        "availability": avail,
+        "checks": [c.to_dict() for c in found],
         "weights": [weights_id(loc) for loc in locations(recipe.name)],
         "residency": {
             "policy": record.policy,
@@ -221,6 +227,17 @@ async def get_recipe_entry(name: str) -> dict:
     recipe = _recipe_or_404(name)
     m = await _machine()
     return recipe_entry(recipe, m)
+
+
+@router.get("/recipes/{name}/plan")
+async def get_plan(name: str) -> dict:
+    """What fetching recipe ``name`` takes, and whether it can run here
+    (ADR-005 D3): this machine's checks, plus sizes, access and licence
+    from the Hub."""
+    from giq.plan import plan
+
+    recipe = _recipe_or_404(name)
+    return (await asyncio.to_thread(plan, recipe.name)).to_dict()
 
 
 async def _after(recipe: Recipe, warnings: list[str]) -> dict:

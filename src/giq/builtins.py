@@ -136,6 +136,17 @@ def _vllm_prepare(argv: list[str]) -> int:
     return cli_prepare(argv)
 
 
+def _vllm_check(recipe: Any, capability: str) -> str | None:
+    # vllm's own floor: its kernels need Volta (compute capability 7.0) or newer.
+    try:
+        major, minor = (int(x) for x in capability.split(".")[:2])
+    except ValueError:
+        return None
+    if (major, minor) < (7, 0):
+        return f"vllm needs compute capability 7.0 or newer; this card has {capability}"
+    return None
+
+
 def _vllm_plugin() -> Plugin:
     from giq.recipes.schema import (
         ENGINE_PROFILES,
@@ -177,6 +188,7 @@ def _vllm_plugin() -> Plugin:
                 stale_pattern=r"vllm serve .*--port {port}\b",
                 sweep=_vllm_sweep,
                 prepare=_vllm_prepare,
+                check=_vllm_check,
             ),
         ),
         adapters={("vllm", "llm"): _vllm},

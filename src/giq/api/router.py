@@ -14,6 +14,7 @@ from giq.api.access import posture as access_posture
 from giq.api.dependencies import get_orchestrator
 from giq.gpus import attribute_vram, get_gpus, resolve_device, selected_device
 from giq.models import (
+    AvailableRecipe,
     Capabilities,
     JobRequest,
     JobResponse,
@@ -346,11 +347,13 @@ async def get_llm_endpoint(model: str | None = None) -> dict:
     runner = get_runner()
     if model is None:
         # The first LLM kept warm: the one a client asking without a name
-        # most plausibly means. Nothing kept warm, nothing to point at.
-        from giq.registry import resident_defaults
+        # most plausibly means. Nothing kept warm, nothing to point at:
+        # this endpoint never triggers a load.
+        from giq.policy import get_policy_store
 
         model = next(
-            (n for n in resident_defaults() if (r := get_recipe(n)) and r.serves("llm")), None
+            (n for n in get_policy_store().residents() if (r := get_recipe(n)) and r.serves("llm")),
+            None,
         )
         if model is None:
             raise HTTPException(
@@ -392,47 +395,68 @@ async def list_engines(refresh: bool = False) -> dict:
     return {"engines": await asyncio.to_thread(probe_all, refresh)}
 
 
+def _capability(modality: str) -> ModalityCapability | None:
+    """One modality as /capabilities advertises it, or None if nobody registers it."""
+    from giq import plugins
+    from giq.availability import availability, ready
+
+    spec = plugins.modality(modality)
+    if spec is None:
+        return None
+    names = ready(modality)
+    cap = ModalityCapability(
+        engine="",
+        recipes=names,
+        default=names[0] if names else None,
+        label=spec.label,
+        icon=spec.icon,
+    )
+    engines: list[str] = []
+    for name in names:
+        recipe = get_recipe(name)
+        if recipe is None:
+            continue
+        if recipe.engine not in engines:
+            engines.append(recipe.engine)
+        if (batch := recipe.max_batch_for(modality)) is not None:
+            cap.max_batch = max(cap.max_batch or 0, batch)
+        if recipe.voices:
+            cap.voices = sorted({*(cap.voices or []), *recipe.voices})
+    cap.engine = ", ".join(engines)
+    for recipe in recipes_serving(modality):
+        avail, found = availability(recipe)
+        if avail in ("fetchable", "manual"):
+            verdict = next((c.message for c in found if c.status != "ok"), "")
+            cap.available.append(
+                AvailableRecipe(name=recipe.name, availability=avail, verdict=verdict)
+            )
+    return cap
+
+
 @router.get("/capabilities", response_model=Capabilities)
 async def get_capabilities() -> Capabilities:
-    """What this service can run, generated from the recipes.
+    """What this service runs, per modality, and what it could (ADR-005 D7).
 
-    Hand-maintained before: it had drifted to omit the audio, embed and stt
-    modalities entirely, omit flux_klein under both image workers (the two
-    models actually in production since the sd.cpp move), and advertise a tts
-    model name that was absent from the VRAM table and therefore unloadable.
-    Generating it means a model is discoverable exactly when it is runnable.
+    Every registered modality is listed, also one with nothing ready, so a
+    client can tell "installed, nothing fetched yet" from "not served".
+    ``recipes`` holds only what runs here now; ``available`` what could be
+    fetched or placed.
     """
     from giq import plugins
 
-    modalities: dict[str, ModalityCapability] = {}
-    for modality, spec in plugins.modalities().items():
-        for recipe in recipes_serving(modality):
-            batch = recipe.max_batch_for(modality)
-            cap = modalities.get(modality)
-            if cap is None:
-                modalities[modality] = ModalityCapability(
-                    engine=recipe.engine,
-                    recipes=[recipe.name],
-                    max_batch=batch,
-                    voices=list(recipe.voices) or None,
-                    label=spec.label,
-                    icon=spec.icon,
-                )
-                continue
-            cap.recipes.append(recipe.name)
-            # One modality can span engines (llm runs on llama.cpp or vllm),
-            # so report every one in play.
-            if recipe.engine not in cap.engine:
-                cap.engine = f"{cap.engine}, {recipe.engine}"
-            if batch is not None:
-                cap.max_batch = max(cap.max_batch or 0, batch)
-            if recipe.voices:
-                cap.voices = sorted({*(cap.voices or []), *recipe.voices})
-
+    found = await asyncio.to_thread(lambda: {m: _capability(m) for m in plugins.modalities()})
     return Capabilities(
-        modalities=modalities,
+        modalities={m: cap for m, cap in found.items() if cap is not None},
         constraints={
             "max_concurrent_heavy": 1,
             "vram_total_gb": round(get_vram_status().total_gb),
         },
     )
+
+
+@router.get("/capabilities/{modality}", response_model=ModalityCapability)
+async def get_modality_capability(modality: str) -> ModalityCapability:
+    cap = await asyncio.to_thread(_capability, modality)
+    if cap is None:
+        raise HTTPException(status_code=404, detail=f"no modality {modality!r} is registered")
+    return cap

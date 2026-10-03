@@ -555,6 +555,34 @@ def device_env(device: str | int | None = None) -> dict[str, str]:
     return env
 
 
+_capabilities: dict[str, str] | None = None
+
+
+def compute_capabilities() -> dict[str, str]:
+    """Every card's compute capability by UUID, asked once per process.
+
+    A card's architecture does not change while giq runs, and the catalog
+    asks on every poll. Empty, and asked again next time, when the query
+    fails.
+    """
+    global _capabilities
+    if _capabilities is not None:
+        return _capabilities
+    try:
+        lines = _run_query("uuid,compute_cap")
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.warning(f"compute capability query failed: {e}")
+        return {}
+    found = {}
+    for line in lines or []:
+        uuid, _, cap = (part.strip() for part in line.partition(","))
+        if cap and not cap.startswith("["):
+            found[uuid.lower()] = cap
+    if found:
+        _capabilities = found
+    return found
+
+
 def compute_capability(device: str | int | None = None) -> str | None:
     """A card's CUDA compute capability as nvidia-smi prints it ("12.0").
 
@@ -567,13 +595,4 @@ def compute_capability(device: str | int | None = None) -> str | None:
     gpu = selected_device() if device is None else resolve_device(device)
     if gpu is None:
         return None
-    try:
-        lines = _run_query("uuid,compute_cap")
-    except (OSError, subprocess.SubprocessError) as e:
-        logger.warning(f"compute capability query failed: {e}")
-        return None
-    for line in lines or []:
-        uuid, _, cap = (part.strip() for part in line.partition(","))
-        if uuid.lower() == gpu.uuid.lower() and cap and not cap.startswith("["):
-            return cap
-    return None
+    return compute_capabilities().get(gpu.uuid.lower())

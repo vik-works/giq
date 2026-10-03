@@ -289,11 +289,20 @@ def curated() -> list[dict[str, Any]]:
     return json.loads(files("giq").joinpath("plugins.json").read_text())["plugins"]
 
 
+# Where the curated plugins' wheels are published: the GitHub release of
+# the giq version they ship with (they are not on PyPI).
+RELEASES = "https://github.com/vik-works/giq/releases/download"
+
+
 def install_command(package: str) -> str:
-    """How to install ``package`` into the interpreter giq runs on."""
+    """How to install curated ``package`` into the interpreter giq runs on:
+    its wheel from this giq version's release, which pins the same core."""
     import sys
 
-    return f"uv pip install --python {sys.executable} {package}"
+    from giq import __version__
+
+    wheel = f"{package.replace('-', '_')}-{__version__}-py3-none-any.whl"
+    return f"uv pip install --python {sys.executable} {RELEASES}/v{__version__}/{wheel}"
 
 
 def catalog() -> list[dict[str, Any]]:

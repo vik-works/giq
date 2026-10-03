@@ -332,8 +332,13 @@ def test_a_curated_plugin_not_installed_carries_its_install_command(monkeypatch)
     monkeypatch.setattr(plugins, "status", lambda: present)
     depth = next(e for e in plugins.catalog() if e["name"] == "giq-depth")
     assert not depth["installed"] and depth["status"] is None
+    from giq import __version__
+
+    # The wheel from this version's GitHub release: the plugins are not on PyPI.
     assert depth["install"].startswith("uv pip install --python ")
-    assert depth["install"].endswith(" giq-depth")
+    assert depth["install"].endswith(
+        f"/releases/download/v{__version__}/giq_depth-{__version__}-py3-none-any.whl"
+    )
     core = next(e for e in plugins.catalog() if e["name"] == "giq")
     assert core["installed"] and core["install"] is None
 

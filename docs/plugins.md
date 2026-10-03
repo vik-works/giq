@@ -45,10 +45,11 @@ Each brings its own built-in recipes, so a recipe appears in the Add page
 once its plugin is installed (see [Getting a recipe's
 weights](configuration.md#getting-a-recipes-weights)).
 
-**Outside the curated set.** `giq-multiview` (multi-view geometry with Depth
-Anything 3: N images of one scene in, per-view depth and camera poses out)
-lives in its own repository. It was written against this contract alone,
-and is the example to start from.
+**Outside the curated set.** Anything else is a plugin of its own: a
+package written against this contract, in its own repository. Multi-view
+geometry (Depth Anything 3), which left giq in 0.6.0, is the case it was
+designed for: an engine with its own interpreter, a modality, a route and a
+recipe.
 
 ## Installing
 
@@ -58,12 +59,17 @@ and is the example to start from.
   plugin wheels.
 - **Core alone:** install the `giq` wheel by itself. It serves LLMs through
   llama.cpp, has no torch, and needs about 40 MB.
-- **Core plus a few:** core's wheel and the plugin wheels you want:
+- **Core plus a few:** core's wheel and the plugin wheels you want. They
+  are attached to each GitHub release (they are not on PyPI), and a plugin
+  pins the core version it ships with:
 
   ```bash
-  uv pip install --python /opt/giq/.venv/bin/python giq_sdcpp-0.6.0-py3-none-any.whl
+  uv pip install --python /opt/giq/.venv/bin/python \
+    https://github.com/vik-works/giq/releases/download/v0.6.0/giq_sdcpp-0.6.0-py3-none-any.whl
   sudo systemctl restart giq
   ```
+
+  `giq plugins` prints this command for every curated plugin not installed.
 
 The dashboard never installs a plugin. Installing one changes giq's own
 interpreter, and a plugin pulling another torch could break the running
@@ -146,8 +152,8 @@ VRAM back. Subclass `giq.adapters._subprocess.SubprocessAdapter` and set
 is standard library only. A child can therefore run on an interpreter of its
 own, without giq installed, when its dependencies cannot share giq's (a
 numpy pin, another torch). Put `giq_child`'s directory and the child's own
-package on its `PYTHONPATH`, and have an engine `prepare` hook build that
-interpreter. `giq-multiview` does exactly this.
+package (a top-level one, so importing it imports nothing of giq) on its
+`PYTHONPATH`, and have an engine `prepare` hook build that interpreter.
 
 ### Dashboard panels
 
@@ -185,10 +191,11 @@ installed, trusted exactly as its Python is.
 
 ### Testing
 
-`giq-multiview`'s tests run without a GPU, a model or its interpreter:
-- the child is replaced by a script that answers in the protocol;
-- the route runs against a stub orchestrator;
-- one test parses the child's imports, to prove it needs nothing of giq.
+A plugin's tests need no GPU, model or engine:
+- replace the child with a script that answers in the protocol;
+- run the routes against a stub orchestrator;
+- for a child on its own interpreter, parse its imports to prove it needs
+  nothing of giq.
 
 The curated plugins' tests sit in `plugins/<name>/tests/` and run with
 core's suite (`make test`).

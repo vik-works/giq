@@ -45,21 +45,13 @@
   "menu": {
     "label": "Weitere Aktionen für {{key}}",
     "test": "In der Sandbox testen",
-    "testHelp": "Öffnet das Panel „{{panel}}“ mit diesem Rezept. Erst das Ausführen dort lädt es.",
+    "testHelp": "Öffnet das Sandbox-Panel „{{modality}}“ mit diesem Rezept. Erst das Ausführen dort lädt es.",
     "noPanel": "Für diese Modalität gibt es kein Sandbox-Panel.",
     "nothingToRun": "Nichts auf dem Datenträger, das laufen könnte.",
     "tooLarge": "Zu groß für die zugewiesene Karte.",
     "weights": "Gewichte zeigen",
     "weightsHelp": "Öffnet den Bestand bei den Gewichten dieses Rezepts: wo sie liegen, was sie sind, und sie zu löschen.",
     "noWeights": "Es lädt nichts über einen Pfad oder ein Repository."
-  },
-  "panel": {
-    "chat": "Chat",
-    "t2i": "Text zu Bild",
-    "edit": "Bildbearbeitung",
-    "asr": "Sprache zu Text",
-    "tts": "Text zu Sprache",
-    "voice": "Stimmabdruck"
   },
   "residency": {
     "label": "Vorhaltung von {{key}}",

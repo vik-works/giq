@@ -7,12 +7,7 @@
   "tab": {
     "chat": "Chat",
     "tools": "Tool-Aufrufe",
-    "t2i": "Text → Bild",
-    "edit": "Bild + Prompt",
-    "vision": "Bild + Frage",
-    "asr": "Sprache → Text",
-    "tts": "Text → Sprache",
-    "voice": "Stimmabdruck-Vergleich"
+    "vision": "Bild + Frage"
   },
   "field": {
     "prompt": "Prompt",
@@ -20,19 +15,8 @@
     "temperature": "Temperatur",
     "maxTokens": "Max. Token",
     "thinking": "Thinking",
-    "seed": "Seed",
-    "seedRandom": "zufällig",
-    "negative": "Negativ-Prompt (optional)",
-    "referenceImage": "Referenzbild",
-    "instruction": "Anweisung",
     "image": "Bild",
-    "question": "Frage",
-    "audio": "Audio (wav, mp3, ogg, webm)",
-    "language": "Sprache",
-    "languageAuto": "automatisch erkennen",
-    "diarize": "Sprecher",
-    "text": "Text",
-    "voice": "Stimme"
+    "question": "Frage"
   },
   "toggle": {
     "on": "an",
@@ -50,22 +34,11 @@
     "stopping": "Stoppe…",
     "tools": "Ausführen",
     "running": "Läuft…",
-    "t2i": "Generieren",
-    "generatingImage": "Generiere… (kann vorgehaltene Instanzen verdrängen)",
-    "edit": "Bearbeiten",
-    "editing": "Bearbeite…",
-    "vision": "Fragen",
-    "asr": "Transkribieren",
-    "transcribing": "Transkribiere…",
-    "tts": "Sprechen",
-    "synthesizing": "Synthetisiere…",
-    "voice": "Sprecher vergleichen",
-    "embedding": "Berechne Stimmabdrücke…"
+    "vision": "Fragen"
   },
   "out": {
     "kicker": "Ergebnis",
-    "latency": "Latenz {{value}}",
-    "seed": "Seed {{seed}}"
+    "latency": "Latenz {{value}}"
   },
   "stream": {
     "secs": "{{value}} s",
@@ -108,17 +81,6 @@
     "noAnswer_one": "Keine endgültige Antwort: Das Modell rief nach {{count}} Runde noch Tools auf.",
     "noAnswer_other": "Keine endgültige Antwort: Das Modell rief nach {{count}} Runden noch Tools auf."
   },
-  "t2i": {
-    "defaultPrompt": "Eine gemütliche Kleinstadt am Fluss in der Abenddämmerung, warm leuchtende Fenster, im Stil einer Graphic Novel",
-    "none": "Kein Text-zu-Bild-Modell passt auf diese Karten.",
-    "evicts": "Generieren verdrängt die vorgehaltenen Instanzen — das erste Bild dauert Minuten, danach laden sie neu."
-  },
-  "edit": {
-    "defaultPrompt": "Verwandle dieses Foto in eine Aquarell-Illustration",
-    "needImage": "Zuerst ein Referenzbild wählen.",
-    "none": "Kein Bildbearbeitungsmodell passt auf diese Karten — Bereich deaktiviert.",
-    "evicts": "Bearbeiten kann vorgehaltene Instanzen verdrängen — das kann ein paar Minuten dauern."
-  },
   "vision": {
     "defaultPrompt": "Was ist auf diesem Bild zu sehen?",
     "needImage": "Zuerst ein Bild wählen.",
@@ -126,45 +88,8 @@
     "noWeights": "{{model}} ist registriert, aber seine Gewichte liegen nicht auf dem Datenträger — vor dem Fragen das GGUF (und sein mmproj) herunterladen.",
     "loadsFirst": "Die Frage lädt zuerst das Modell — die erste Antwort dauert eine Weile."
   },
-  "asr": {
-    "record": "Aufnehmen",
-    "stopRecording": "Aufnahme beenden",
-    "captured": "{{size}} aufgenommen",
-    "recordHint": "Über das Mikrofon aufnehmen oder eine Datei hochladen. Eine gewählte Datei hat Vorrang vor einer Aufnahme.",
-    "secureHint": "Mikrofonaufnahme braucht einen sicheren Kontext (localhost oder https) — Hochladen funktioniert immer.",
-    "needAudio": "Zuerst eine Audiodatei wählen (oder aufnehmen).",
-    "micFailed": "Mikrofon nicht verfügbar: {{error}}",
-    "noSpeech": "(keine Sprache erkannt)",
-    "time": "Zeit",
-    "speaker": "Sprecher",
-    "text": "Text",
-    "span": "{{start}}–{{end}} s",
-    "audio": "{{value}} s Audio",
-    "lang": "Sprache {{lang}}",
-    "speakers_one": "{{count}} Sprecher",
-    "speakers_other": "{{count}} Sprecher"
-  },
-  "tts": {
-    "defaultText": "Die GPU gehört allen — dreißig Sekunden am Stück.",
-    "defaultVoice": "{{voice}} (Standard)",
-    "hint": "{{model}} ({{size}}) lädt bei Bedarf, ohne vorgehaltene Instanzen zu verdrängen."
-  },
-  "voice": {
-    "clipA": "Stimmprobe A",
-    "clipB": "Stimmprobe B",
-    "needClip": "Eine Probe wählen.",
-    "hint": "ecapa-tdnn-Stimmabdrücke, Kosinus-Ähnlichkeit — derselbe Sprecher erreicht typischerweise ≥ 0,5, verschiedene Sprecher < 0,25.",
-    "cosine": "Kosinus {{value}}",
-    "gauge": "Kosinus-Ähnlichkeit",
-    "tag": {
-      "same": "derselbe Sprecher",
-      "inconclusive": "nicht eindeutig",
-      "different": "verschiedene Sprecher"
-    },
-    "verdict": {
-      "same": "Sehr wahrscheinlich derselbe Sprecher.",
-      "inconclusive": "Nicht eindeutig — grenzwertige Ähnlichkeit.",
-      "different": "Sehr wahrscheinlich verschiedene Sprecher."
-    }
+  "plugin": {
+    "loading": "Panel wird geladen…",
+    "failed": "Das Panel von {{plugin}} wurde nicht geladen: {{error}}"
   }
 }

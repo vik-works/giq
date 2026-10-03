@@ -24,16 +24,3 @@
 
 .sbx-status { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
 .sbx-out { min-width: 0; }
-
-.sbx-audio-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
-.sbx-audio-row > .filebox { flex: 1 1 240px; }
-.sbx-mic { display: inline-flex; align-items: center; gap: var(--space-3); }
-.sbx-mic .hint { margin: 0; }
-.sbx-rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--critical); animation: giq-pulse 1.2s ease-in-out infinite; }
-
-.sbx-gen { max-width: 100%; height: auto; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
-.sbx-audio { width: 100%; }
-
-.sbx-cos { display: flex; flex-direction: column; gap: var(--space-3); }
-.sbx-cos-head { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-.sbx-cos-value { font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }

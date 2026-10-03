@@ -1,0 +1,36 @@
+{
+  "edit": {
+    "defaultPrompt": "Verwandle dieses Foto in eine Aquarell-Illustration",
+    "evicts": "Bearbeiten kann vorgehaltene Instanzen verdrängen — das kann ein paar Minuten dauern.",
+    "needImage": "Zuerst ein Referenzbild wählen.",
+    "none": "Kein Bildbearbeitungsmodell passt auf diese Karten — Bereich deaktiviert."
+  },
+  "field": {
+    "instruction": "Anweisung",
+    "model": "Modell",
+    "negative": "Negativ-Prompt (optional)",
+    "prompt": "Prompt",
+    "referenceImage": "Referenzbild",
+    "seed": "Seed",
+    "seedRandom": "zufällig"
+  },
+  "out": {
+    "latency": "Latenz {{value}}",
+    "seed": "Seed {{seed}}"
+  },
+  "run": {
+    "edit": "Bearbeiten",
+    "editing": "Bearbeite…",
+    "generatingImage": "Generiere… (kann vorgehaltene Instanzen verdrängen)",
+    "t2i": "Generieren"
+  },
+  "t2i": {
+    "defaultPrompt": "Eine gemütliche Kleinstadt am Fluss in der Abenddämmerung, warm leuchtende Fenster, im Stil einer Graphic Novel",
+    "evicts": "Generieren verdrängt die vorgehaltenen Instanzen — das erste Bild dauert Minuten, danach laden sie neu.",
+    "none": "Kein Text-zu-Bild-Modell passt auf diese Karten."
+  },
+  "tab": {
+    "t2i": "Text → Bild",
+    "edit": "Bild + Prompt"
+  }
+}

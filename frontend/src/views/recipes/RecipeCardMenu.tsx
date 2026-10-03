@@ -8,7 +8,9 @@ import type { RecipeEntry } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { Menu } from "../../components/Menu";
 import { MenuItem } from "../../components/MenuItem";
-import { SANDBOX_TAB_FOR_WORKER, sandboxHref } from "../../lib/sandboxLink";
+import { useModalityLabel } from "../../lib/modalities";
+import { sandboxHref, tabForModality } from "../../lib/sandboxLink";
+import { usePluginPanels } from "../../plugins/panels";
 import { primaryModality } from "../../lib/recipes";
 import { sandboxBlock } from "./catalog";
 
@@ -24,8 +26,10 @@ export interface RecipeCardMenuProps {
 export function RecipeCardMenu({ r }: RecipeCardMenuProps) {
   const { t } = useTranslation("recipes");
   const key = r.name;
-  const served = r.modalities.find((m) => SANDBOX_TAB_FOR_WORKER[m]) ?? primaryModality(r);
-  const tab = SANDBOX_TAB_FOR_WORKER[served];
+  const modalityLabel = useModalityLabel();
+  usePluginPanels(); // plugins declare panels; re-render when they arrive
+  const served = r.modalities.find((m) => tabForModality(m)) ?? primaryModality(r);
+  const tab = tabForModality(served);
   const noTest = sandboxBlock(r);
   return (
     <Menu
@@ -37,7 +41,7 @@ export function RecipeCardMenu({ r }: RecipeCardMenuProps) {
       <MenuItem
         icon={<Icon as={FlaskIcon} size={14} />}
         disabled={noTest != null}
-        description={noTest ? t(noTest) : t("menu.testHelp", { panel: t(`panel.${tab}`) })}
+        description={noTest ? t(noTest) : t("menu.testHelp", { modality: modalityLabel(served) })}
         // Navigates only; the sandbox preselects the model and waits for Run.
         onSelect={() => {
           if (tab) window.location.hash = sandboxHref(tab, r.name);

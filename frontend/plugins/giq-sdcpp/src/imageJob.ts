@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { postJSON } from "../../../api/client";
-import type { JobRequest, JobStatusResponse } from "../../../api/types";
+import { api } from "@giq/plugin-ui";
+import type { JobRequest, JobStatusResponse } from "../../../src/api/types";
 
 export interface ImageResult {
   b64: string;
@@ -15,7 +15,7 @@ export interface ImageResult {
    job still waits in the queue cancels it. A task that failed reports its
    error in its result, not as an HTTP error. */
 export async function runImageJob(req: JobRequest, signal: AbortSignal): Promise<ImageResult> {
-  const d = await postJSON<JobStatusResponse>("/run?wait=true", req, { signal });
+  const d = await api.postJSON<JobStatusResponse>("/run?wait=true", req, { signal });
   const res = d.results?.[0] as { image_b64?: string; seed?: number; error?: string } | undefined;
   if (res?.error) throw new Error(res.error);
   if (!res?.image_b64) throw new Error(`job ${d.job_id} ${d.status} without an image`);

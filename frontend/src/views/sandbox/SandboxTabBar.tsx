@@ -5,25 +5,31 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { WorkerIcon } from "../../components/WorkerIcon";
-import { TAB_ICON, TABS, type Tab } from "./tabs";
+import { namespaceOf } from "../../plugins/loader";
+import type { TabInfo } from "./tabs";
 import "./SandboxTabBar.css";
 
 export interface SandboxTabBarProps {
-  active: Tab;
-  disabled: Set<Tab>;
-  onSelect: (tab: Tab) => void;
+  tabs: TabInfo[];
+  active: string;
+  disabled: Set<string>;
+  onSelect: (tab: string) => void;
 }
 
-export const tabId = (tab: Tab) => `sbx-tab-${tab}`;
-export const panelId = (tab: Tab) => `sbx-panel-${tab}`;
+export const tabId = (tab: string) => `sbx-tab-${tab}`;
+export const panelId = (tab: string) => `sbx-panel-${tab}`;
 
 /* ARIA tabs: one tab stop, arrow keys move between the enabled tabs (and
    select them, since each is a cheap view switch), Home/End jump. A tab
    with nothing to run is disabled with a title saying why. */
-export function SandboxTabBar({ active, disabled, onSelect }: SandboxTabBarProps) {
+export function SandboxTabBar({ tabs, active, disabled, onSelect }: SandboxTabBarProps) {
   const { t } = useTranslation("sandbox");
-  const refs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
-  const enabled = TABS.filter((x) => !disabled.has(x));
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const enabled = tabs.map((x) => x.id).filter((x) => !disabled.has(x));
+  /* A plugin's tab is labelled in its own strings (plugin-<name>), loaded
+     when the sandbox opens; until they arrive, the id stands in. */
+  const label = (tab: TabInfo) =>
+    tab.plugin ? t(tab.plugin.label, { ns: namespaceOf(tab.plugin.plugin), defaultValue: tab.id }) : t(`tab.${tab.id}`);
 
   // On a phone the strip scrolls sideways; keep the open tab in view (deep links land off-screen otherwise).
   useEffect(() => {
@@ -46,28 +52,28 @@ export function SandboxTabBar({ active, disabled, onSelect }: SandboxTabBarProps
 
   return (
     <div className="sbx-tabs" role="tablist" aria-label={t("tabsLabel")} onKeyDown={onKey}>
-      {TABS.map((tab) => {
-        const off = disabled.has(tab);
-        const on = tab === active;
+      {tabs.map((tab) => {
+        const off = disabled.has(tab.id);
+        const on = tab.id === active;
         return (
           <button
-            key={tab}
+            key={tab.id}
             ref={(el) => {
-              refs.current[tab] = el;
+              refs.current[tab.id] = el;
             }}
             type="button"
             role="tab"
-            id={tabId(tab)}
+            id={tabId(tab.id)}
             aria-selected={on}
-            aria-controls={panelId(tab)}
+            aria-controls={panelId(tab.id)}
             tabIndex={on ? 0 : -1}
             disabled={off}
             title={off ? t("tabDisabled") : undefined}
             className={`sbx-tab${on ? " sbx-tab-active" : ""}`}
-            onClick={() => onSelect(tab)}
+            onClick={() => onSelect(tab.id)}
           >
-            <WorkerIcon worker={TAB_ICON[tab]} size={14} colored={on} />
-            {t(`tab.${tab}`)}
+            <WorkerIcon worker={tab.icon} size={14} colored={on} />
+            {label(tab)}
           </button>
         );
       })}

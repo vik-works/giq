@@ -4,7 +4,7 @@
 
 import type { Fit, Modality, Policy, RecipeEntry, RecipesResponse } from "../../api/types";
 import { TOOLS_MODEL } from "./constants";
-import type { Tab } from "./tabs";
+import { isCoreTab, type TabInfo } from "./tabs";
 
 /* What each panel can offer, derived from the shared recipe list on every
    refresh (the old page read it once at load, so a recipe loaded or pinned
@@ -25,20 +25,21 @@ export interface SandboxModels {
   /** The recipes have answered; before that, nothing is "missing". */
   ready: boolean;
   chat: ModelOption[];
-  t2i: ModelOption[];
-  edit: ModelOption[];
   vision: ModelOption[];
   /** The chat panel's starting choice. */
   chatDefault: string | null;
   /** The tool-calling recipe exists and can load. */
   toolsAvailable: boolean;
+  /** Every recipe that can load for a modality: what a plugin's panel offers. */
+  forModality: (modality: string) => ModelOption[];
 }
 
 const usable = (r: RecipeEntry) => r.fit !== "never";
 
 /* A recipe can serve several modalities (ADR-003): flux_klein renders and
    edits from one process, so it belongs in both image tabs. */
-export const serves = (r: RecipeEntry, modality: Modality): boolean => r.modalities.includes(modality);
+export const serves = (r: RecipeEntry, modality: Modality | string): boolean =>
+  (r.modalities as string[]).includes(modality);
 
 function option(r: RecipeEntry): ModelOption {
   return {
@@ -53,10 +54,9 @@ function option(r: RecipeEntry): ModelOption {
 
 export function sandboxModels(recipes: RecipesResponse | undefined): SandboxModels {
   if (!recipes) {
-    return { ready: false, chat: [], t2i: [], edit: [], vision: [], chatDefault: null, toolsAvailable: true };
+    return { ready: false, chat: [], vision: [], chatDefault: null, toolsAvailable: true, forModality: () => [] };
   }
   const usableRecipes = recipes.recipes.filter(usable);
-  const of = (pred: (r: RecipeEntry) => boolean) => usableRecipes.filter(pred).map(option);
   /* Every LLM that can load is selectable (the panel was once pinned to one
      model, so "test" on any other LLM card had nowhere to land). */
   const llms = usableRecipes.filter((r) => serves(r, "llm"));
@@ -68,25 +68,37 @@ export function sandboxModels(recipes: RecipesResponse | undefined): SandboxMode
     llms.find((r) => r.residency.policy === "pinned") ??
     llms.find((r) => r.residency.default_resident) ??
     llms[0];
+  /* A plugin's panel: what is on disk first, then the rest (it says "not on
+     disk" for those), each group by name. */
+  const forModality = (modality: string) =>
+    usableRecipes
+      .filter((r) => serves(r, modality))
+      .sort((a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name))
+      .map(option);
   return {
     ready: true,
     chat: llms.map(option),
-    t2i: of((r) => serves(r, "text2image")),
-    edit: of((r) => serves(r, "image_edit")),
-    vision: of((r) => r.vision),
+    vision: usableRecipes.filter((r) => r.vision).map(option),
     chatDefault: preferred?.name ?? null,
     toolsAvailable: llms.some((r) => r.name === TOOLS_MODEL && r.residency.policy !== "off"),
+    forModality,
   };
 }
 
+/** The options a tab offers in its model select. */
+export function tabOptions(m: SandboxModels, tab: TabInfo): ModelOption[] {
+  if (tab.id === "chat") return m.chat;
+  if (tab.id === "vision") return m.vision;
+  if (isCoreTab(tab.id)) return [];
+  return m.forModality(tab.modality);
+}
+
 /** Tabs with nothing to run: greyed out in the tab bar once the catalog is known. */
-export function disabledTabs(m: SandboxModels): Set<Tab> {
-  const off = new Set<Tab>();
+export function disabledTabs(m: SandboxModels, tabs: TabInfo[]): Set<string> {
+  const off = new Set<string>();
   if (!m.ready) return off;
-  if (!m.chat.length) off.add("chat");
-  if (!m.toolsAvailable) off.add("tools");
-  if (!m.t2i.length) off.add("t2i");
-  if (!m.edit.length) off.add("edit");
-  if (!m.vision.length) off.add("vision");
+  for (const tab of tabs) {
+    if (tab.id === "tools" ? !m.toolsAvailable : !tabOptions(m, tab).length) off.add(tab.id);
+  }
   return off;
 }

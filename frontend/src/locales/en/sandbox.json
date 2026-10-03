@@ -7,12 +7,7 @@
   "tab": {
     "chat": "Chat",
     "tools": "Tool calling",
-    "t2i": "Text → image",
-    "edit": "Image + prompt",
-    "vision": "Image + question",
-    "asr": "Speech → text",
-    "tts": "Text → speech",
-    "voice": "Voiceprint compare"
+    "vision": "Image + question"
   },
   "field": {
     "prompt": "Prompt",
@@ -20,19 +15,8 @@
     "temperature": "Temperature",
     "maxTokens": "Max tokens",
     "thinking": "Thinking",
-    "seed": "Seed",
-    "seedRandom": "random",
-    "negative": "Negative prompt (optional)",
-    "referenceImage": "Reference image",
-    "instruction": "Instruction",
     "image": "Image",
-    "question": "Question",
-    "audio": "Audio (wav, mp3, ogg, webm)",
-    "language": "Language",
-    "languageAuto": "auto-detect",
-    "diarize": "Speakers",
-    "text": "Text",
-    "voice": "Voice"
+    "question": "Question"
   },
   "toggle": {
     "on": "on",
@@ -50,22 +34,11 @@
     "stopping": "Stopping…",
     "tools": "Run",
     "running": "Running…",
-    "t2i": "Generate",
-    "generatingImage": "Generating… (may evict resident instances)",
-    "edit": "Edit",
-    "editing": "Editing…",
-    "vision": "Ask",
-    "asr": "Transcribe",
-    "transcribing": "Transcribing…",
-    "tts": "Speak",
-    "synthesizing": "Synthesizing…",
-    "voice": "Compare speakers",
-    "embedding": "Embedding…"
+    "vision": "Ask"
   },
   "out": {
     "kicker": "Result",
-    "latency": "latency {{value}}",
-    "seed": "seed {{seed}}"
+    "latency": "latency {{value}}"
   },
   "stream": {
     "secs": "{{value}} s",
@@ -108,17 +81,6 @@
     "noAnswer_one": "No final answer: the model was still calling tools after {{count}} round.",
     "noAnswer_other": "No final answer: the model was still calling tools after {{count}} rounds."
   },
-  "t2i": {
-    "defaultPrompt": "A cozy riverside town at dusk, warm windows glowing, graphic novel style",
-    "none": "No text-to-image model fits on these cards.",
-    "evicts": "Generating evicts the resident instances — the first image takes minutes, then they reload."
-  },
-  "edit": {
-    "defaultPrompt": "Transform this photo into a watercolor illustration",
-    "needImage": "Pick a reference image first.",
-    "none": "No image-edit model fits on these cards — panel disabled.",
-    "evicts": "Editing may evict resident instances — it can take a couple of minutes."
-  },
   "vision": {
     "defaultPrompt": "What is in this image?",
     "needImage": "Pick an image first.",
@@ -126,45 +88,8 @@
     "noWeights": "{{model}} is registered but its weights are not on disk — fetch the GGUF (and its mmproj) before asking.",
     "loadsFirst": "Asking loads the model first — the first answer takes a while."
   },
-  "asr": {
-    "record": "Record",
-    "stopRecording": "Stop recording",
-    "captured": "captured {{size}}",
-    "recordHint": "Record from the microphone or upload a file. A picked file wins over a recording.",
-    "secureHint": "Microphone capture needs a secure context (localhost or https) — file upload always works.",
-    "needAudio": "Pick an audio file (or record) first.",
-    "micFailed": "Microphone unavailable: {{error}}",
-    "noSpeech": "(no speech detected)",
-    "time": "Time",
-    "speaker": "Speaker",
-    "text": "Text",
-    "span": "{{start}}–{{end}} s",
-    "audio": "{{value}} s audio",
-    "lang": "language {{lang}}",
-    "speakers_one": "{{count}} speaker",
-    "speakers_other": "{{count}} speakers"
-  },
-  "tts": {
-    "defaultText": "The GPU belongs to everyone — thirty seconds at a time.",
-    "defaultVoice": "{{voice}} (default)",
-    "hint": "{{model}} ({{size}}) loads on demand without evicting resident instances."
-  },
-  "voice": {
-    "clipA": "Voice clip A",
-    "clipB": "Voice clip B",
-    "needClip": "Pick a clip.",
-    "hint": "ecapa-tdnn voiceprints, cosine similarity — the same speaker typically scores ≥ 0.5, different speakers < 0.25.",
-    "cosine": "cosine {{value}}",
-    "gauge": "Cosine similarity",
-    "tag": {
-      "same": "same speaker",
-      "inconclusive": "inconclusive",
-      "different": "different speakers"
-    },
-    "verdict": {
-      "same": "Very likely the same speaker.",
-      "inconclusive": "Inconclusive — borderline similarity.",
-      "different": "Very likely different speakers."
-    }
+  "plugin": {
+    "loading": "Loading the panel…",
+    "failed": "The {{plugin}} panel did not load: {{error}}"
   }
 }

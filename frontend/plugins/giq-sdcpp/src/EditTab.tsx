@@ -4,26 +4,16 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useFormat } from "../../../lib/useFormat";
-import type { ModelOption } from "../models";
-import { Field } from "../../../components/Field";
-import { fileB64 } from "../shared/fileB64";
-import { FilePicker } from "../../../components/FilePicker";
-import { GeneratedImage } from "../shared/GeneratedImage";
-import { runImageJob, type ImageResult } from "../shared/imageJob";
-import { ModelSelect } from "../shared/ModelSelect";
-import { OutputCard } from "../shared/OutputCard";
-import { RunButton } from "../shared/RunButton";
-import { useRunner } from "../../../lib/useRunner";
+import { components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import { GeneratedImage } from "./GeneratedImage";
+import { runImageJob, type ImageResult } from "./imageJob";
+import { NS } from "./ns";
 
-export interface EditTabProps {
-  options: ModelOption[];
-  model: string;
-  onModel: (m: string) => void;
-}
+const { Field, FilePicker } = components;
+const { ModelSelect, OutputCard, RunButton, fileB64 } = sandbox;
 
-export function EditTab({ options, model, onModel }: EditTabProps) {
-  const { t } = useTranslation("sandbox");
+export function EditTab({ options, model, onModel }: PanelProps) {
+  const { t } = useTranslation(NS);
   const f = useFormat();
   const [file, setFile] = useState<File | null>(null);
   const [missing, setMissing] = useState(false);

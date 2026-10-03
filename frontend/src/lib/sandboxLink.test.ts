@@ -28,7 +28,28 @@ describe("parseSandboxHash", () => {
       tab: "chat",
       model: "qwen3.6-27b",
     });
-    expect(parseSandboxHash("#/sandbox/nope?model=")).toEqual({ tab: null, model: null });
+    // Plugins add panels, so the parser does not judge the id.
+    expect(parseSandboxHash("#/sandbox/nope?model=")).toEqual({ tab: "nope", model: null });
     expect(parseSandboxHash("#/sandbox/%E0%A4%A?model=a%20b")).toEqual({ tab: null, model: "a b" });
+  });
+});
+
+describe("tabForModality", () => {
+  it("sends LLMs to chat and other modalities to the plugin panel declared for them", async () => {
+    const { setPluginUis } = await import("../plugins/panels");
+    const { tabForModality } = await import("./sandboxLink");
+    setPluginUis([
+      {
+        plugin: "giq-sdcpp",
+        base: "/plugins/giq-sdcpp/ui/",
+        api_version: 1,
+        module: "index.js",
+        panels: [{ id: "t2i", modality: "text2image", label: "tab.t2i" }],
+      },
+    ]);
+    expect(tabForModality("llm")).toBe("chat");
+    expect(tabForModality("text2image")).toBe("t2i");
+    expect(tabForModality("ocr")).toBeNull();
+    setPluginUis([]);
   });
 });

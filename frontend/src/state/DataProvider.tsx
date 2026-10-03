@@ -4,6 +4,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { setModalities } from "../lib/modalities";
+import { setPluginUis } from "../plugins/panels";
 import {
   CapabilitiesProvider,
   DownloadsProvider,
@@ -47,7 +48,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 }
 
 /* Hands the server's modality list (labels, icons, registration order) to
-   the module-level registry the icons, labels and series colours read. */
+   the registry the icons, labels and series colours read, and the plugins'
+   UI manifests to the one the sandbox draws its tabs from. */
 function ModalitySync() {
   const caps = useCapabilities();
   useEffect(() => {
@@ -55,6 +57,7 @@ function ModalitySync() {
     setModalities(
       Object.entries(caps.data.modalities).map(([name, m]) => ({ name, label: m.label, icon: m.icon })),
     );
+    setPluginUis(caps.data.ui ?? []);
   }, [caps.data]);
   return null;
 }

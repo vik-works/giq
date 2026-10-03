@@ -1,0 +1,18 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.pl-giq-speech-segs { font-size: 13.5px; }
+.pl-giq-speech-segs td { vertical-align: top; }
+.pl-giq-speech-seg-time { white-space: nowrap; color: var(--text-muted); font-size: 12px; width: 1%; }
+.pl-giq-speech-seg-text { overflow-wrap: anywhere; }
+.pl-giq-speech-spk { font-size: 10.5px; padding: 1px 8px; white-space: nowrap; }
+@media (max-width: 520px) {
+  /* A phone keeps the transcript readable: the table stacks into lines. */
+  .pl-giq-speech-segs thead { display: none; }
+  .pl-giq-speech-segs tr { display: block; padding: var(--space-2) 0; }
+  .pl-giq-speech-segs td { display: inline; border: 0; padding: 0 var(--space-2) 0 0; }
+  .pl-giq-speech-segs .pl-giq-speech-seg-text { display: block; padding-top: var(--space-1); }
+}

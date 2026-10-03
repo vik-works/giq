@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import type { ServedUi } from "../../plugin-ui/types";
+
 /* Response shapes of every endpoint the dashboard calls, transcribed from
    giq's routers (src/giq/api/*.py) and pydantic models (src/giq/models.py).
    Nullable where the server can send null — nvidia-smi reports [N/A] for
@@ -633,6 +635,8 @@ export interface Capabilities {
   /** In the server's registration order. */
   modalities: Record<string, ModalityCapability>;
   constraints: Record<string, unknown>;
+  /** Plugins' dashboard UIs (ADR-004 D6). */
+  ui: ServedUi[];
 }
 
 // --- /v1 (OpenAI-compatible) ---------------------------------------------------------

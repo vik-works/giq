@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { VOICE_INCONCLUSIVE_MIN, VOICE_SAME_MIN } from "../constants";
+import { VOICE_INCONCLUSIVE_MIN, VOICE_SAME_MIN } from "./constants";
 
 /* Cosine similarity of two voiceprints. giq returns them L2-normalised, where
    this is the plain dot product; dividing by the norms keeps it right for an

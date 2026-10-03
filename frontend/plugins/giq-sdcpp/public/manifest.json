@@ -1,0 +1,23 @@
+{
+  "api_version": 1,
+  "module": "index.js",
+  "styles": [
+    "index.css"
+  ],
+  "locales": {
+    "en": "locales/en.json",
+    "de": "locales/de.json"
+  },
+  "panels": [
+    {
+      "id": "t2i",
+      "modality": "text2image",
+      "label": "tab.t2i"
+    },
+    {
+      "id": "edit",
+      "modality": "image_edit",
+      "label": "tab.edit"
+    }
+  ]
+}

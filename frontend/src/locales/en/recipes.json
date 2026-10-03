@@ -45,21 +45,13 @@
   "menu": {
     "label": "More actions for {{key}}",
     "test": "Test in sandbox",
-    "testHelp": "Opens the {{panel}} panel with this recipe selected. Running it there is what loads it.",
+    "testHelp": "Opens the sandbox's {{modality}} panel with this recipe selected. Running it there is what loads it.",
     "noPanel": "No sandbox panel for this modality.",
     "nothingToRun": "Nothing on disk to run.",
     "tooLarge": "Too large for the card it is bound to.",
     "weights": "Show weights",
     "weightsHelp": "Opens the inventory at this recipe's weights: where they are, what they are, and deleting them.",
     "noWeights": "It loads nothing by path or repository."
-  },
-  "panel": {
-    "chat": "chat",
-    "t2i": "text to image",
-    "edit": "image edit",
-    "asr": "speech to text",
-    "tts": "text to speech",
-    "voice": "voiceprint"
   },
   "residency": {
     "label": "Residency of {{key}}",

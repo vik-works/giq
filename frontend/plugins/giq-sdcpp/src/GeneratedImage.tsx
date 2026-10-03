@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+import "./GeneratedImage.css";
+
 export interface GeneratedImageProps {
   b64: string;
   alt: string;
@@ -9,5 +11,5 @@ export interface GeneratedImageProps {
 
 /** A PNG that came back from an image job. */
 export function GeneratedImage({ b64, alt }: GeneratedImageProps) {
-  return <img className="sbx-gen" src={`data:image/png;base64,${b64}`} alt={alt} />;
+  return <img className="pl-giq-sdcpp-gen" src={`data:image/png;base64,${b64}`} alt={alt} />;
 }

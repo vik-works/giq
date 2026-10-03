@@ -1,0 +1,71 @@
+{
+  "asr": {
+    "audio": "{{value}} s Audio",
+    "captured": "{{size}} aufgenommen",
+    "lang": "Sprache {{lang}}",
+    "micFailed": "Mikrofon nicht verfügbar: {{error}}",
+    "needAudio": "Zuerst eine Audiodatei wählen (oder aufnehmen).",
+    "noSpeech": "(keine Sprache erkannt)",
+    "record": "Aufnehmen",
+    "recordHint": "Über das Mikrofon aufnehmen oder eine Datei hochladen. Eine gewählte Datei hat Vorrang vor einer Aufnahme.",
+    "secureHint": "Mikrofonaufnahme braucht einen sicheren Kontext (localhost oder https) — Hochladen funktioniert immer.",
+    "span": "{{start}}–{{end}} s",
+    "speaker": "Sprecher",
+    "speakers_one": "{{count}} Sprecher",
+    "speakers_other": "{{count}} Sprecher",
+    "stopRecording": "Aufnahme beenden",
+    "text": "Text",
+    "time": "Zeit"
+  },
+  "field": {
+    "audio": "Audio (wav, mp3, ogg, webm)",
+    "diarize": "Sprecher",
+    "language": "Sprache",
+    "languageAuto": "automatisch erkennen",
+    "text": "Text",
+    "voice": "Stimme"
+  },
+  "out": {
+    "latency": "Latenz {{value}}"
+  },
+  "run": {
+    "asr": "Transkribieren",
+    "embedding": "Berechne Stimmabdrücke…",
+    "synthesizing": "Synthetisiere…",
+    "transcribing": "Transkribiere…",
+    "tts": "Sprechen",
+    "voice": "Sprecher vergleichen"
+  },
+  "toggle": {
+    "off": "aus",
+    "on": "an"
+  },
+  "tts": {
+    "defaultText": "Die GPU gehört allen — dreißig Sekunden am Stück.",
+    "defaultVoice": "{{voice}} (Standard)",
+    "hint": "{{model}} ({{size}}) lädt bei Bedarf, ohne vorgehaltene Instanzen zu verdrängen."
+  },
+  "voice": {
+    "clipA": "Stimmprobe A",
+    "clipB": "Stimmprobe B",
+    "cosine": "Kosinus {{value}}",
+    "gauge": "Kosinus-Ähnlichkeit",
+    "hint": "ecapa-tdnn-Stimmabdrücke, Kosinus-Ähnlichkeit — derselbe Sprecher erreicht typischerweise ≥ 0,5, verschiedene Sprecher < 0,25.",
+    "needClip": "Eine Probe wählen.",
+    "tag": {
+      "same": "derselbe Sprecher",
+      "inconclusive": "nicht eindeutig",
+      "different": "verschiedene Sprecher"
+    },
+    "verdict": {
+      "same": "Sehr wahrscheinlich derselbe Sprecher.",
+      "inconclusive": "Nicht eindeutig — grenzwertige Ähnlichkeit.",
+      "different": "Sehr wahrscheinlich verschiedene Sprecher."
+    }
+  },
+  "tab": {
+    "asr": "Sprache → Text",
+    "tts": "Text → Sprache",
+    "voice": "Stimmabdruck-Vergleich"
+  }
+}

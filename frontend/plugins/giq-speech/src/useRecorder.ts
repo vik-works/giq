@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { errorText } from "../../../api/client";
+import { api } from "@giq/plugin-ui";
 
 /* Microphone capture needs a secure context (localhost or https): browsers
    hide getUserMedia elsewhere, so on a LAN address over plain http the
@@ -64,7 +64,7 @@ export function useRecorder(): Recorder {
       setRecording(true);
     } catch (e) {
       // Permission denied or no input device: say so instead of failing silently.
-      setError(errorText(e));
+      setError(api.errorText(e));
       release();
     }
   }, []);

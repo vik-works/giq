@@ -4,25 +4,24 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { postForm } from "../../../api/client";
-import type { AudioEmbedding } from "../../../api/types";
-import { useFormat } from "../../../lib/useFormat";
-import { Field } from "../../../components/Field";
-import { FilePicker } from "../../../components/FilePicker";
-import { OutputCard } from "../shared/OutputCard";
-import { RunButton } from "../shared/RunButton";
-import { useRunner } from "../../../lib/useRunner";
+import { api, components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import type { AudioEmbedding } from "../../../src/api/types";
 import { cosine } from "./cosine";
 import { CosineResult } from "./CosineResult";
+import { NS } from "./ns";
 
-async function embed(file: File, signal: AbortSignal): Promise<number[]> {
+const { Field, FilePicker } = components;
+const { OutputCard, RunButton } = sandbox;
+
+async function embed(file: File, model: string, signal: AbortSignal): Promise<number[]> {
   const fd = new FormData();
   fd.append("file", file, file.name);
-  return (await postForm<AudioEmbedding>("/v1/audio/embeddings", fd, { signal })).embedding;
+  if (model) fd.append("model", model);
+  return (await api.postForm<AudioEmbedding>("/v1/audio/embeddings", fd, { signal })).embedding;
 }
 
-export function VoiceTab() {
-  const { t } = useTranslation("sandbox");
+export function VoiceTab({ model }: PanelProps) {
+  const { t } = useTranslation(NS);
   const f = useFormat();
   const [a, setA] = useState<File | null>(null);
   const [b, setB] = useState<File | null>(null);
@@ -32,7 +31,7 @@ export function VoiceTab() {
   const go = () => {
     if (!a || !b) return setMissing(true);
     void runner.run(async (signal) => {
-      const [ea, eb] = await Promise.all([embed(a, signal), embed(b, signal)]);
+      const [ea, eb] = await Promise.all([embed(a, model, signal), embed(b, model, signal)]);
       return cosine(ea, eb);
     });
   };

@@ -1,0 +1,71 @@
+{
+  "asr": {
+    "audio": "{{value}} s audio",
+    "captured": "captured {{size}}",
+    "lang": "language {{lang}}",
+    "micFailed": "Microphone unavailable: {{error}}",
+    "needAudio": "Pick an audio file (or record) first.",
+    "noSpeech": "(no speech detected)",
+    "record": "Record",
+    "recordHint": "Record from the microphone or upload a file. A picked file wins over a recording.",
+    "secureHint": "Microphone capture needs a secure context (localhost or https) — file upload always works.",
+    "span": "{{start}}–{{end}} s",
+    "speaker": "Speaker",
+    "speakers_one": "{{count}} speaker",
+    "speakers_other": "{{count}} speakers",
+    "stopRecording": "Stop recording",
+    "text": "Text",
+    "time": "Time"
+  },
+  "field": {
+    "audio": "Audio (wav, mp3, ogg, webm)",
+    "diarize": "Speakers",
+    "language": "Language",
+    "languageAuto": "auto-detect",
+    "text": "Text",
+    "voice": "Voice"
+  },
+  "out": {
+    "latency": "latency {{value}}"
+  },
+  "run": {
+    "asr": "Transcribe",
+    "embedding": "Embedding…",
+    "synthesizing": "Synthesizing…",
+    "transcribing": "Transcribing…",
+    "tts": "Speak",
+    "voice": "Compare speakers"
+  },
+  "toggle": {
+    "off": "off",
+    "on": "on"
+  },
+  "tts": {
+    "defaultText": "The GPU belongs to everyone — thirty seconds at a time.",
+    "defaultVoice": "{{voice}} (default)",
+    "hint": "{{model}} ({{size}}) loads on demand without evicting resident instances."
+  },
+  "voice": {
+    "clipA": "Voice clip A",
+    "clipB": "Voice clip B",
+    "cosine": "cosine {{value}}",
+    "gauge": "Cosine similarity",
+    "hint": "ecapa-tdnn voiceprints, cosine similarity — the same speaker typically scores ≥ 0.5, different speakers < 0.25.",
+    "needClip": "Pick a clip.",
+    "tag": {
+      "same": "same speaker",
+      "inconclusive": "inconclusive",
+      "different": "different speakers"
+    },
+    "verdict": {
+      "same": "Very likely the same speaker.",
+      "inconclusive": "Inconclusive — borderline similarity.",
+      "different": "Very likely different speakers."
+    }
+  },
+  "tab": {
+    "asr": "Speech → text",
+    "tts": "Text → speech",
+    "voice": "Voiceprint compare"
+  }
+}

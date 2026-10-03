@@ -31,7 +31,7 @@ including tool-calling chat, goes through it. Keep it that way.
 - `src/giq/adapters/` — the engine adapters, one module per engine or modality (`llama_cpp.py`, `vllm.py`, `sdcpp.py`, `stt.py` …); `_*_child.py` run in subprocesses
 - `src/giq/paths.py` — every filesystem location, resolved from env > `config.yaml` `paths:` > `GIQ_HOME` > defaults
 - `deploy/` — the systemd unit and Debian install script (see `docs/deployment.md`)
-- `frontend/` — the dashboard: React + TypeScript + Vite, built into `src/giq/static/ui/` (gitignored, shipped in the wheel) and served at `/dash`. `src/components/` shared UI and charts, `src/state/` the app-wide pollers, `src/api/` the typed client, `src/views/<view>/` one folder per page, `src/locales/<lang>/<ns>.json` strings
+- `frontend/` — the dashboard: React + TypeScript + Vite, built into `src/giq/static/ui/` (gitignored, shipped in the wheel) and served at `/dash`. `src/components/` shared UI and charts, `src/state/` the app-wide pollers, `src/api/` the typed client, `src/views/<view>/` one folder per page, `src/locales/<lang>/<ns>.json` strings; `src/plugins/` the host plugins' UI runs against (ADR-004 D6), `plugin-ui/` `@giq/plugin-ui` (the types, the shims onto the host, the Vite preset), and `plugins/<name>/` the curated plugins' sandbox panels, built into `src/giq/static/ui/plugins/<name>/`
 - `envs/vllm/` — the vllm engine's own uv project: vllm pins its torch, transformers and fastapi, so it runs as a separate server process on its own interpreter, like llama-server
 - `tests/` — pytest; `docs/` — user docs (API, configuration, access and privacy, engines, development), ADRs, and `docs/images/` (README screenshots)
 
@@ -86,7 +86,9 @@ cd frontend && npx tsc --noEmit && npm test
 - **Frontend CSS is global, so class names are namespaced.** A class a view
   defines carries its view's prefix — `ov-` (overview), `rc-` (recipes),
   `inv-` (inventory), `us-` (usage), `sbx-` (sandbox) — and a new view picks
-  its own. Unprefixed
+  its own; a plugin's UI uses `pl-<plugin>-`, its strings the namespace
+  `plugin-<plugin>`, and the sandbox's layout classes (`sbx-panel`,
+  `sbx-form`, `sbx-row`, `sbx-grow`, `sbx-narrow`, `sbx-actions`). Unprefixed
   classes belong to `src/components/` (named after the component:
   `.model-label`, `.filebox`) and to `src/styles/` (Nocturne's vocabulary plus
   base.css utilities: `.hint`, `.warn`, `.field-error`, `.error-box`,

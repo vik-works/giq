@@ -4,21 +4,19 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { postForm } from "../../../api/client";
-import type { Transcription } from "../../../api/types";
-import { SegmentedControl } from "../../../components/SegmentedControl";
-import { useFormat } from "../../../lib/useFormat";
-import { Field } from "../../../components/Field";
-import { FilePicker } from "../../../components/FilePicker";
-import { OutputCard } from "../shared/OutputCard";
-import { RunButton } from "../shared/RunButton";
-import { useRunner } from "../../../lib/useRunner";
+import { api, components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import type { Transcription } from "../../../src/api/types";
 import { MicButton } from "./MicButton";
+import { NS } from "./ns";
 import { Segments } from "./Segments";
 import { useRecorder } from "./useRecorder";
+import "./AsrTab.css";
 
-export function AsrTab() {
-  const { t } = useTranslation("sandbox");
+const { Field, FilePicker, SegmentedControl } = components;
+const { OutputCard, RunButton } = sandbox;
+
+export function AsrTab({ model }: PanelProps) {
+  const { t } = useTranslation(NS);
   const f = useFormat();
   const rec = useRecorder();
   const [file, setFile] = useState<File | null>(null);
@@ -35,8 +33,9 @@ export function AsrTab() {
     fd.append("file", audio, file?.name ?? "mic.webm");
     fd.append("response_format", "verbose_json");
     if (lang.trim()) fd.append("language", lang.trim());
+    if (model) fd.append("model", model);
     void runner.run((signal) =>
-      postForm<Transcription>(`/v1/audio/transcriptions?diarize=${diarize}`, fd, { signal }),
+      api.postForm<Transcription>(`/v1/audio/transcriptions?diarize=${diarize}`, fd, { signal }),
     );
   };
 
@@ -64,7 +63,7 @@ export function AsrTab() {
           hint={rec.available ? t("asr.recordHint") : t("asr.secureHint")}
         >
           {(id) => (
-            <div className="sbx-audio-row">
+            <div className="pl-giq-speech-audio-row">
               <FilePicker
                 id={id}
                 accept="audio/*"

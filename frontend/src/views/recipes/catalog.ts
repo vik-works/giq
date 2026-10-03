@@ -4,7 +4,7 @@
 
 import type { EnginesResponse, Fit, Modality, RecipeEntry, WeightsItem } from "../../api/types";
 import type { TagTone } from "../../components/Tag";
-import { SANDBOX_TAB_FOR_WORKER } from "../../lib/sandboxLink";
+import { tabForModality } from "../../lib/sandboxLink";
 
 /* The Recipes view's pure logic: the facets, what a card offers, and what a
    recipe's weights come to. Kept out of the components so it is testable
@@ -60,7 +60,7 @@ export const FIT_TONE: Record<Fit, TagTone> = {
 
 /** Why "Test in sandbox" is unavailable, as a recipes.json key; null when it is available. */
 export function sandboxBlock(r: RecipeEntry): string | null {
-  if (!r.modalities.some((m: Modality) => SANDBOX_TAB_FOR_WORKER[m])) return "menu.noPanel";
+  if (!r.modalities.some((m: Modality) => tabForModality(m))) return "menu.noPanel";
   if (!r.installed) return "menu.nothingToRun";
   if (r.fit === "never") return "menu.tooLarge";
   return null;

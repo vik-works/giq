@@ -2,33 +2,43 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import type { SandboxTab as Tab } from "../../lib/sandboxLink";
+import type { PluginPanel } from "../../plugins/panels";
+import { CORE_TABS, type SandboxTab as Tab } from "../../lib/sandboxLink";
 
-/* The tab list and the worker → tab map are the sandbox's address contract,
-   shared with the views that link here (lib/sandboxLink.ts). */
+/* The tab list: the dashboard's own panels for LLMs, then each plugin's, in
+   the server's registration order (ADR-004 D6). Ids are the sandbox's
+   address contract (lib/sandboxLink.ts); a plugin keeps an id once it ships
+   one, or bookmarks break. */
 export {
   DEFAULT_SANDBOX_TAB as DEFAULT_TAB,
-  isSandboxTab as isTab,
-  SANDBOX_TAB_FOR_WORKER as TAB_FOR_WORKER,
-  SANDBOX_TABS as TABS,
+  tabForModality,
   type SandboxTab as Tab,
 } from "../../lib/sandboxLink";
 
-/** The WorkerIcon key each tab shows. */
-export const TAB_ICON: Record<Tab, string> = {
-  chat: "llm",
-  tools: "llm",
-  t2i: "text2image",
-  edit: "image_edit",
-  vision: "vision",
-  asr: "audio",
-  tts: "tts",
-  voice: "embed",
+export type CoreTab = (typeof CORE_TABS)[number];
+
+export interface TabInfo {
+  id: Tab;
+  /** A WorkerIcon key. */
+  icon: string;
+  /** The modality whose recipes it offers. */
+  modality: string;
+  /** Set for a plugin's panel. */
+  plugin?: PluginPanel;
+}
+
+const CORE: Record<CoreTab, TabInfo> = {
+  chat: { id: "chat", icon: "llm", modality: "llm" },
+  tools: { id: "tools", icon: "llm", modality: "llm" },
+  vision: { id: "vision", icon: "vision", modality: "llm" },
 };
 
-/** Tabs that pick their model from a dropdown, and so can take one from the URL. */
-export const SELECT_TABS = ["chat", "t2i", "edit", "vision"] as const;
-export type SelectTab = (typeof SELECT_TABS)[number];
+export const isCoreTab = (t: Tab): t is CoreTab => (CORE_TABS as readonly string[]).includes(t);
 
-export const isSelectTab = (t: Tab): t is SelectTab =>
-  (SELECT_TABS as readonly string[]).includes(t);
+export function sandboxTabs(panels: readonly PluginPanel[]): TabInfo[] {
+  const seen = new Set<string>(CORE_TABS);
+  const plugin = panels
+    .filter((p) => !seen.has(p.id) && (seen.add(p.id), true))
+    .map((p) => ({ id: p.id, icon: p.icon ?? p.modality, modality: p.modality, plugin: p }));
+  return [...CORE_TABS.map((t) => CORE[t]), ...plugin];
+}

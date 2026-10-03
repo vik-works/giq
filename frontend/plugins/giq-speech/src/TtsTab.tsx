@@ -4,16 +4,16 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { postBlob } from "../../../api/client";
-import { useFormat } from "../../../lib/useFormat";
-import { TTS_DEFAULT_VOICE, TTS_MODEL, TTS_VOICES } from "../constants";
-import { Field } from "../../../components/Field";
-import { OutputCard } from "../shared/OutputCard";
-import { RunButton } from "../shared/RunButton";
-import { useRunner } from "../../../lib/useRunner";
+import { api, components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import { TTS_DEFAULT_VOICE, TTS_FALLBACK, TTS_VOICES } from "./constants";
+import { NS } from "./ns";
+import "./TtsTab.css";
 
-export function TtsTab() {
-  const { t } = useTranslation("sandbox");
+const { Field } = components;
+const { OutputCard, RunButton } = sandbox;
+
+export function TtsTab({ options, model }: PanelProps) {
+  const { t } = useTranslation(NS);
   const f = useFormat();
   const [text, setText] = useState(() => t("tts.defaultText"));
   const [voice, setVoice] = useState<string>(TTS_DEFAULT_VOICE);
@@ -28,8 +28,10 @@ export function TtsTab() {
     return () => URL.revokeObjectURL(u);
   }, [runner.result]);
 
+  const recipe = model || TTS_FALLBACK;
+  const size = options.find((o) => o.model === recipe)?.vram_gb ?? null;
   const go = () =>
-    void runner.run((signal) => postBlob("/v1/audio/speech", { input: text, voice, model: TTS_MODEL }, { signal }));
+    void runner.run((signal) => api.postBlob("/v1/audio/speech", { input: text, voice, model: recipe }, { signal }));
 
   return (
     <div className="sbx-panel">
@@ -48,7 +50,7 @@ export function TtsTab() {
             </select>
           )}
         </Field>
-        <p className="hint">{t("tts.hint", { model: TTS_MODEL, size: f.gb(0.5) })}</p>
+        <p className="hint">{t("tts.hint", { model: recipe, size: f.gb(size) })}</p>
         <div className="sbx-actions">
           <RunButton busy={runner.busy} label={t("run.tts")} busyLabel={t("run.synthesizing")} onClick={go} />
         </div>
@@ -59,7 +61,7 @@ export function TtsTab() {
           error={runner.error}
           status={runner.busy ? t("run.synthesizing") : runner.ms != null ? t("out.latency", { value: f.dur(runner.ms) }) : null}
         >
-          {url && !runner.busy && !runner.error && <audio className="sbx-audio" controls src={url} />}
+          {url && !runner.busy && !runner.error && <audio className="pl-giq-speech-audio" controls src={url} />}
         </OutputCard>
       )}
     </div>

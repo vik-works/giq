@@ -1,0 +1,28 @@
+{
+  "api_version": 1,
+  "module": "index.js",
+  "styles": [
+    "index.css"
+  ],
+  "locales": {
+    "en": "locales/en.json",
+    "de": "locales/de.json"
+  },
+  "panels": [
+    {
+      "id": "asr",
+      "modality": "audio",
+      "label": "tab.asr"
+    },
+    {
+      "id": "tts",
+      "modality": "tts",
+      "label": "tab.tts"
+    },
+    {
+      "id": "voice",
+      "modality": "embed",
+      "label": "tab.voice"
+    }
+  ]
+}

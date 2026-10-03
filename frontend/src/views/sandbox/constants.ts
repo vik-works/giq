@@ -32,17 +32,3 @@ export const TOOLS_MODEL = "gemma-4-12b";
 
 /** The ask → execute → answer loop gives up after this many model turns. */
 export const TOOLS_MAX_ROUNDS = 4;
-
-/* kokoro is the only text-to-speech model giq registers; it is small
-   (0.5 GB) and loads on demand without evicting the resident set. */
-export const TTS_MODEL = "kokoro";
-
-/* /capabilities reports no voices for kokoro, so the list is the worker's
-   own mapping: "alloy" is the OpenAI-style default and maps to af_heart. */
-export const TTS_VOICES = ["alloy", "af_heart", "af_bella", "am_michael", "bf_emma"] as const;
-export const TTS_DEFAULT_VOICE = "alloy";
-
-/* ecapa-tdnn voiceprints: the same speaker typically scores ≥ 0.5 cosine,
-   different speakers < 0.25; the band between is honestly inconclusive. */
-export const VOICE_SAME_MIN = 0.5;
-export const VOICE_INCONCLUSIVE_MIN = 0.25;

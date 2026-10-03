@@ -1,0 +1,36 @@
+{
+  "edit": {
+    "defaultPrompt": "Transform this photo into a watercolor illustration",
+    "evicts": "Editing may evict resident instances — it can take a couple of minutes.",
+    "needImage": "Pick a reference image first.",
+    "none": "No image-edit model fits on these cards — panel disabled."
+  },
+  "field": {
+    "instruction": "Instruction",
+    "model": "Model",
+    "negative": "Negative prompt (optional)",
+    "prompt": "Prompt",
+    "referenceImage": "Reference image",
+    "seed": "Seed",
+    "seedRandom": "random"
+  },
+  "out": {
+    "latency": "latency {{value}}",
+    "seed": "seed {{seed}}"
+  },
+  "run": {
+    "edit": "Edit",
+    "editing": "Editing…",
+    "generatingImage": "Generating… (may evict resident instances)",
+    "t2i": "Generate"
+  },
+  "t2i": {
+    "defaultPrompt": "A cozy riverside town at dusk, warm windows glowing, graphic novel style",
+    "evicts": "Generating evicts the resident instances — the first image takes minutes, then they reload.",
+    "none": "No text-to-image model fits on these cards."
+  },
+  "tab": {
+    "t2i": "Text → image",
+    "edit": "Image + prompt"
+  }
+}

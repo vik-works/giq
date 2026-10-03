@@ -4,24 +4,16 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useFormat } from "../../../lib/useFormat";
-import type { ModelOption } from "../models";
-import { Field } from "../../../components/Field";
-import { GeneratedImage } from "../shared/GeneratedImage";
-import { runImageJob, type ImageResult } from "../shared/imageJob";
-import { ModelSelect } from "../shared/ModelSelect";
-import { OutputCard } from "../shared/OutputCard";
-import { RunButton } from "../shared/RunButton";
-import { useRunner } from "../../../lib/useRunner";
+import { components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import { GeneratedImage } from "./GeneratedImage";
+import { runImageJob, type ImageResult } from "./imageJob";
+import { NS } from "./ns";
 
-export interface T2iTabProps {
-  options: ModelOption[];
-  model: string;
-  onModel: (m: string) => void;
-}
+const { Field } = components;
+const { ModelSelect, OutputCard, RunButton } = sandbox;
 
-export function T2iTab({ options, model, onModel }: T2iTabProps) {
-  const { t } = useTranslation("sandbox");
+export function T2iTab({ options, model, onModel }: PanelProps) {
+  const { t } = useTranslation(NS);
   const f = useFormat();
   const [prompt, setPrompt] = useState(() => t("t2i.defaultPrompt"));
   const [seed, setSeed] = useState("");

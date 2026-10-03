@@ -20,6 +20,7 @@ imports no engine and no ML library.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from giq.paths import engine_binary, env_python
@@ -259,6 +260,7 @@ def _sdcpp_plugin() -> Plugin:
         ),
         # One sd-server serves both: flux_klein renders and edits without a reload.
         adapters={("sd.cpp", "text2image"): _sdcpp, ("sd.cpp", "image_edit"): _sdcpp},
+        ui=_ui("giq-sdcpp"),
     )
 
 
@@ -380,6 +382,7 @@ def _speech_plugin() -> Plugin:
             ("kokoro", "tts"): _tts,
         },
         routers=("giq.api.audio_api:router",),
+        ui=_ui("giq-speech"),
     )
 
 
@@ -435,6 +438,14 @@ def _depth_plugin() -> Plugin:
         adapters={("transformers", "depth"): _depth},
         routers=("giq.api.depth_api:router",),
     )
+
+
+def _ui(name: str) -> Path | None:
+    """A curated plugin's dashboard UI, built into the dashboard's tree
+    (frontend/plugins/<name>, `make ui`). None without a build: the plugin
+    serves, its sandbox panels are absent."""
+    ui = Path(__file__).parent / "static" / "ui" / "plugins" / name
+    return ui if (ui / "manifest.json").is_file() else None
 
 
 class _Plugins:

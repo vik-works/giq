@@ -19,6 +19,11 @@ const API_PREFIXES = [
   "/jobs",
   "/v1",
   "/capabilities",
+  "/recipes",
+  "/weights",
+  "/instances",
+  "/downloads",
+  "/plugins",
 ];
 
 const GIQ = process.env.GIQ_URL ?? "http://127.0.0.1:8084";
@@ -51,6 +56,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "plugins/*/src/**/*.test.ts"],
   },
 });

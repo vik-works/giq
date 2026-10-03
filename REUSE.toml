@@ -25,6 +25,7 @@ path = [
   "frontend/package-lock.json",
   "frontend/tsconfig.json",
   "frontend/src/locales/**/*.json",
+  "frontend/plugins/*/public/**/*.json",
 ]
 SPDX-FileCopyrightText = "2026 vikworks UG (haftungsbeschränkt)"
 SPDX-License-Identifier = "Apache-2.0"

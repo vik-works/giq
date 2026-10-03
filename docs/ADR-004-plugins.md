@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # ADR-004: Plugins — a small core, and everything else registered into it
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-03
 **Authors:** giq maintainers
 
@@ -89,6 +89,8 @@ A `Plugin` declares, all optional except its name and API version:
   plugin).
 - **A smoke test** per modality, which `/test/{kind}` runs instead of its
   hardcoded table.
+- **Dashboard UI** (D6): prebuilt sandbox panels and their strings, served by
+  core and loaded into the dashboard at runtime.
 
 ### D3: What core keeps
 
@@ -100,9 +102,12 @@ A `Plugin` declares, all optional except its name and API version:
 - The dashboard shell.
 - **The `llm` modality and the OpenAI chat API** (`/v1/chat/completions`,
   `/v1/responses`, `/v1/models`). Chat is what most clients come for, and its
-  routes span every LLM engine. Core therefore defines `llm`, the
-  `ServedLLM` contract and the chat routes. The engines that serve them
-  (llama.cpp, vllm) are plugins.
+  routes span every LLM engine, so core defines `llm`, the `ServedLLM`
+  contract and the chat routes.
+- **The llama.cpp engine.** llama-server is a binary, so it costs giq no
+  Python dependencies, and with it a plain `giq` install serves GGUF chat out
+  of the box. It registers through the same registry as everything else,
+  from inside core. vllm, the heavy LLM engine, is a plugin.
 
 Core defines the adapter contracts:
 - the `Adapter` protocol the runner already relies on;
@@ -124,7 +129,7 @@ installs `giq-child` and the plugin's own package, never giq's source tree
 and never a `PYTHONPATH` override. That removes for good the problem that
 blocked wheel installs.
 
-### D5: Versioned contract
+### D5: Versioned contract, and plugins only add
 
 `giq.plugin.API_VERSION` is an integer. A plugin states the version it was
 written for. A plugin built for another version is refused at startup with a
@@ -132,7 +137,11 @@ clear log line, and `/status` lists it under `plugins` with the reason. One
 broken plugin does not stop giq or the other plugins. Every plugin that loads
 is also listed, with its version and what it registered.
 
-### D6: The dashboard renders what the registry says
+Plugins add; they never override. A plugin that registers a route, engine,
+modality or recipe name that core or an earlier plugin already holds is
+refused at startup, with the clash named.
+
+### D6: The dashboard renders what the registry says, and plugins bring panels
 
 `/capabilities` carries each modality's label and icon name. The dashboard
 takes colours, icons and labels from there:
@@ -141,12 +150,36 @@ takes colours, icons and labels from there:
 - a modality the dashboard does not know gets a generic icon and the label
   the server sends.
 
-Sandbox panels stay in the dashboard for the curated modalities (chat, tools,
-vision, text to image, image edit, speech recognition, text to speech,
-voiceprint) and are hidden when no installed plugin serves them. A
-third-party modality gets no panel. That is a deliberate limit, not a gap:
-panels are UI code, and the plugin contract does not reach into the
-frontend.
+**Sandbox panels are plugin UI.** The dashboard shell keeps only the panels
+for core's own modality, `llm`: chat, tools and vision. Every other panel
+ships with the plugin that serves its modality:
+- text to image and image edit in `giq-sdcpp`;
+- speech recognition, text to speech and voiceprint in `giq-speech`;
+- whatever a third-party plugin brings.
+
+The contract:
+- **What a plugin ships.** A plugin's UI is a prebuilt ES module plus an
+  optional stylesheet and its strings (`en`, `de`, any other language). They
+  are declared in a `ui/manifest.json` inside the plugin package. Core serves
+  them at `/plugins/<name>/ui/` and lists them in `/capabilities`.
+- **How the dashboard loads it.** It `import()`s each plugin's module when the
+  sandbox opens. The module exports panels, each with an id, the modality it
+  exercises, an icon name and a React component. The tabs, the "Test in
+  sandbox" links from the Recipes view, and the disabled-with-a-reason
+  states all follow the registry, so they are no longer a fixed table.
+- **What the host provides.** React, the API client, i18next, the format
+  helpers and the shared components come in through a small versioned host
+  object. A plugin never bundles its own React; two copies would break
+  hooks. A `@giq/plugin-ui` package carries the types and a Vite preset that
+  marks those modules as external.
+- **Rules.** A plugin's CSS uses the dashboard's tokens and prefixes its
+  classes with `pl-<plugin>-`, the same namespacing rule views follow. Its
+  strings load into the i18next namespace `plugin-<name>`, and a missing
+  language falls back to English. The UI contract is versioned with
+  `API_VERSION`.
+- **Trust.** A plugin's UI runs same-origin with the dashboard. It is code the
+  operator installed, trusted exactly as its Python is. Server text inside a
+  panel is still rendered as text, never as HTML.
 
 ### D7: Packages and repositories
 
@@ -155,19 +188,18 @@ are released together:
 
 | Package | Registers | Brings |
 |---|---|---|
-| `giq` | core, `llm` modality, chat API | fastapi, pydantic, httpx, pyyaml — no torch |
-| `giq-llamacpp` | engine `llama.cpp` | nothing (llama-server is a binary) |
+| `giq` | core, `llm` modality, chat API, engine `llama.cpp`, chat/tools/vision panels | fastapi, pydantic, httpx, pyyaml — no torch |
 | `giq-vllm` | engine `vllm`, `giq prepare vllm` | nothing in giq's env (vllm runs in `envs/vllm`) |
-| `giq-sdcpp` | engine `sd.cpp`, modalities `text2image`, `image_edit` | nothing (sd-server is a binary) |
-| `giq-speech` | engines `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro`; modalities `stt`, `audio`, `embed`, `tts`; `/v1/audio/*` | torch, faster-whisper, pyannote, speechbrain, kokoro |
+| `giq-sdcpp` | engine `sd.cpp`, modalities `text2image`, `image_edit`, their panels | nothing (sd-server is a binary) |
+| `giq-speech` | engines `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro`; modalities `stt`, `audio`, `embed`, `tts`; `/v1/audio/*`; their panels | torch, faster-whisper, pyannote, speechbrain, kokoro |
 | `giq-ocr` | engine `transformers` (OCR children), modality `ocr`, `/ocr` | torch, transformers, pypdfium2, opencv |
 | `giq-depth` | modality `depth`, `/depth` | torch, transformers |
 | `giq-defaults` | nothing itself | depends on all of the above |
 
-Each curated plugin brings its own built-in recipes; core brings none.
+Each plugin brings its own built-in recipes; core brings the llama.cpp ones.
 `giq-defaults` is what the documented install and `install-debian.sh`
 install, so a normal install serves what it serves today. A server that only
-needs llama.cpp installs `giq` and `giq-llamacpp`, with no torch. Plugins are
+needs llama.cpp installs `giq` alone, with no torch. Plugins are
 packages rather than extras, because `uv sync` prunes extras it was not told
 about; that rule from before 0.6.0 still holds.
 
@@ -194,6 +226,11 @@ promise of quality, not a list of everything that works.
   `giq-multiview`, maintained where it is needed.
 - **The built-ins prove the contract.** They register through the same
   interface third parties use, so it cannot rot unnoticed.
+- **A plain install is useful on its own:** `giq` alone serves GGUF chat
+  through llama.cpp.
+- **The dashboard becomes extensible:** a plugin brings its own sandbox
+  panels, so a new modality is testable in the browser without a dashboard
+  release.
 - **One release, more packages.** The workspace releases core and the
   curated plugins together; CI builds and tests all of them.
 - **Behaviour changes:**
@@ -216,7 +253,9 @@ Each step leaves the suite green:
    children import only it.
 3. **Routes, CLI and smoke tests** move behind registrations, and the
    hardcoded recipe names go.
-4. **Dashboard.** It reads modality metadata from `/capabilities`.
+4. **Dashboard.** It reads modality metadata from `/capabilities`. The UI
+   plugin host and `@giq/plugin-ui` follow. The curated panels move out of
+   the shell into their plugins' UI bundles, still in this repository.
 5. **Workspace.** The curated plugins split into packages under `plugins/`,
    with `giq-defaults`. Torch leaves core's dependencies.
 6. **`giq-multiview`** in its own repository, against the published
@@ -235,14 +274,17 @@ Each step leaves the suite green:
   maintains them all.
 - **Defaults built in, plugins only for the rest.** That means two code
   paths, and the plugin path would rot unseen.
-- **Dynamic dashboard panels from plugins.** That needs a frontend plugin
-  system: module federation, a UI contract, a security review. Generic
-  rendering covers what an operator needs.
+- **Panels for curated modalities only, nothing for third parties.** That
+  is simpler, but a third-party modality could not be tried in the browser,
+  and the curated panels would stay a fixed table in the shell, the kind of
+  hardwiring this ADR removes.
+- **Module federation for UI plugins.** It solves sharing React between
+  separately built bundles, but brings a build-time coupling and a runtime
+  of its own. A host object plus externals in the plugin's build is enough
+  for panels.
 
 ## Open questions
 
-- Should a plugin be able to override a core route, or only add new ones?
-  Proposed: only add; a clash refuses the plugin at startup.
 - Signing or pinning of third-party plugins, for an install that must not
   load arbitrary code. Today anything installed into giq's environment is
   trusted, as any Python dependency is.

@@ -326,3 +326,6 @@ class Capabilities(BaseModel):
 
     modalities: dict[str, ModalityCapability]
     constraints: dict[str, Any]
+    # Plugins' dashboard UIs: each manifest, with the `base` URL its files
+    # are served under (ADR-004 D6).
+    ui: list[dict[str, Any]] = []

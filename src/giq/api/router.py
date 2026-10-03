@@ -442,6 +442,29 @@ async def list_plugins() -> dict:
     return {"plugins": plugins.catalog()}
 
 
+@router.get("/plugins/{name}/ui/{path:path}", include_in_schema=False)
+async def plugin_ui_file(name: str, path: str):
+    """A file of plugin ``name``'s dashboard UI: its module, stylesheet,
+    strings. Only files inside the plugin's UI directory are served."""
+    from fastapi.responses import FileResponse
+
+    from giq import plugins
+
+    root = plugins.ui_dir(name)
+    if root is None:
+        raise HTTPException(status_code=404, detail=f"plugin {name!r} has no UI")
+    base = root.resolve()
+    target = (base / path).resolve()
+    if not target.is_relative_to(base) or not target.is_file():
+        raise HTTPException(status_code=404, detail=f"no {path!r} in {name}'s UI")
+    # Plugin modules change only with the installed package; a reload after
+    # an upgrade must not run the old one.
+    # A module must come as JavaScript or the browser refuses to run it,
+    # whatever the host's MIME table says about .js.
+    media = "text/javascript" if target.suffix in (".js", ".mjs") else None
+    return FileResponse(target, media_type=media, headers={"Cache-Control": "no-cache"})
+
+
 @router.get("/capabilities", response_model=Capabilities)
 async def get_capabilities() -> Capabilities:
     """What this service runs, per modality, and what it could (ADR-005 D7).
@@ -455,6 +478,7 @@ async def get_capabilities() -> Capabilities:
 
     found = await asyncio.to_thread(lambda: {m: _capability(m) for m in plugins.modalities()})
     return Capabilities(
+        ui=plugins.ui_manifests(),
         modalities={m: cap for m, cap in found.items() if cap is not None},
         constraints={
             "max_concurrent_heavy": 1,

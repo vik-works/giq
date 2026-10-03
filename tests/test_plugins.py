@@ -6,6 +6,7 @@
 third party uses, a plugin's modality served end to end, and refusals that
 leave everything else standing."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -331,3 +332,56 @@ def test_a_curated_plugin_not_installed_carries_its_install_command(monkeypatch)
     assert depth["install"].endswith(" giq-depth")
     core = next(e for e in plugins.catalog() if e["name"] == "giq")
     assert core["installed"] and core["install"] is None
+
+
+# --- a plugin's dashboard UI (ADR-004 D6) ---------------------------------------
+
+
+def _ui(tmp_path, api_version=API_VERSION):
+    ui = tmp_path / "echo-ui"
+    ui.mkdir(exist_ok=True)
+    (ui / "index.js").write_text("export const panels = [];\n")
+    panel = {"id": "echo", "modality": "echo", "icon": "echo", "label": "tab.echo"}
+    manifest = {"api_version": api_version, "module": "index.js", "panels": [panel]}
+    (ui / "manifest.json").write_text(json.dumps(manifest))
+    (tmp_path / "secret.txt").write_text("not for you")
+    return ui
+
+
+def test_a_plugins_ui_is_served_and_listed(installed, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from giq.main import app
+
+    installed(("echo", "giq-echo", echo_plugin(tmp_path, ui=_ui(tmp_path))))
+    (listed,) = [u for u in plugins.ui_manifests() if u["plugin"] == "giq-echo"]
+    assert listed["base"] == "/plugins/giq-echo/ui/" and listed["module"] == "index.js"
+    assert listed["panels"][0]["modality"] == "echo"
+
+    client = TestClient(app, base_url="http://localhost")
+    r = client.get("/plugins/giq-echo/ui/index.js")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/javascript")
+    assert client.get("/plugins/giq-echo/ui/../secret.txt").status_code == 404
+    assert client.get("/plugins/giq-echo/ui/%2e%2e/secret.txt").status_code == 404
+    assert client.get("/plugins/giq-nope/ui/index.js").status_code == 404
+
+
+def test_a_ui_for_another_api_is_left_out_and_the_plugin_still_serves(installed, tmp_path):
+    installed(("echo", "giq-echo", echo_plugin(tmp_path, ui=_ui(tmp_path, API_VERSION + 1))))
+    assert not [u for u in plugins.ui_manifests() if u["plugin"] == "giq-echo"]
+    assert "echo" in plugins.modalities()
+
+
+def test_a_plugins_ui_loads_without_the_token():
+    from starlette.requests import Request
+
+    from giq.api.access import token_exempt
+
+    def request(path, method="GET"):
+        return Request(
+            {"type": "http", "method": method, "path": path, "query_string": b"", "headers": []}
+        )
+
+    assert token_exempt(request("/plugins/giq-sdcpp/ui/index.js"))
+    assert not token_exempt(request("/plugins"))
+    assert not token_exempt(request("/plugins/giq-sdcpp/ui/index.js", "POST"))

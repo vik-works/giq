@@ -147,7 +147,8 @@ def token_ok(request: Request, expected: str) -> bool:
 
 
 def token_exempt(request: Request) -> bool:
-    """The dashboard's own page and build assets load without the token.
+    """The dashboard's own page and build assets, and plugins' dashboard
+    modules, load without the token.
 
     A browser fetches `<script src>` and font files itself, with no way to
     attach a header, so a token-guarded rig would serve a page whose scripts
@@ -159,7 +160,12 @@ def token_exempt(request: Request) -> bool:
     if request.method not in ("GET", "HEAD"):
         return False
     path = request.url.path
-    return path in ("/dash", "/dash/") or path.startswith("/dash/assets/")
+    if path in ("/dash", "/dash/") or path.startswith("/dash/assets/"):
+        return True
+    # A plugin's dashboard module and its strings, which the page import()s
+    # the same way (ADR-004 D6): installed code, like the dashboard's own.
+    parts = path.split("/")
+    return len(parts) > 4 and parts[1] == "plugins" and parts[3] == "ui"
 
 
 def _deny(reason: str, detail: str) -> JSONResponse:

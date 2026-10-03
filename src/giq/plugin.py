@@ -169,3 +169,7 @@ class Plugin:
     # building the registry imports no route code. A route (method and path)
     # another plugin or core already serves refuses the plugin.
     routers: tuple[str, ...] = ()
+    # The plugin's dashboard UI: a directory holding `manifest.json`, a
+    # prebuilt ES module, its stylesheet and strings (ADR-004 D6). Served at
+    # /plugins/<name>/ui/ and listed in /capabilities.
+    ui: Path | None = None

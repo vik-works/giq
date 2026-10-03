@@ -336,3 +336,40 @@ def catalog() -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+# --- dashboard UI (ADR-004 D6) -------------------------------------------------
+
+
+def ui_dir(name: str) -> Path | None:
+    """The UI directory of loaded plugin ``name``, if it ships one."""
+    plugin = next((p for p in loaded() if p.name == name), None)
+    return plugin.ui if plugin is not None and plugin.ui is not None else None
+
+
+def ui_manifests() -> list[dict[str, Any]]:
+    """Every loaded plugin's UI, as /capabilities lists it.
+
+    A manifest that is missing, unreadable or written for another
+    API_VERSION leaves that plugin without a UI, logged; its engines,
+    modalities and routes still serve.
+    """
+    import json
+
+    out = []
+    for plugin in loaded():
+        if plugin.ui is None:
+            continue
+        try:
+            manifest = json.loads((plugin.ui / "manifest.json").read_text())
+        except (OSError, ValueError) as e:
+            logger.error(f"plugin {plugin.name}: its UI manifest does not load: {e}")
+            continue
+        if manifest.get("api_version") != API_VERSION:
+            logger.error(
+                f"plugin {plugin.name}: UI written for API {manifest.get('api_version')}, "
+                f"giq speaks {API_VERSION}; its panels are left out"
+            )
+            continue
+        out.append({"plugin": plugin.name, "base": f"/plugins/{plugin.name}/ui/", **manifest})
+    return out

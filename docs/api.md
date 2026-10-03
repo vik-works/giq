@@ -107,7 +107,7 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/weights/{id}` | DELETE | Delete one checkpoint; the recipes using it stay, uninstalled |
 | `/v1/chat/completions` | POST | OpenAI-compatible chat, streaming and tool calls included |
 | `/v1/responses` | POST | OpenAI Responses API, streaming and tool calls included — see [Responses API](#responses-api) |
-| `/v1/models` | GET | The chat recipes whose weights are on disk |
+| `/v1/models` | GET | The chat recipes that run here (weights on disk, an engine, a card they fit, not switched off), kept warm first |
 | `/v1/audio/transcriptions` | POST | Speech to text with speaker diarization (faster-whisper + pyannote; `?diarize=false` skips it); `model` names the recipe, and a name that is no recipe (OpenAI's `whisper-1`) gets whisper-large-v3 |
 | `/v1/audio/speech` | POST | Text to speech; `model` as above, defaulting to kokoro |
 | `/v1/audio/embeddings` | POST | Speaker voiceprint of an audio clip; `model` as above, defaulting to ecapa-tdnn |

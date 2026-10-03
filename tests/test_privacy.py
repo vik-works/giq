@@ -249,14 +249,23 @@ async def test_only_locally_served_models_are_advertised(tmp_path, monkeypatch):
     has to be something giq serves itself."""
     from giq.adapters.llama_cpp import MODEL_PATHS
     from giq.api.openai_compat import list_models
+    from giq.engines import reload_engines
 
-    # Only installed models are listed, so install one under a fake models dir.
+    # Only what runs here is listed: weights on disk and an engine to run
+    # them, both faked under a temporary directory.
     gguf = tmp_path / MODEL_PATHS["gemma-4-12b"]
     gguf.parent.mkdir(parents=True)
     gguf.write_bytes(b"GGUF")
+    server = tmp_path / "llama-server"
+    server.write_text("")
     monkeypatch.setenv("GIQ_MODELS_DIR", str(tmp_path))
-
-    data = (await list_models())["data"]
+    monkeypatch.setenv("GIQ_LLAMA_BINARY", str(server))
+    reload_engines()
+    try:
+        data = (await list_models())["data"]
+    finally:
+        monkeypatch.delenv("GIQ_LLAMA_BINARY")
+        reload_engines()
 
     assert data, "the model list should not be empty"
     assert {m["owned_by"] for m in data} == {"giq"}

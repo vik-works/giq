@@ -15,7 +15,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from giq.api.dependencies import get_orchestrator
 from giq.models import JobRequest
 from giq.recipes.schema import Recipe
-from giq.registry import get_recipe, recipes_serving, resident_defaults
+from giq.registry import get_recipe
 from giq.services.orchestration import Orchestrator
 
 logger = logging.getLogger(__name__)
@@ -363,27 +363,21 @@ def _advertised_llm_recipes() -> list[Recipe]:
     To a client a recipe is a model: its name is the `id` a client sends
     back as `model` (ADR-003).
 
-    Installed is the only filter: if the weights are on disk, the model is
-    offered. No audit gate, no staging step, no opinion about how good or how
-    aligned a model is — this is a homelab, and a model that is here is a
-    model you can pick. The one thing it will not do is advertise a model
-    whose GGUF is missing, which is not curation but honesty: five registered
-    models had had their weights deleted and were being offered anyway.
+    What runs here is the only filter (ADR-005): weights on disk, an engine
+    to run them, a card they fit, not switched off. No audit gate, no
+    opinion about how good a model is; but never a model whose weights are
+    missing, which is not curation but honesty.
 
-    Residents first in reload-priority order, then everything else by name,
+    Kept warm first in reload-priority order, then everything else by name,
     so a client that treats `data[0]` as its default gets the model already
-    loaded rather than one that forces an eviction.
+    loaded rather than one that forces an eviction. `/capabilities` orders
+    its `recipes` the same way.
 
     Chat clients get chat models: `/capabilities` enumerates every modality.
     """
-    from giq.adapters.llama_cpp import weights_installed
+    from giq.availability import ready
 
-    residents = resident_defaults()
-    offered = [r for r in recipes_serving("llm") if weights_installed(r.name)]
-    return sorted(
-        offered,
-        key=lambda r: (0, residents.index(r.name), "") if r.name in residents else (1, 0, r.name),
-    )
+    return [r for name in ready("llm") if (r := get_recipe(name)) is not None]
 
 
 @router.get("/models")

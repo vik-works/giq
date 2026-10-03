@@ -199,6 +199,7 @@ guard needs llama-server's control endpoint and does nothing on vllm.
 | `kv_cache_dtype` | `auto`, `fp8`, `fp8_e4m3`, `fp8_e5m2` |
 | `speculative` | `{method: mtp, tokens: N}` — drafts with the checkpoint's own MTP head; refused for weights without one |
 | `enforce_eager` | Skip CUDA graphs: faster start, slower decoding |
+| `reasoning_parser`, `tool_call_parser` | vllm's parser names (`qwen3`, `qwen3_coder`); a tool parser turns on automatic tool choice |
 | `chat_template_file` | Jinja file under `GIQ_MODELS_DIR` replacing the checkpoint's own template (a fixed upstream Qwen file, say); unset = the checkpoint's own |
 | `structured_outputs` | Constrained decoding for `json_schema` requests: `{backend: xgrammar\|guidance\|auto, disable_any_whitespace: bool}`. Defaults to `{xgrammar, true}` — vllm's own default (`auto`, free whitespace) lets a large schema diverge into an unbounded whitespace run that never closes the object |
 | `memory_max` | RAM ceiling of the engine process (default `40G`; `null` = none) |

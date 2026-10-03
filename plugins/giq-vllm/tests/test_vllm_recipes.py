@@ -47,6 +47,7 @@ def test_unknown_parameters_are_errors_not_ignored():
         {"gpu_memory_utilization": 1.5, "kv_cache_memory": None},
         {"kv_cache_dtype": "int4"},
         {"reasoning_parser": "qwen3 --trust-remote-code"},
+        {"chat_template_file": "--evil.jinja"},
         {"memory_max": "lots"},
         {"kv_cache_memory": "8 GB"},
         {"speculative": {"method": "eagle", "tokens": 2}},

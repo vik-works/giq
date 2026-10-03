@@ -239,6 +239,20 @@ def test_command_from_the_interactive_profile(tmp_path):
     assert "--enable-auto-tool-choice" not in cmd
 
 
+def test_a_declared_chat_template_reaches_the_command_line(tmp_path, monkeypatch):
+    """Opt-in only: unset (every built-in) keeps the checkpoint's own template."""
+    weights = make_checkpoint(tmp_path)
+    cmd = worker_for(make_recipe(weights, "interactive")).build_command()
+    assert "--chat-template" not in cmd
+
+    monkeypatch.setenv("GIQ_MODELS_DIR", str(tmp_path))
+    (tmp_path / "qwen-fixed.jinja").write_text("x")
+    recipe = make_recipe(weights, "interactive", chat_template_file="qwen-fixed.jinja")
+    cmd = worker_for(recipe).build_command()
+
+    assert argv_value(cmd, "--chat-template") == str(tmp_path / "qwen-fixed.jinja")
+
+
 # --- the environment -----------------------------------------------------------------
 
 

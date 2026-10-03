@@ -383,6 +383,7 @@ LLM_TABLES = {
         "qwen3.8-27b": "on",
     },
     "MODEL_REASONING_BUDGET": {},
+    "MODEL_CHAT_TEMPLATE_FILE": {},
     "MODEL_REQUEST_DEFAULTS": {
         "qwen3.8-27b": {
             "dry_allowed_length": 4,
@@ -406,5 +407,6 @@ LLM_DEFAULTS = {
     "DEFAULT_REASONING": "off",
     "DEFAULT_REASONING_BUDGET": None,
     "DEFAULT_REQUEST_DEFAULTS": {},
+    "DEFAULT_CHAT_TEMPLATE_FILE": None,
     "DEFAULT_SPEC_TYPE": None,
 }

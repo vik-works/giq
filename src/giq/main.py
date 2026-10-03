@@ -11,13 +11,8 @@ import os
 import uvicorn
 from fastapi import FastAPI
 
-from giq import __version__
+from giq import __version__, plugins
 from giq.api import access
-from giq.api.openai_compat import router as openai_router
-from giq.api.openai_responses import router as responses_router
-from giq.api.recipes_api import router as recipes_router
-from giq.api.router import router as giq_router
-from giq.api.stats_api import router as stats_router
 from giq.core.lifecycle import lifespan
 
 logger = logging.getLogger(__name__)
@@ -29,11 +24,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(giq_router)
-app.include_router(openai_router)
-app.include_router(responses_router)
-app.include_router(stats_router)
-app.include_router(recipes_router)
+# Every route comes from a registration (ADR-004): core's own first, then
+# each installed plugin's, so a plugin can add a route but never take one
+# over.
+plugins.mount(app)
 
 # Outermost layer: nothing reaches a route without passing the Host/Origin
 # rules. Installed at import so tooling and tests exercise the same app the

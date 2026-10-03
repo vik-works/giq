@@ -476,7 +476,7 @@ async def test_ocr_runs_through_the_generic_job_path(client: AsyncClient):
 
 
 def test_parse_pages():
-    from giq.api.router import parse_pages
+    from giq.api.ocr_api import parse_pages
 
     assert parse_pages(None) is None and parse_pages(" ") is None
     assert parse_pages("1-3,7") == [1, 2, 3, 7]

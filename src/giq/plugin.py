@@ -91,11 +91,34 @@ class Engine:
     lanes: Callable[[Any], int | None] | None = None
     # Seconds a start of this recipe may take; None is the runner's default.
     start_budget: Callable[[Any], float | None] | None = None
+    # A process of this engine left over from a run that died, as a regex for
+    # `pkill -f` with `{port}` for each of giq's server ports; swept at
+    # startup. Qualified by port so it only ever reaches giq's own servers.
+    stale_pattern: str | None = None
+    # Further cleanup at startup, given giq's server ports (vllm stops the
+    # systemd scopes its servers ran in).
+    sweep: Callable[[set[int]], None] | None = None
+    # `giq prepare <engine> …`: one-off build steps before it serves; takes
+    # the remaining arguments, returns an exit code.
+    prepare: Callable[[list[str]], int] | None = None
 
     @property
     def runtime(self) -> str:
         """The executable that runs it, by engine name, or SELF."""
         return self.name if self.binary is not None else SELF
+
+
+@dataclass(frozen=True)
+class SmokeTest:
+    """A canned end-to-end job for one modality, for POST /test/{modality}."""
+
+    tasks: list[dict[str, Any]]
+    # Seconds to wait for it, a cold start included.
+    timeout: float
+    # What of the first result to show: result dict -> summary dict.
+    summary: Callable[[dict[str, Any]], dict[str, Any]] = lambda result: {}
+    # Loading it evicts the resident set for minutes; the caller must confirm.
+    evicts: bool = False
 
 
 @dataclass(frozen=True)
@@ -120,6 +143,7 @@ class Modality:
     # Environment variable that replaces the models directory as the root
     # of this modality's relative weight paths.
     weights_root_env: str | None = None
+    smoke_test: Callable[[], SmokeTest] | None = None
 
 
 @dataclass(frozen=True)
@@ -137,3 +161,7 @@ class Plugin:
     adapters: Mapping[tuple[str, str], AdapterFactory] = field(default_factory=dict)
     # A directory of built-in recipe files that ship with the plugin.
     recipes: Path | None = None
+    # FastAPI routers to mount, as "module:attribute" import paths, so that
+    # building the registry imports no route code. A route (method and path)
+    # another plugin or core already serves refuses the plugin.
+    routers: tuple[str, ...] = ()

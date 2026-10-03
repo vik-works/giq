@@ -82,7 +82,8 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/run` | POST | Submit a job (`?wait=true` blocks until it finishes) |
 | `/jobs/{id}` | GET | Get job status and results |
 | `/jobs/{id}` | DELETE | Cancel a pending job |
-| `/status` | GET | Active modality, VRAM per card (`gpus`; the `vram_*` scalars are the default card's), queue depth, pause state, access posture |
+| `/status` | GET | Active modality, VRAM per card (`gpus`; the `vram_*` scalars are the default card's), queue depth, pause state, access posture, and the plugins: each with its source, engines, modalities, or why it was not loaded |
+| `/test/{modality}` | POST | A smoke test: the modality's canned job on `?recipe=` (default: the first installed recipe serving it); a test that evicts the resident set (`text2image`) needs `?confirm=true` |
 | `/gpus` | GET | Per-card telemetry; `selected` marks the default card |
 | `/engines` | GET | Declared inference engines and the build each one reports |
 | `/capabilities` | GET | Per modality: the recipes that serve it, their engines, batch ceilings and voices |
@@ -101,9 +102,9 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/v1/chat/completions` | POST | OpenAI-compatible chat, streaming and tool calls included |
 | `/v1/responses` | POST | OpenAI Responses API, streaming and tool calls included — see [Responses API](#responses-api) |
 | `/v1/models` | GET | The chat recipes whose weights are on disk |
-| `/v1/audio/transcriptions` | POST | Speech to text with speaker diarization (faster-whisper + pyannote; `?diarize=false` skips it) |
-| `/v1/audio/speech` | POST | Text to speech (Kokoro) |
-| `/v1/audio/embeddings` | POST | Speaker voiceprint (ECAPA-TDNN) of an audio clip |
+| `/v1/audio/transcriptions` | POST | Speech to text with speaker diarization (faster-whisper + pyannote; `?diarize=false` skips it); `model` names the recipe, and a name that is no recipe (OpenAI's `whisper-1`) gets whisper-large-v3 |
+| `/v1/audio/speech` | POST | Text to speech; `model` as above, defaulting to kokoro |
+| `/v1/audio/embeddings` | POST | Speaker voiceprint of an audio clip; `model` as above, defaulting to ecapa-tdnn |
 | `/dash` | GET | Dashboard (overview, recipes, inventory, usage, sandbox; English/German; light/dark/system theme) |
 | `/ocr` | POST | One PDF (multipart `file`) in, one HTML document out — see [OCR](#ocr) |
 | `/depth` | POST | One image in, one 16-bit depth map out — see [Depth](#depth) |

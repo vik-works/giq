@@ -53,6 +53,7 @@ with MTP needs the head in the weights.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import logging
@@ -60,6 +61,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1027,3 +1029,62 @@ async def warm_up(model: str, device: str | None = None) -> float:
         return time.monotonic() - started
     finally:
         await worker.stop()
+
+
+def cli_prepare(argv: list[str]) -> int:
+    """``giq prepare vllm …``, registered with the vllm engine."""
+    parser = argparse.ArgumentParser(
+        prog="giq prepare vllm",
+        description="Compile FlashInfer's GEMM kernels for the card's architecture inside a "
+        "RAM-capped scope, so no start or request ever has to. Already-built kernels are "
+        "skipped.",
+    )
+    parser.add_argument(
+        "--gpu",
+        default=None,
+        help="Card to build for, by index or UUID (default: every card, once per "
+        "distinct compute capability)",
+    )
+    parser.add_argument(
+        "--recipe",
+        # The name before ADR-003, kept so existing deploy scripts still run.
+        "--instance",
+        dest="recipe",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="also start this vllm recipe once and stop it, so the compiles its first "
+        "start needs (attention kernels, torch.compile, CUDA graphs) are done now; uses "
+        "the GPU for a few minutes. Repeatable",
+    )
+    parser.add_argument(
+        "--memory-max",
+        default=None,
+        help="RAM ceiling for the build (systemd MemoryMax; default 40G — two compile "
+        "jobs peak near 15 GB each). `none` when the caller already runs this in a "
+        "capped scope, as the installer does",
+    )
+    args = parser.parse_args(argv)
+    try:
+        memory_max = args.memory_max or DEFAULT_MEMORY_MAX
+        code = prepare(args.gpu, None if memory_max.lower() == "none" else memory_max)
+    except (VLLMConfigError, FileNotFoundError) as e:
+        print(f"giq prepare vllm: {e}", file=sys.stderr)
+        return 2
+    if code != 0:
+        print(f"giq prepare vllm: build failed (exit {code})", file=sys.stderr)
+        return code
+    for name in args.recipe:
+        import asyncio
+
+        from giq.gpus import resolve_device
+
+        gpu = resolve_device(args.gpu) if args.gpu is not None else None
+        print(f"warming up {name} (a full start, then stop) ...", flush=True)
+        try:
+            took = asyncio.run(warm_up(name, gpu.uuid if gpu else None))
+        except Exception as e:
+            print(f"giq prepare vllm: warm-up of {name} failed: {e}", file=sys.stderr)
+            return 1
+        print(f"{name}: started in {took:.0f}s; the next start reuses its caches", flush=True)
+    return 0

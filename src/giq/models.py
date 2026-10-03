@@ -268,6 +268,8 @@ class ServiceStatus(BaseModel):
     # without a second endpoint.
     version: str = ""
     uptime_s: float = 0.0
+    # Every plugin found (ADR-004): what it registered, or why it was refused.
+    plugins: list[dict[str, Any]] = []
 
 
 class PauseRequest(BaseModel):

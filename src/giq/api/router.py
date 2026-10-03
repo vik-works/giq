@@ -3,17 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import base64
 import logging
-import os
 import time
+from dataclasses import asdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from fastapi.responses import HTMLResponse
-from starlette.datastructures import Headers
-from starlette.formparsers import MultiPartParser
+from fastapi import APIRouter, Depends, HTTPException
 
-from giq import __version__
+from giq import __version__, plugins
 from giq.api.access import posture as access_posture
 from giq.api.dependencies import get_orchestrator
 from giq.gpus import attribute_vram, get_gpus, resolve_device, selected_device
@@ -23,7 +19,6 @@ from giq.models import (
     JobResponse,
     JobStatus,
     JobStatusResponse,
-    Modality,
     ModalityCapability,
     PauseRequest,
     PauseResponse,
@@ -335,11 +330,12 @@ async def get_service_status() -> ServiceStatus:
         access=access_posture(),
         version=__version__,
         uptime_s=round(time.monotonic() - _STARTED, 1),
+        plugins=[asdict(p) for p in plugins.status()],
     )
 
 
 @router.get("/llm/endpoint")
-async def get_llm_endpoint(model: str = "gemma-4-12b") -> dict:
+async def get_llm_endpoint(model: str | None = None) -> dict:
     """Discovery endpoint for LLM clients: where is the llama-server?
 
     200 {model, base_url} when the model is resident and ready. 503 with a
@@ -348,6 +344,18 @@ async def get_llm_endpoint(model: str = "gemma-4-12b") -> dict:
     the queue drains, so this endpoint never triggers loads itself.
     """
     runner = get_runner()
+    if model is None:
+        # The first LLM kept warm: the one a client asking without a name
+        # most plausibly means. Nothing kept warm, nothing to point at.
+        from giq.registry import resident_defaults
+
+        model = next(
+            (n for n in resident_defaults() if (r := get_recipe(n)) and r.serves("llm")), None
+        )
+        if model is None:
+            raise HTTPException(
+                status_code=400, detail="no LLM is kept warm; name one with ?model="
+            )
     # Per model, not "any ready LLM": with one llama-server per card, the
     # first ready one can easily be a different model on a different port.
     base_url = runner.llm_base_url_for(model)
@@ -428,265 +436,3 @@ async def get_capabilities() -> Capabilities:
             "vram_total_gb": round(get_vram_status().total_gb),
         },
     )
-
-
-# --- OCR ---------------------------------------------------------------------
-
-# One document is one job, and a dozen-page pass runs minutes at ~80 tok/s.
-OCR_WAIT_TIMEOUT_SECONDS = 3600.0
-
-
-def upload_limit() -> int:
-    """Largest body accepted by ``/ocr`` and ``/depth``, in bytes. The hard
-    ceiling is the parent→child pipe: a task is one JSON line, base64 inflates
-    by a third, and the line limit is 128 MiB — so 64 MB is the most a PDF or
-    an image can be and still fit. The env name predates ``/depth``."""
-    return int(os.environ.get("GIQ_OCR_MAX_UPLOAD_MB", "64")) * 1024 * 1024
-
-
-class _InMemoryMultipart(MultiPartParser):
-    """Starlette's parser spools a file part over 1 MB to a temp file on disk.
-
-    A document service holds the document in memory: the body has already
-    been read under ``upload_limit()``, so a spool threshold above it
-    means nothing ever rolls over to ``/tmp`` — a plain ext4 volume here,
-    where a deleted file is still a forensic artifact."""
-
-    def __init__(self, headers: Headers, body: bytes) -> None:
-        async def one_chunk():
-            yield body
-
-        super().__init__(headers, one_chunk())
-        self.spool_max_size = len(body) + 1
-
-
-async def _read_body_capped(request: Request, limit: int) -> bytes:
-    """The whole body, in memory, or 413 before the cap is exceeded."""
-    declared = request.headers.get("content-length", "")
-    too_big = HTTPException(
-        status_code=413,
-        detail=f"document exceeds the {limit // (1024 * 1024)} MB limit "
-        "(GIQ_OCR_MAX_UPLOAD_MB on the server)",
-    )
-    if declared.isdigit() and int(declared) > limit:
-        raise too_big
-    chunks: list[bytes] = []
-    size = 0
-    async for chunk in request.stream():
-        size += len(chunk)
-        if size > limit:
-            raise too_big
-        chunks.append(chunk)
-    return b"".join(chunks)
-
-
-async def _document_from(request: Request, body: bytes) -> bytes:
-    """The PDF bytes: the body itself, or the ``file`` part of a multipart body."""
-    ctype = request.headers.get("content-type", "")
-    if not ctype.startswith("multipart/form-data"):
-        return body
-    form = await _InMemoryMultipart(request.headers, body).parse()
-    upload = form.get("file")
-    if upload is None or not hasattr(upload, "read"):
-        raise HTTPException(status_code=400, detail="multipart body needs a 'file' part")
-    data = await upload.read()
-    await upload.close()
-    return data
-
-
-def parse_pages(spec: str | None) -> list[int] | None:
-    """``"1-3,7"`` → ``[1, 2, 3, 7]``; None or empty means every page."""
-    if not spec or not spec.strip():
-        return None
-    pages: list[int] = []
-    for part in spec.split(","):
-        part = part.strip()
-        if not part:
-            continue
-        lo, _, hi = part.partition("-")
-        try:
-            a = int(lo)
-            b = int(hi) if hi else a
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"bad page spec {part!r}") from None
-        if a < 1 or b < a:
-            raise HTTPException(status_code=400, detail=f"bad page range {part!r}")
-        pages.extend(range(a, b + 1))
-    return pages
-
-
-@router.post(
-    "/ocr",
-    response_model=None,
-    openapi_extra={
-        "requestBody": {
-            "required": True,
-            "content": {
-                "application/pdf": {"schema": {"type": "string", "format": "binary"}},
-                "multipart/form-data": {
-                    "schema": {
-                        "type": "object",
-                        "required": ["file"],
-                        "properties": {"file": {"type": "string", "format": "binary"}},
-                    }
-                },
-            },
-        }
-    },
-)
-async def ocr_document(
-    request: Request,
-    model: str = Query(default="unlimited-ocr", description="unlimited-ocr | glm-ocr"),
-    dpi: int = Query(default=200, ge=50, le=400),
-    pages: str | None = Query(default=None, description="e.g. 1-3,7; default all"),
-    raw: bool = Query(default=False, description="add the model's tagged text"),
-    strip: bool = Query(default=True, description="drop headers, footers, page numbers"),
-    merge: bool = Query(default=True, description="re-join tables/paragraphs across pages"),
-    response_format: str = Query(default="json", pattern="^(json|html)$"),
-    orch: Orchestrator = Depends(get_orchestrator),
-) -> Response | dict:
-    """One PDF in, one document out: headers, footers and page numbers
-    stripped, tables and paragraphs re-joined across page breaks, as HTML.
-
-    Send the PDF as the request body (``Content-Type: application/pdf``) or
-    as the ``file`` part of a multipart form; options are query parameters
-    either way. ``model`` picks the engine: ``unlimited-ocr`` (one pass over
-    many pages) or ``glm-ocr`` (layout detection, then each region read with
-    the prompt for its kind — the stronger choice for tables). The document
-    is held in memory only, never spooled to disk, and refused with 413 above
-    the server's size limit.
-
-    A convenience over ``POST /run`` with ``worker: "ocr"`` — same job, same
-    queue, same stats row — for a consumer that has a file and wants a
-    document, not a job id to poll. Page images go through ``/run`` with
-    ``images_b64``. ``response_format=html`` returns the fragment itself.
-    """
-    if not ((recipe := get_recipe(model)) and recipe.serves(Modality.ocr)):
-        known = [r.name for r in recipes_serving(Modality.ocr)]
-        raise HTTPException(status_code=400, detail=f"unknown OCR model {model!r}; one of {known}")
-    limit = upload_limit()
-    data = await _document_from(request, await _read_body_capped(request, limit))
-    if not data.startswith(b"%PDF"):
-        raise HTTPException(status_code=400, detail="not a PDF")
-    task = {
-        "id": "ocr-0",
-        "pdf_b64": base64.b64encode(data).decode(),
-        "dpi": dpi,
-        "raw": raw,
-        "strip": strip,
-        "merge": merge,
-    }
-    if page_list := parse_pages(pages):
-        task["pages"] = page_list
-    job_id, _ = await orch.submit_job(JobRequest(modality=Modality.ocr, model=model, tasks=[task]))
-    logger.info(f"ocr job {job_id}: {model}, {len(data)} bytes, dpi={dpi}")
-    try:
-        job = await orch.wait_for_job(job_id, timeout=OCR_WAIT_TIMEOUT_SECONDS)
-    except asyncio.CancelledError:
-        # Client gone: do not spend minutes of GPU on a document nobody
-        # will collect.
-        await orch.cancel_job(job_id)
-        raise
-    if job.status != JobStatus.completed or not job.results:
-        raise HTTPException(status_code=500, detail=job.error or "OCR failed")
-    result = job.results[0]
-    if result.get("error"):
-        raise HTTPException(status_code=500, detail=f"OCR failed: {result['error']}")
-    if response_format == "html":
-        return HTMLResponse(result.get("html", ""))
-    keys = ("html", "pages", "blocks", "tokens_in", "tokens_out", "truncated")
-    out: dict = {k: result.get(k) for k in keys}
-    out["job_id"] = job_id
-    if raw:
-        out["raw"] = result.get("raw")
-    return out
-
-
-# --- Depth -------------------------------------------------------------------
-
-# What the body may be. Anything else is refused before it costs a job.
-_IMAGE_MAGIC = ((b"\x89PNG", "png"), (b"\xff\xd8", "jpeg"), (b"RIFF", "webp"))
-
-
-def _is_image(data: bytes) -> bool:
-    for magic, kind in _IMAGE_MAGIC:
-        if data.startswith(magic):
-            return kind != "webp" or data[8:12] == b"WEBP"
-    return False
-
-
-@router.post(
-    "/depth",
-    response_model=None,
-    openapi_extra={
-        "requestBody": {
-            "required": True,
-            "content": {
-                "image/png": {"schema": {"type": "string", "format": "binary"}},
-                "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
-                "image/webp": {"schema": {"type": "string", "format": "binary"}},
-                "multipart/form-data": {
-                    "schema": {
-                        "type": "object",
-                        "required": ["file"],
-                        "properties": {"file": {"type": "string", "format": "binary"}},
-                    }
-                },
-            },
-        }
-    },
-)
-async def depth_map(
-    request: Request,
-    model: str = Query(default="depth-anything-v2-small", description="depth-anything-v2-small"),
-    visualize: bool = Query(default=False, description="add a colour-mapped PNG (near red)"),
-    response_format: str = Query(default="json", pattern="^(json|png|visualization)$"),
-    orch: Orchestrator = Depends(get_orchestrator),
-) -> Response | dict:
-    """One image in, one depth map out, at the image's own resolution.
-
-    Send a PNG, JPEG or WebP as the request body or as the ``file`` part of a
-    multipart form. The map is a 16-bit PNG whose 0..65535 spans
-    ``depth_min``..``depth_max`` of the model's prediction — for Depth
-    Anything V2 that is relative inverse depth, larger nearer, no unit (see
-    ``DepthResult``). ``response_format=png`` returns that PNG itself;
-    ``visualization`` returns the colour-mapped one, near red and far blue.
-
-    A convenience over ``POST /run`` with ``worker: "depth"`` — same job,
-    same queue, same stats row — for a consumer that has an image and wants
-    a map, not a job id to poll.
-    """
-    if not ((recipe := get_recipe(model)) and recipe.serves(Modality.depth)):
-        known = [r.name for r in recipes_serving(Modality.depth)]
-        raise HTTPException(
-            status_code=400, detail=f"unknown depth model {model!r}; one of {known}"
-        )
-    data = await _document_from(request, await _read_body_capped(request, upload_limit()))
-    if not _is_image(data):
-        raise HTTPException(status_code=400, detail="not a PNG, JPEG or WebP image")
-    want_vis = visualize or response_format == "visualization"
-    task = {"id": "depth-0", "image_b64": base64.b64encode(data).decode(), "visualize": want_vis}
-    job_id, _ = await orch.submit_job(
-        JobRequest(modality=Modality.depth, model=model, tasks=[task])
-    )
-    logger.info(f"depth job {job_id}: {model}, {len(data)} bytes")
-    try:
-        job = await orch.wait_for_job(job_id, timeout=SYNC_WAIT_TIMEOUT_SECONDS)
-    except asyncio.CancelledError:
-        await orch.cancel_job(job_id)
-        raise
-    if job.status != JobStatus.completed or not job.results:
-        raise HTTPException(status_code=500, detail=job.error or "depth estimation failed")
-    result = job.results[0]
-    if result.get("error"):
-        raise HTTPException(status_code=500, detail=f"depth estimation failed: {result['error']}")
-    if response_format == "png":
-        return Response(base64.b64decode(result["depth_b64"]), media_type="image/png")
-    if response_format == "visualization":
-        return Response(base64.b64decode(result["visualization_b64"]), media_type="image/png")
-    keys = ("depth_b64", "width", "height", "depth_min", "depth_max", "metric")
-    out: dict = {k: result.get(k) for k in keys}
-    if want_vis:
-        out["visualization_b64"] = result.get("visualization_b64")
-    out["job_id"] = job_id
-    return out

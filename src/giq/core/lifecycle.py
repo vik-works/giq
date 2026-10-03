@@ -54,7 +54,7 @@ async def _vram_sampler_loop(runner):
 
 
 async def _kill_stale_servers(port: int = INTERNAL_LLM_PORT):
-    """Kill any llama-server processes lingering from a prior run.
+    """Kill any engine server lingering from a prior run.
 
     fuser only catches processes already bound to the port; pkill also catches
     processes still mid-model-load that haven't called bind() yet (but are
@@ -71,24 +71,22 @@ async def _kill_stale_servers(port: int = INTERNAL_LLM_PORT):
     A block of ports per card since bindings landed (giq.gpus.server_port):
     a run that ended with servers on both cards leaves servers on both, and a
     second server of an engine on one card sits on a spare port of that
-    card's block. Every engine's pattern is swept over every block port, or
-    those would be left holding VRAM with nothing tracking them.
+    card's block. Every engine's registered pattern is swept over every block
+    port, or those would be left holding VRAM with nothing tracking them.
     """
-    from giq.adapters.vllm import scope_unit, stop_scope
+    from giq import plugins
     from giq.gpus import device_port, device_ports, get_gpus
 
     gpus = [None, *get_gpus()]
     blocks = {p for gpu in gpus for p in device_ports(gpu)}
-    ports = sd_ports = vllm_ports = blocks
-    # A vllm server runs in a transient systemd scope, which outlives a giq
-    # that died without stopping it; the scope takes its engine core down
-    # with it, which a pattern on the API server's command line would miss.
-    for p in sorted(vllm_ports):
-        await asyncio.to_thread(stop_scope, scope_unit(p))
-    # \b: --port 8089 must not also match --port 80891.
-    patterns = [rf"llama-server .*--port {p}\b" for p in sorted(ports)]
-    patterns += [rf"sd-server .*--listen-port {p}\b" for p in sorted(sd_ports)]
-    patterns += [rf"vllm serve .*--port {p}\b" for p in sorted(vllm_ports)]
+    # What a server engine left behind is the engine's to say (ADR-004):
+    # each registers its process pattern, and any further cleanup.
+    patterns = []
+    for engine in plugins.engines().values():
+        if engine.sweep is not None:
+            await asyncio.to_thread(engine.sweep, blocks)
+        if engine.stale_pattern:
+            patterns += [engine.stale_pattern.format(port=p) for p in sorted(blocks)]
     # SIGTERM everything matching llama-server
     for pattern in patterns:
         proc = await asyncio.create_subprocess_exec(

@@ -9,6 +9,7 @@ leave everything else standing."""
 from pathlib import Path
 
 import pytest
+from fastapi import APIRouter, FastAPI
 
 from giq import plugins, recipes
 from giq.models import JobRequest
@@ -144,3 +145,152 @@ def test_a_plugin_recipe_cannot_take_a_builtin_name(installed, tmp_path):
     installed(("echo", "giq-echo", plugin))
     assert get_recipe("gemma-4-12b").engine == "llama.cpp", "the built-in keeps its name"
     assert get_recipe("echo-small") is not None, "the plugin's other recipes still load"
+
+
+# --- routes (ADR-004 D5: plugins add routes, never take one over) -------------
+
+echo_router = APIRouter()
+
+
+@echo_router.get("/echo")
+async def echo() -> dict:
+    return {"echo": True}
+
+
+squatter = APIRouter()
+
+
+@squatter.get("/status")
+async def not_the_status() -> dict:
+    return {}
+
+
+def served(app: FastAPI) -> dict[str, dict]:
+    """Path -> its operations, from what the app actually routes."""
+    return app.openapi()["paths"]
+
+
+def core_app() -> FastAPI:
+    app = FastAPI()
+    plugins.mount(app)
+    return app
+
+
+def test_a_plugins_routes_are_mounted_after_cores(installed, tmp_path):
+    installed(("echo", "giq-echo", echo_plugin(tmp_path, routers=(f"{__name__}:echo_router",))))
+    paths = list(served(core_app()))
+    assert "/echo" in paths and paths.index("/status") < paths.index("/echo")
+    assert "echo" in plugins.modalities(), "mounting refused nothing"
+
+
+@pytest.mark.parametrize(
+    ("router", "reason"),
+    [
+        (f"{__name__}:squatter", "would take over routes already served: GET /status"),
+        ("giq_no_such_module:router", "its routes do not import"),
+    ],
+)
+def test_a_plugin_whose_routes_cannot_join_is_refused_whole(installed, tmp_path, router, reason):
+    installed(("echo", "giq-echo", echo_plugin(tmp_path, routers=(router,))))
+    app = core_app()
+
+    status = next(s for s in plugins.status() if s.name == "giq-echo")
+    assert not status.loaded and reason in (status.reason or "")
+    assert "echo" not in plugins.modalities(), "its modality went with its routes"
+    assert "not_the_status" not in served(app)["/status"]["get"]["operationId"]
+
+
+# --- what the HTTP API says about plugins ------------------------------------
+
+
+class FakeOrchestrator:
+    """Completes every job at once with one canned result."""
+
+    def __init__(self, result: dict):
+        self.result = result
+        self.submitted: list[JobRequest] = []
+
+    async def submit_job(self, request: JobRequest) -> tuple[str, int]:
+        self.submitted.append(request)
+        return "j1", 0
+
+    async def wait_for_job(self, job_id: str, timeout: float | None = None):
+        from giq.queue import Job
+
+        job = Job(job_id=job_id, request=self.submitted[-1])
+        job.results = [self.result]
+        return job
+
+
+@pytest.fixture
+def api():
+    """The full app, without its lifespan, with a fake orchestrator."""
+    from fastapi.testclient import TestClient
+
+    from giq.api.dependencies import get_orchestrator
+    from giq.main import app
+
+    orch = FakeOrchestrator({"embedding": [1.0], "dim": 192})
+    app.dependency_overrides[get_orchestrator] = lambda: orch
+    try:
+        yield TestClient(app, base_url="http://localhost"), orch
+    finally:
+        app.dependency_overrides.pop(get_orchestrator, None)
+
+
+def test_status_lists_the_plugins(api):
+    import giq.queue
+    import giq.runner
+    from giq.queue import JobQueue
+    from giq.runner import Runner
+
+    giq.queue._queue = JobQueue()
+    giq.runner._runner = Runner(giq.queue._queue)
+    client, _ = api
+    listed = {p["name"]: p for p in client.get("/status").json()["plugins"]}
+    assert listed["giq"]["loaded"] and listed["giq"]["source"] == "builtin"
+    assert "llm" in listed["giq"]["modalities"]
+    assert listed["giq-ocr"]["engines"] == []
+
+
+def test_a_smoke_test_runs_its_modalitys_canned_job(api):
+    client, orch = api
+    r = client.post("/test/embed", params={"recipe": "ecapa-tdnn"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] and body["recipe"] == "ecapa-tdnn" and body["job_id"] == "j1"
+    assert body["dim"] == 192, "the modality's own summary of the result"
+    sent = orch.submitted[-1]
+    assert sent.modality == "embed" and sent.model == "ecapa-tdnn" and sent.tasks
+
+
+def test_a_smoke_test_that_evicts_must_be_confirmed(api):
+    client, orch = api
+    r = client.post("/test/text2image", params={"recipe": "x"})
+    assert r.status_code == 400 and "confirm=true" in r.json()["detail"]
+    assert not orch.submitted
+
+
+def test_a_modality_without_a_smoke_test_is_a_404(api):
+    client, _ = api
+    r = client.post("/test/tts")
+    assert r.status_code == 404 and "embed" in r.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [("whisper-1", "whisper-large-v3"), ("whisper-large-v3", "whisper-large-v3")],
+)
+def test_the_audio_routes_run_the_recipe_a_request_names(model, expected):
+    from giq.api.audio_api import _recipe_for
+
+    assert _recipe_for(model, "audio", "whisper-large-v3") == expected
+
+
+def test_a_recipe_that_does_not_serve_the_route_is_a_400():
+    from fastapi import HTTPException
+
+    from giq.api.audio_api import _recipe_for
+
+    with pytest.raises(HTTPException, match="does not serve tts"):
+        _recipe_for("gemma-4-12b", "tts", "kokoro")

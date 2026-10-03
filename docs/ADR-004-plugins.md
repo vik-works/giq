@@ -87,7 +87,7 @@ A `Plugin` declares, all optional except its name and API version:
   take the recipe from the request instead of hardcoding it.
 - **CLI:** optional `giq` subcommands (`giq prepare vllm` moves into the vllm
   plugin).
-- **A smoke test** per modality, which `/test/{kind}` runs instead of its
+- **A smoke test** per modality, which `/test/{modality}` runs instead of its
   hardcoded table.
 - **Dashboard UI** (D6): prebuilt sandbox panels and their strings, served by
   core and loaded into the dashboard at runtime.
@@ -242,7 +242,7 @@ promise of quality, not a list of everything that works.
 - **Behaviour changes:**
   - The audio routes stop ignoring `model`: `/v1/audio/transcriptions`
     honours the recipe the client names, with today's recipe as the default.
-  - `/test/{kind}` covers whatever is installed.
+  - `/test/{modality}` covers whatever is installed.
   - `/status` gains `plugins`.
 - **Breaking, for code that imports giq:** adapters move out of
   `giq.adapters` into their plugins' packages.

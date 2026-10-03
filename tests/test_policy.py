@@ -482,7 +482,7 @@ async def test_catalog_reports_policy(client, store):
 @pytest.mark.asyncio
 async def test_llm_endpoint_reports_disabled(client, store):
     store.set("gemma-4-12b", OFF)
-    r = await client.get("/llm/endpoint")
+    r = await client.get("/llm/endpoint", params={"model": "gemma-4-12b"})
     assert r.status_code == 503
     assert r.json()["detail"]["state"] == "disabled"
 

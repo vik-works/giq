@@ -255,7 +255,9 @@ async def test_control_endpoints_round_trip(queue: JobQueue, monkeypatch):
         assert r.headers["Retry-After"]
         assert "paused" in r.json()["detail"]
 
-        assert (await client.get("/llm/endpoint")).json()["detail"]["state"] == "paused"
+        assert (await client.get("/llm/endpoint", params={"model": "gemma-4-12b"})).json()[
+            "detail"
+        ]["state"] == "paused"
 
         r = await client.post("/control/resume")
         assert r.status_code == 200

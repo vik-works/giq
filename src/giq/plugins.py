@@ -56,9 +56,12 @@ class _Registry:
     adapters: dict[tuple[str, str], AdapterFactory] = field(default_factory=dict)
     recipe_dirs: list[Path] = field(default_factory=list)
     plugins: list[PluginStatus] = field(default_factory=list)
+    loaded: list[Plugin] = field(default_factory=list)
 
     def refusal(self, plugin: Plugin) -> str | None:
         """Why ``plugin`` cannot join this registry, or None."""
+        if plugin.name in _excluded:
+            return _excluded[plugin.name]
         if plugin.api_version != API_VERSION:
             return f"written for plugin API {plugin.api_version}, giq speaks {API_VERSION}"
         taken = set(self.engines) | set(self.aliases)
@@ -96,6 +99,7 @@ class _Registry:
         self.adapters.update(plugin.adapters)
         if plugin.recipes is not None:
             self.recipe_dirs.append(plugin.recipes)
+        self.loaded.append(plugin)
         self.plugins.append(
             PluginStatus(
                 plugin.name,
@@ -150,6 +154,10 @@ def _build() -> _Registry:
 
 _lock = threading.RLock()
 _registry: _Registry | None = None
+# Plugins refused after the registry was built (a route clash, found when
+# routes are mounted), by name, with the reason; the next build leaves them
+# out whole.
+_excluded: dict[str, str] = {}
 
 
 def _get() -> _Registry:
@@ -161,10 +169,63 @@ def _get() -> _Registry:
 
 
 def reset() -> None:
-    """Forget the registry; the next lookup builds it again."""
+    """Forget the registry and any refusals; the next lookup builds it again."""
     global _registry
     with _lock:
         _registry = None
+        _excluded.clear()
+
+
+def _import(path: str) -> Any:
+    """``"module:attribute"`` -> the object."""
+    import importlib
+
+    module, _, attribute = path.partition(":")
+    return getattr(importlib.import_module(module), attribute)
+
+
+def mount(app: Any) -> None:
+    """Mount every loaded plugin's routers on ``app``, core's first.
+
+    A plugin whose routers do not import, or that would serve a method and
+    path already served, is refused whole (its routes are not mounted, and
+    the registry is rebuilt without its engines and modalities): plugins add
+    routes, they never take one over.
+    """
+    global _registry
+    served: set[tuple[str, str]] = {
+        (method, route.path)
+        for route in app.routes
+        for method in (getattr(route, "methods", None) or ())
+    }
+    refused = False
+    for plugin in list(_get().loaded):
+        try:
+            routers = [_import(path) for path in plugin.routers]
+        except Exception as e:
+            reason = f"its routes do not import: {type(e).__name__}: {e}"
+        else:
+            routes = {
+                (method, route.path)
+                for router in routers
+                for route in router.routes
+                for method in (getattr(route, "methods", None) or ())
+            }
+            if not (clash := sorted(routes & served)):
+                for router in routers:
+                    app.include_router(router)
+                served |= routes
+                continue
+            reason = "it would take over routes already served: " + ", ".join(
+                f"{m} {p}" for m, p in clash[:3]
+            )
+        logger.error(f"plugin {plugin.name} not loaded: {reason}")
+        with _lock:
+            _excluded[plugin.name] = reason
+        refused = True
+    if refused:
+        with _lock:
+            _registry = None
 
 
 # --- lookups -----------------------------------------------------------------
@@ -210,3 +271,8 @@ def recipe_dirs() -> list[Path]:
 
 def status() -> list[PluginStatus]:
     return list(_get().plugins)
+
+
+def loaded() -> list[Plugin]:
+    """The plugins that joined, in registration order."""
+    return list(_get().loaded)

@@ -7,13 +7,8 @@
 from __future__ import annotations
 
 import asyncio
-import base64
-import io
 import logging
-import math
-import struct
 import time
-import wave
 from datetime import datetime
 from pathlib import Path
 
@@ -475,105 +470,49 @@ async def delete_weights_by_id(weights_id: str) -> dict:
 # --- quick tests -----------------------------------------------------------
 
 
-def _beep_wav(seconds: float = 1.0, freq: float = 440.0) -> bytes:
-    """Tiny synthesized test tone (no deps)."""
-    buf = io.BytesIO()
-    rate = 16000
-    with wave.open(buf, "w") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(rate)
-        n = int(rate * seconds)
-        frames = b"".join(
-            struct.pack(
-                "<h",
-                int(
-                    6000
-                    * math.sin(2 * math.pi * freq * t / rate)
-                    * (0.5 + 0.5 * math.sin(2 * math.pi * 3 * t / rate))
-                ),
-            )
-            for t in range(n)
-        )
-        w.writeframes(frames)
-    return buf.getvalue()
-
-
-@router.post("/test/{kind}")
-async def quick_test(
-    kind: str,
+@router.post("/test/{modality}")
+async def smoke_test(
+    modality: str,
+    recipe: str | None = None,
     confirm: bool = False,
     orch: Orchestrator = Depends(get_orchestrator),
 ) -> dict:
-    """Canned end-to-end smoke test per lane. `image` evicts the resident set
-    for minutes — requires ?confirm=true."""
+    """One canned end-to-end job for ``modality``, as its plugin defines it.
+
+    Runs on ``recipe`` when given, else on the first installed recipe that
+    serves the modality. A test that evicts the resident set for minutes
+    (image generation) requires ``?confirm=true``.
+    """
+    from giq import plugins
+    from giq.registry import recipes_serving
+    from giq.storage import installed
+
+    spec = plugins.modality(modality)
+    if spec is None or spec.smoke_test is None:
+        known = sorted(m for m, s in plugins.modalities().items() if s.smoke_test)
+        raise HTTPException(
+            status_code=404,
+            detail=f"no smoke test for {modality!r} (modalities with one: {', '.join(known)})",
+        )
+    test = spec.smoke_test()
+    if test.evicts and not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail=f"the {modality} test evicts the resident set for minutes; pass ?confirm=true",
+        )
+    if recipe is None:
+        candidates = [r.name for r in recipes_serving(modality) if installed(r.name)]
+        if not candidates:
+            raise HTTPException(status_code=404, detail=f"no installed recipe serves {modality!r}")
+        recipe = candidates[0]
     started = time.monotonic()
-
-    if kind == "llm":
-        request = JobRequest(
-            modality="llm",
-            model="gemma-4-12b",
-            tasks=[
-                {
-                    "id": "dash-llm",
-                    "user": "Reply with exactly: PONG",
-                    "params": {"max_tokens": 8, "enable_thinking": False},
-                }
-            ],
-        )
-        timeout = 120.0
-    elif kind == "audio":
-        request = JobRequest(
-            modality="audio",
-            model="whisper-large-v3",
-            tasks=[
-                {
-                    "id": "dash-audio",
-                    "audio_b64": base64.b64encode(_beep_wav()).decode(),
-                    "language": "en",
-                    "diarize": True,
-                }
-            ],
-        )
-        timeout = 180.0
-    elif kind == "embed":
-        request = JobRequest(
-            modality="embed",
-            model="ecapa-tdnn",
-            tasks=[{"id": "dash-embed", "audio_b64": base64.b64encode(_beep_wav()).decode()}],
-        )
-        timeout = 120.0
-    elif kind == "image":
-        if not confirm:
-            raise HTTPException(
-                status_code=400,
-                detail="Image test evicts all residents for minutes — pass ?confirm=true",
-            )
-        request = JobRequest(
-            modality="text2image",
-            model="flux_klein",
-            tasks=[
-                {"id": "dash-image", "prompt": "a tiny test pattern, colorful geometric shapes"}
-            ],
-        )
-        timeout = 700.0
-    else:
-        raise HTTPException(status_code=404, detail=f"Unknown test kind: {kind}")
-
-    job_id, _ = await orch.submit_job(request)
-    job = await orch.wait_for_job(job_id, timeout=timeout)
-    elapsed_ms = int((time.monotonic() - started) * 1000)
-
+    job_id, _ = await orch.submit_job(JobRequest(modality=modality, model=recipe, tasks=test.tasks))
+    job = await orch.wait_for_job(job_id, timeout=test.timeout)
     result = job.results[0] if job.results else {}
-    snippet: dict = {"job_id": job_id, "latency_ms": elapsed_ms, "ok": True}
-    if kind == "llm":
-        snippet["output"] = (result.get("output") or "")[:200]
-    elif kind == "audio":
-        snippet["output"] = result.get("text", "") or "(silence — VAD gated the test tone)"
-        snippet["language"] = result.get("language")
-    elif kind == "embed":
-        snippet["dim"] = result.get("dim")
-    elif kind == "image":
-        snippet["seed"] = result.get("seed")
-        snippet["image_b64"] = result.get("image_b64")
-    return snippet
+    return {
+        "job_id": job_id,
+        "recipe": recipe,
+        "latency_ms": int((time.monotonic() - started) * 1000),
+        "ok": job.error is None and bool(job.results),
+        **test.summary(result),
+    }

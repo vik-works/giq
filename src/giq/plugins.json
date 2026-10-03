@@ -1,0 +1,109 @@
+{
+  "about": "The curated giq plugins (ADR-004 D8, ADR-005 D5): what each adds, and what it needs beyond Python. Shipped with each giq release; data only.",
+  "plugins": [
+    {
+      "name": "giq",
+      "package": "giq",
+      "summary": "The core: the queue and scheduler, llama.cpp for LLMs, the OpenAI-compatible chat API, the dashboard",
+      "engines": [
+        "llama.cpp"
+      ],
+      "modalities": [
+        "llm"
+      ],
+      "recipes": [
+        "gemma-4-12b",
+        "gemma-4-26b-a4b-it",
+        "gemma-4-31b-it",
+        "qwen3.8-27b"
+      ],
+      "needs": "the llama-server binary from llama.cpp, built with CUDA"
+    },
+    {
+      "name": "giq-vllm",
+      "package": "giq-vllm",
+      "summary": "vllm for LLMs: Hugging Face checkpoints, continuous batching, MTP speculation",
+      "engines": [
+        "vllm"
+      ],
+      "modalities": [],
+      "recipes": [
+        "qwen3.8-27b-nvfp4",
+        "qwen3.8-27b-nvfp4-chat"
+      ],
+      "needs": "vllm's own interpreter, set up once: cd envs/vllm && uv sync; then giq prepare vllm"
+    },
+    {
+      "name": "giq-sdcpp",
+      "package": "giq-sdcpp",
+      "summary": "Image generation and editing with stable-diffusion.cpp",
+      "engines": [
+        "sd.cpp"
+      ],
+      "modalities": [
+        "text2image",
+        "image_edit"
+      ],
+      "recipes": [
+        "flux_klein",
+        "zimage"
+      ],
+      "needs": "the sd-server binary from stable-diffusion.cpp, built with CUDA"
+    },
+    {
+      "name": "giq-speech",
+      "package": "giq-speech",
+      "summary": "Speech to text with speaker diarization, text to speech, speaker voiceprints",
+      "engines": [
+        "faster-whisper",
+        "faster-whisper+pyannote",
+        "speechbrain",
+        "kokoro"
+      ],
+      "modalities": [
+        "stt",
+        "audio",
+        "embed",
+        "tts"
+      ],
+      "recipes": [
+        "whisper-large-v3",
+        "faster-whisper-tiny",
+        "faster-whisper-base",
+        "faster-whisper-small",
+        "faster-whisper-medium",
+        "faster-whisper-large-v3",
+        "ecapa-tdnn",
+        "kokoro"
+      ],
+      "needs": "torch; a Hugging Face token for pyannote's diarization model"
+    },
+    {
+      "name": "giq-ocr",
+      "package": "giq-ocr",
+      "summary": "Documents to text: GLM-OCR with a layout model, and Unlimited-OCR",
+      "engines": [],
+      "modalities": [
+        "ocr"
+      ],
+      "recipes": [
+        "glm-ocr",
+        "unlimited-ocr"
+      ],
+      "needs": "torch and transformers"
+    },
+    {
+      "name": "giq-depth",
+      "package": "giq-depth",
+      "summary": "Monocular depth maps with Depth Anything V2",
+      "engines": [],
+      "modalities": [
+        "depth"
+      ],
+      "recipes": [
+        "depth-anything-v2-small"
+      ],
+      "needs": "torch and transformers"
+    }
+  ]
+}

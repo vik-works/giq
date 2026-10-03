@@ -433,6 +433,15 @@ def _capability(modality: str) -> ModalityCapability | None:
     return cap
 
 
+@router.get("/plugins")
+async def list_plugins() -> dict:
+    """Installed plugins, and the curated ones that are not with their
+    install command (ADR-005 D5). The dashboard does not install plugins."""
+    from giq import plugins
+
+    return {"plugins": plugins.catalog()}
+
+
 @router.get("/capabilities", response_model=Capabilities)
 async def get_capabilities() -> Capabilities:
     """What this service runs, per modality, and what it could (ADR-005 D7).

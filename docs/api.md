@@ -88,6 +88,7 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/engines` | GET | Declared inference engines and the build each one reports |
 | `/capabilities` | GET | Per modality: the recipes that run here now, preferred first (`recipes`, kept warm first), the one a request naming none runs on (`default`), what could be fetched or placed (`available`, with a one-line verdict), engines, batch ceilings and voices. Every registered modality is listed, also with nothing ready |
 | `/capabilities/{modality}` | GET | One modality's entry |
+| `/plugins` | GET | Installed plugins, and the curated ones that are not, each with what it adds, what it needs beyond Python, and its install command (run by the operator; the dashboard does not install plugins) |
 | `/control/pause` | POST | Stop serving, unload everything, free VRAM |
 | `/control/resume` | POST | Resume serving; residents reload |
 | `/stats/summary`, `/stats/timeline`, `/stats/usage`, `/stats/jobs` | GET | Job history (see [Privacy](access-and-privacy.md#privacy) for what is recorded) |

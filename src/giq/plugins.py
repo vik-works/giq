@@ -276,3 +276,63 @@ def status() -> list[PluginStatus]:
 def loaded() -> list[Plugin]:
     """The plugins that joined, in registration order."""
     return list(_get().loaded)
+
+
+# --- the curated index (ADR-005 D5) --------------------------------------------
+
+
+def curated() -> list[dict[str, Any]]:
+    """The curated plugins as ``giq/plugins.json`` lists them, data only."""
+    import json
+    from importlib.resources import files
+
+    return json.loads(files("giq").joinpath("plugins.json").read_text())["plugins"]
+
+
+def install_command(package: str) -> str:
+    """How to install ``package`` into the interpreter giq runs on."""
+    import sys
+
+    return f"uv pip install --python {sys.executable} {package}"
+
+
+def catalog() -> list[dict[str, Any]]:
+    """Installed plugins and the curated ones that are not, for /plugins.
+
+    A curated plugin that is installed is listed once, as installed; one
+    that is not carries its install command. Plugins are installed by the
+    operator, from the command line: installing one changes giq's own
+    environment and needs a restart (ADR-005 D5).
+    """
+    from dataclasses import asdict
+
+    installed = {s.name: s for s in status()}
+    out = []
+    for entry in curated():
+        state = installed.pop(entry["name"], None)
+        out.append(
+            {
+                **entry,
+                "curated": True,
+                "installed": state is not None and state.loaded,
+                "status": asdict(state) if state is not None else None,
+                "install": None if state is not None else install_command(entry["package"]),
+            }
+        )
+    for state in installed.values():
+        out.append(
+            {
+                "name": state.name,
+                "package": state.source,
+                "summary": "",
+                "engines": list(state.engines),
+                "modalities": list(state.modalities),
+                "recipes": [],
+                "needs": "",
+                "curated": False,
+                "installed": state.loaded,
+                "status": asdict(state),
+                "install": None,
+            }
+        )
+    return out

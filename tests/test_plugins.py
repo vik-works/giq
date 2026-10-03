@@ -294,3 +294,40 @@ def test_a_recipe_that_does_not_serve_the_route_is_a_400():
 
     with pytest.raises(HTTPException, match="does not serve tts"):
         _recipe_for("gemma-4-12b", "tts", "kokoro")
+
+
+# --- the curated index (ADR-005 D5) ------------------------------------------
+
+
+def test_the_index_matches_what_the_curated_plugins_register():
+    """The index is written by hand; it must say what the plugins do."""
+    registered = {s.name: s for s in plugins.status()}
+    for entry in plugins.curated():
+        state = registered[entry["name"]]
+        assert set(entry["engines"]) <= set(state.engines), entry["name"]
+        assert set(entry["modalities"]) == set(state.modalities), entry["name"]
+
+
+def test_every_builtin_recipe_is_brought_by_exactly_one_curated_plugin():
+    listed = [name for entry in plugins.curated() for name in entry["recipes"]]
+    builtin = {recipe.name for recipe, _ in recipes.builtin().values()}
+    assert sorted(listed) == sorted(builtin), "each recipe once, and none missing"
+    for entry in plugins.curated():
+        modalities = set(entry["modalities"])
+        for name in entry["recipes"]:
+            recipe = get_recipe(name)
+            assert recipe is not None
+            assert recipe.engine in entry["engines"] or modalities & set(recipe.modalities), (
+                f"{name} is not {entry['name']}'s"
+            )
+
+
+def test_a_curated_plugin_not_installed_carries_its_install_command(monkeypatch):
+    present = [s for s in plugins.status() if s.name != "giq-depth"]
+    monkeypatch.setattr(plugins, "status", lambda: present)
+    depth = next(e for e in plugins.catalog() if e["name"] == "giq-depth")
+    assert not depth["installed"] and depth["status"] is None
+    assert depth["install"].startswith("uv pip install --python ")
+    assert depth["install"].endswith(" giq-depth")
+    core = next(e for e in plugins.catalog() if e["name"] == "giq")
+    assert core["installed"] and core["install"] is None

@@ -188,8 +188,36 @@ def _add(argv: list[str]) -> int:
     return 0
 
 
+def _plugins(argv: list[str]) -> int:
+    """``giq plugins``: what is installed, and the curated plugins that are not."""
+    from giq import plugins
+
+    if argv and argv[0] in ("-h", "--help"):
+        print(
+            "usage: giq plugins\n\nInstalled plugins, and the curated ones with their "
+            "install command."
+        )
+        return 0
+    for entry in plugins.catalog():
+        status = entry["status"] or {}
+        if entry["installed"]:
+            mark = "installed"
+        elif status:
+            mark = "NOT LOADED"
+        else:
+            mark = "available"
+        print(f"{entry['name']:14} {mark:10} {entry['summary']}")
+        if status and not status.get("loaded"):
+            print(f"{'':25} {status.get('reason')}")
+        if entry["install"]:
+            print(f"{'':25} {entry['install']}")
+            if entry["needs"]:
+                print(f"{'':25} needs: {entry['needs']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Dispatch ``giq [serve|init|prepare|add] …``; bare options mean ``serve``."""
+    """Dispatch ``giq [serve|init|prepare|add|plugins] …``; bare options mean ``serve``."""
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "init":
         sys.exit(_init(args[1:]))
@@ -197,6 +225,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(_prepare(args[1:]))
     if args and args[0] == "add":
         sys.exit(_add(args[1:]))
+    if args and args[0] == "plugins":
+        sys.exit(_plugins(args[1:]))
     if args and args[0] == "serve":
         args = args[1:]
     from giq.main import cli

@@ -213,3 +213,9 @@ async def test_progress_is_what_the_child_reports(models, monkeypatch):
     assert download.bytes_done == 7, "a line that is not progress is ignored"
     downloads.cancel(download.id)
     await _settled(download)
+
+
+def test_a_fetch_may_download_where_the_service_is_offline(monkeypatch):
+    """The unit sets HF_HUB_OFFLINE for the model children; a fetch is asked for."""
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    assert "HF_HUB_OFFLINE" not in fetch._child_env()

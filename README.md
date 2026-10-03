@@ -126,7 +126,11 @@ uv run python -m giq.main          # loopback, port 8084
 GIQ_MODELS_DIR=/data/models uv run python -m giq.main --host 127.0.0.1 --port 8084
 ```
 
-`uv sync` alone installs giq itself; `make ui` builds just the dashboard.
+`uv sync` alone installs giq and its curated plugins (image generation,
+speech, OCR, depth, vllm), each a package of its own; `make ui` builds just
+the dashboard. giq's core installed alone serves LLMs through llama.cpp,
+with no torch: see [docs/plugins.md](docs/plugins.md) for choosing plugins
+and writing one.
 
 Then open `http://localhost:8084/dash`.
 
@@ -179,12 +183,16 @@ curl -X POST 'http://localhost:8084/run?wait=true' \
   one data directory (`GIQ_HOME`), reverse proxy, updates and backups
 - [Engines](docs/engines.md) — llama.cpp, stable-diffusion.cpp and the
   interpreters giq runs models with
+- [Plugins](docs/plugins.md) — the curated plugins, installing core alone
+  or with a few, and writing one (engines, modalities, routes, recipes,
+  dashboard panels)
 - [Development](docs/development.md) — tests, the dashboard, languages,
   architecture
 - Design decisions: [ADR-001](docs/ADR-001-ontology.md),
   [ADR-002](docs/ADR-002-model-instances.md),
   [ADR-003](docs/ADR-003-domain.md) (the terms: engine, weights, recipe,
-  instance, residency, modality)
+  instance, residency, modality), [ADR-004](docs/ADR-004-plugins.md)
+  (plugins), [ADR-005](docs/ADR-005-getting-recipes.md) (getting recipes)
 
 ## Contributing
 

@@ -83,8 +83,12 @@ def _child_env() -> dict[str, str]:
     from giq.paths import cache_env
 
     # The same HF home the children load from, or the files land where
-    # nobody looks for them.
-    return {**os.environ, **cache_env()}
+    # nobody looks for them. HF_HUB_OFFLINE keeps the model children from
+    # downloading behind giq's back (the systemd unit sets it); a fetch is
+    # the one download someone asked for, so it is lifted here only.
+    env = {**os.environ, **cache_env()}
+    env.pop("HF_HUB_OFFLINE", None)
+    return env
 
 
 def child_command(move: Transfer, report: bool = False) -> list[str]:

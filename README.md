@@ -130,18 +130,27 @@ GIQ_MODELS_DIR=/data/models uv run python -m giq.main --host 127.0.0.1 --port 80
 
 Then open `http://localhost:8084/dash`.
 
-Model weights are not shipped. Put them under `~/models` (or point
-`GIQ_MODELS_DIR` elsewhere); the weight paths in the recipe files are
-relative to that directory.
-`/capabilities` and the dashboard show which registered models were found on
-disk. Paths, engines and GPUs are set in `config.yaml` — see
-[docs/configuration.md](docs/configuration.md).
+Model weights are not shipped; giq fetches them from the Hugging Face Hub
+when you add a recipe. It first shows what that takes — download size, a
+card it fits, free disk, access to gated repositories, the licence:
+
+```bash
+uv run giq add gemma-4-12b --dry-run   # the plan
+uv run giq add gemma-4-12b             # the plan, then the fetch
+```
+
+The dashboard's Recipes page shows what is on this machine, and its Add
+page everything else, with the same plan and a fetch button. Weights go
+under `~/models` (or `GIQ_MODELS_DIR`); the weight paths in the recipe files
+are relative to that directory, so files you place there yourself count
+too. Paths, engines and GPUs are set in `config.yaml` — see
+[docs/configuration.md](docs/configuration.md#getting-a-recipes-weights).
 
 Each model comes with its own licence, and checking it for your use is up to
-you: most registered models are Apache-2.0 or MIT, the Gemma models follow
-the Gemma Terms of Use, Llama 3.2 its community licence, and the pyannote
-diarization pipeline is CC-BY-4.0 and gated on the Hugging Face Hub.
-Non-commercial models are deliberately not registered.
+you; the plan shows it before anything is fetched. The built-in recipes'
+weights are Apache-2.0 or MIT, and the pyannote diarization pipeline is
+CC-BY-4.0 and gated on the Hugging Face Hub. Non-commercial models are
+deliberately not registered.
 
 ## API in brief
 

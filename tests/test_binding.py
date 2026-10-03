@@ -216,8 +216,8 @@ async def test_eviction_only_considers_residents_on_the_target_card(two_cards, s
 def test_each_card_gets_its_own_server_port(two_cards, store):
     """Two llama-servers cannot both bind 8086."""
     from giq.adapters.llama_cpp import INTERNAL_LLM_PORT
-    from giq.adapters.sdcpp import INTERNAL_SD_PORT
     from giq.gpus import device_port
+    from giq_sdcpp.adapter import INTERNAL_SD_PORT
 
     with two_cards():
         assert device_port(INTERNAL_LLM_PORT, BIG) == 8086  # unchanged for card 0
@@ -242,7 +242,7 @@ def test_a_bound_llm_config_takes_its_cards_port(two_cards, store):
 
 def test_the_child_environment_names_the_bound_card(two_cards, store):
     with two_cards(bind={"kokoro": "1"}):
-        from giq.adapters.tts import TtsAdapter, TtsConfig
+        from giq_speech.tts import TtsAdapter, TtsConfig
 
         worker = TtsAdapter(TtsConfig(model="kokoro"))
         env = worker._spawn_env()
@@ -457,8 +457,8 @@ async def test_llama_moves_off_a_held_port_at_start(two_cards, store, monkeypatc
 
 @pytest.mark.asyncio
 async def test_the_stale_sweep_covers_every_port_of_every_card(two_cards, monkeypatch):
-    from giq.adapters import vllm
     from giq.core import lifecycle
+    from giq_vllm import adapter as vllm
 
     calls: list[tuple[str, ...]] = []
 

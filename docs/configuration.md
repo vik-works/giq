@@ -77,10 +77,13 @@ parameters, residency defaults and the VRAM figure the scheduler gates on
 [ADR-003](ADR-003-domain.md)'s). A running recipe is an *instance*. Two
 places hold recipes:
 
-- **Built-in** — one file per recipe shipped in the package,
-  `src/giq/recipes/<name>.yaml`. Read them for the catalog giq
-  ships and for why each model runs with the settings it does; the reasoning
-  is in their comments. Don't edit them in an installed giq.
+- **Built-in** — one file per recipe, shipped with core
+  (`src/giq/recipes/<name>.yaml`, the llama.cpp ones) and with each plugin
+  (`plugins/<plugin>/src/giq_<plugin>/recipes/` for the curated ones). Read
+  them for the catalog giq ships and for why each model runs with the
+  settings it does; the reasoning is in their comments. Don't edit them in an
+  installed giq. A plugin's recipe never replaces one of core's or another
+  plugin's: a name already taken is left out, logged.
 - **Yours** — `*.yaml` / `*.yml` directly in the recipes directory
   (`GIQ_RECIPES_DIR`, `paths.recipes`, `$GIQ_HOME/recipes`, else
   `~/.config/giq/recipes`). File names are free; the contents say what the

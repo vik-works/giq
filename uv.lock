@@ -7,6 +7,17 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "giq",
+    "giq-defaults",
+    "giq-depth",
+    "giq-ocr",
+    "giq-sdcpp",
+    "giq-speech",
+    "giq-vllm",
+]
+
 [[package]]
 name = "addict"
 version = "2.4.0"
@@ -14,15 +25,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/85/ef/fd7649da8af11d93979831e8f1f8097e85e82d5bfeabc8c68b39175d8e75/addict-2.4.0.tar.gz", hash = "sha256:b3b2210e0e067a281f5646c8c5db92e99b7231ea8b0eb5f74dbdf9e259d4e494", size = 9186, upload-time = "2020-11-21T16:21:31.416Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/00/b08f23b7d7e1e14ce01419a467b583edbb93c6cdb8654e54a9cc579cd61f/addict-2.4.0-py3-none-any.whl", hash = "sha256:249bb56bbfd3cdc2a004ea0ff4c2b6ddc84d53bc2194761636eb314d5cfa5dfc", size = 3832, upload-time = "2020-11-21T16:21:29.588Z" },
-]
-
-[[package]]
-name = "aiofiles"
-version = "25.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/41/c3/534eac40372d8ee36ef40df62ec129bee4fdb5ad9706e58a29be53b2c970/aiofiles-25.1.0.tar.gz", hash = "sha256:a8d728f0a29de45dc521f18f07297428d56992a742f0cd2701ba86e44d23d5b2", size = 46354, upload-time = "2025-10-09T20:51:04.358Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/8a/340a1555ae33d7354dbca4faa54948d76d89a27ceef032c8c3bc661d003e/aiofiles-25.1.0-py3-none-any.whl", hash = "sha256:abe311e527c862958650f9438e859c1fa7568a141b22abcd015e120e86a85695", size = 14668, upload-time = "2025-10-09T20:51:03.174Z" },
 ]
 
 [[package]]
@@ -773,40 +775,21 @@ http = [
 
 [[package]]
 name = "giq"
-version = "0.5.3"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aiofiles" },
-    { name = "easydict" },
-    { name = "einops" },
-    { name = "en-core-web-sm" },
     { name = "fastapi" },
-    { name = "faster-whisper" },
     { name = "httpx" },
-    { name = "kokoro" },
-    { name = "numpy" },
-    { name = "opencv-python-headless" },
-    { name = "pillow" },
-    { name = "pip" },
-    { name = "psutil" },
-    { name = "pyannote-audio" },
+    { name = "huggingface-hub" },
     { name = "pydantic" },
-    { name = "pypdfium2" },
     { name = "python-multipart" },
     { name = "pyyaml" },
-    { name = "scipy" },
-    { name = "soundfile" },
-    { name = "speechbrain" },
-    { name = "torch" },
-    { name = "torchaudio" },
-    { name = "torchsde" },
-    { name = "torchvision" },
-    { name = "transformers" },
     { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "giq-defaults" },
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -816,43 +799,162 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiofiles", specifier = ">=25.1.0" },
-    { name = "easydict", specifier = ">=1.13" },
-    { name = "einops", specifier = ">=0.8.2" },
-    { name = "en-core-web-sm", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.141.1" },
-    { name = "faster-whisper", specifier = ">=1.2.1" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "kokoro", specifier = ">=0.9.4" },
-    { name = "numpy", specifier = ">=2.4.2" },
-    { name = "opencv-python-headless", specifier = ">=4.10.0" },
-    { name = "pillow", specifier = ">=12.1.1" },
-    { name = "pip", specifier = ">=26.0" },
-    { name = "psutil", specifier = ">=7.2.2" },
-    { name = "pyannote-audio", specifier = ">=4.0.7" },
+    { name = "huggingface-hub", specifier = ">=1.30.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pypdfium2", specifier = ">=4.30.0" },
     { name = "python-multipart", specifier = ">=0.0.22" },
     { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "scipy", specifier = ">=1.17.1" },
-    { name = "soundfile", specifier = ">=0.13.1" },
-    { name = "speechbrain", specifier = ">=1.1.0" },
-    { name = "torch", specifier = ">=2.13.0,<2.14.0" },
-    { name = "torchaudio", specifier = ">=2.11.0,<2.12.0" },
-    { name = "torchsde", specifier = ">=0.2.6" },
-    { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
-    { name = "transformers", specifier = ">=5.16.1" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "giq-defaults", editable = "plugins/giq-defaults" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "ruff", specifier = ">=0.15.0" },
     { name = "ty", specifier = ">=0.0.74" },
 ]
+
+[[package]]
+name = "giq-defaults"
+version = "0.6.0"
+source = { editable = "plugins/giq-defaults" }
+dependencies = [
+    { name = "giq" },
+    { name = "giq-depth" },
+    { name = "giq-ocr" },
+    { name = "giq-sdcpp" },
+    { name = "giq-speech" },
+    { name = "giq-vllm" },
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchvision" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "giq", editable = "." },
+    { name = "giq-depth", editable = "plugins/giq-depth" },
+    { name = "giq-ocr", editable = "plugins/giq-ocr" },
+    { name = "giq-sdcpp", editable = "plugins/giq-sdcpp" },
+    { name = "giq-speech", editable = "plugins/giq-speech" },
+    { name = "giq-vllm", editable = "plugins/giq-vllm" },
+    { name = "torch", specifier = ">=2.13.0,<2.14.0" },
+    { name = "torchaudio", specifier = ">=2.11.0,<2.12.0" },
+    { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
+]
+
+[[package]]
+name = "giq-depth"
+version = "0.6.0"
+source = { editable = "plugins/giq-depth" }
+dependencies = [
+    { name = "giq" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "giq", editable = "." },
+    { name = "numpy", specifier = ">=2.4.2" },
+    { name = "pillow", specifier = ">=12.1.1" },
+    { name = "torch", specifier = ">=2.13.0,<2.14.0" },
+    { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
+    { name = "transformers", specifier = ">=5.16.1" },
+]
+
+[[package]]
+name = "giq-ocr"
+version = "0.6.0"
+source = { editable = "plugins/giq-ocr" }
+dependencies = [
+    { name = "easydict" },
+    { name = "einops" },
+    { name = "giq" },
+    { name = "numpy" },
+    { name = "opencv-python-headless" },
+    { name = "pillow" },
+    { name = "pypdfium2" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "easydict", specifier = ">=1.13" },
+    { name = "einops", specifier = ">=0.8.2" },
+    { name = "giq", editable = "." },
+    { name = "numpy", specifier = ">=2.4.2" },
+    { name = "opencv-python-headless", specifier = ">=4.10.0" },
+    { name = "pillow", specifier = ">=12.1.1" },
+    { name = "pypdfium2", specifier = ">=4.30.0" },
+    { name = "torch", specifier = ">=2.13.0,<2.14.0" },
+    { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
+    { name = "transformers", specifier = ">=5.16.1" },
+]
+
+[[package]]
+name = "giq-sdcpp"
+version = "0.6.0"
+source = { editable = "plugins/giq-sdcpp" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
+
+[[package]]
+name = "giq-speech"
+version = "0.6.0"
+source = { editable = "plugins/giq-speech" }
+dependencies = [
+    { name = "en-core-web-sm" },
+    { name = "faster-whisper" },
+    { name = "giq" },
+    { name = "kokoro" },
+    { name = "numpy" },
+    { name = "pip" },
+    { name = "pyannote-audio" },
+    { name = "soundfile" },
+    { name = "speechbrain" },
+    { name = "torch" },
+    { name = "torchaudio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "en-core-web-sm", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
+    { name = "faster-whisper", specifier = ">=1.2.1" },
+    { name = "giq", editable = "." },
+    { name = "kokoro", specifier = ">=0.9.4" },
+    { name = "numpy", specifier = ">=2.4.2" },
+    { name = "pip", specifier = ">=26.0" },
+    { name = "pyannote-audio", specifier = ">=4.0.7" },
+    { name = "soundfile", specifier = ">=0.13.1" },
+    { name = "speechbrain", specifier = ">=1.1.0" },
+    { name = "torch", specifier = ">=2.13.0,<2.14.0" },
+    { name = "torchaudio", specifier = ">=2.11.0,<2.12.0" },
+]
+
+[[package]]
+name = "giq-vllm"
+version = "0.6.0"
+source = { editable = "plugins/giq-vllm" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
 
 [[package]]
 name = "googleapis-common-protos"
@@ -2000,22 +2102,6 @@ wheels = [
 ]
 
 [[package]]
-name = "psutil"
-version = "7.2.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/aa/c6/d1ddf4abb55e93cebc4f2ed8b5d6dbad109ecb8d63748dd2b20ab5e57ebe/psutil-7.2.2.tar.gz", hash = "sha256:0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372", size = 493740, upload-time = "2026-01-28T18:14:54.428Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/36/5ee6e05c9bd427237b11b3937ad82bb8ad2752d72c6969314590dd0c2f6e/psutil-7.2.2-cp36-abi3-macosx_10_9_x86_64.whl", hash = "sha256:ed0cace939114f62738d808fdcecd4c869222507e266e574799e9c0faa17d486", size = 129090, upload-time = "2026-01-28T18:15:22.168Z" },
-    { url = "https://files.pythonhosted.org/packages/80/c4/f5af4c1ca8c1eeb2e92ccca14ce8effdeec651d5ab6053c589b074eda6e1/psutil-7.2.2-cp36-abi3-macosx_11_0_arm64.whl", hash = "sha256:1a7b04c10f32cc88ab39cbf606e117fd74721c831c98a27dc04578deb0c16979", size = 129859, upload-time = "2026-01-28T18:15:23.795Z" },
-    { url = "https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9", size = 155560, upload-time = "2026-01-28T18:15:25.976Z" },
-    { url = "https://files.pythonhosted.org/packages/63/65/37648c0c158dc222aba51c089eb3bdfa238e621674dc42d48706e639204f/psutil-7.2.2-cp36-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b0726cecd84f9474419d67252add4ac0cd9811b04d61123054b9fb6f57df6e9e", size = 156997, upload-time = "2026-01-28T18:15:27.794Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/13/125093eadae863ce03c6ffdbae9929430d116a246ef69866dad94da3bfbc/psutil-7.2.2-cp36-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:fd04ef36b4a6d599bbdb225dd1d3f51e00105f6d48a28f006da7f9822f2606d8", size = 148972, upload-time = "2026-01-28T18:15:29.342Z" },
-    { url = "https://files.pythonhosted.org/packages/04/78/0acd37ca84ce3ddffaa92ef0f571e073faa6d8ff1f0559ab1272188ea2be/psutil-7.2.2-cp36-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:b58fabe35e80b264a4e3bb23e6b96f9e45a3df7fb7eed419ac0e5947c61e47cc", size = 148266, upload-time = "2026-01-28T18:15:31.597Z" },
-    { url = "https://files.pythonhosted.org/packages/b4/90/e2159492b5426be0c1fef7acba807a03511f97c5f86b3caeda6ad92351a7/psutil-7.2.2-cp37-abi3-win_amd64.whl", hash = "sha256:eb7e81434c8d223ec4a219b5fc1c47d0417b12be7ea866e24fb5ad6e84b3d988", size = 137737, upload-time = "2026-01-28T18:15:33.849Z" },
-    { url = "https://files.pythonhosted.org/packages/8c/c7/7bb2e321574b10df20cbde462a94e2b71d05f9bbda251ef27d104668306a/psutil-7.2.2-cp37-abi3-win_arm64.whl", hash = "sha256:8c233660f575a5a89e6d4cb65d9f938126312bca76d8fe087b947b3a1aaac9ee", size = 134617, upload-time = "2026-01-28T18:15:36.514Z" },
-]
-
-[[package]]
 name = "pyannote-audio"
 version = "4.0.7"
 source = { registry = "https://pypi.org/simple" }
@@ -3125,21 +3211,6 @@ wheels = [
 ]
 
 [[package]]
-name = "torchsde"
-version = "0.2.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "scipy" },
-    { name = "torch" },
-    { name = "trampoline" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/71/a5/ae18ee6de023b3a5462122a43a4c9812c11d275cc585a3d08bf24945c02a/torchsde-0.2.6.tar.gz", hash = "sha256:81d074d3504f9d190f1694fb526395afbe4608ee43a88adb1262a639e5b4778b", size = 48840, upload-time = "2023-09-26T21:52:20.614Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/1f/b67ebd7e19ffe259f05d3cf4547326725c3113d640c277030be3e9998d6f/torchsde-0.2.6-py3-none-any.whl", hash = "sha256:19bf7ff02eec7e8e46ba1cdb4aa0f9db1c51d492524a16975234b467f7fc463b", size = 61232, upload-time = "2023-09-26T21:52:19.274Z" },
-]
-
-[[package]]
 name = "torchvision"
 version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3169,14 +3240,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/09/a9/6ba95a270c6f1fbcd8dac228323f2777d886cb206987444e4bce66338dd4/tqdm-4.67.3.tar.gz", hash = "sha256:7d825f03f89244ef73f1d4ce193cb1774a8179fd96f31d7e1dcde62092b960bb", size = 169598, upload-time = "2026-02-03T17:35:53.048Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl", hash = "sha256:ee1e4c0e59148062281c49d80b25b67771a127c85fc9676d3be5f243206826bf", size = 78374, upload-time = "2026-02-03T17:35:50.982Z" },
-]
-
-[[package]]
-name = "trampoline"
-version = "0.1.2"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/54/d2805324fb746d8da86d3844bee4f55c0cfd6c136de61b713772d44c5bea/trampoline-0.1.2-py3-none-any.whl", hash = "sha256:36cc9a4ff9811843d177fc0e0740efbd7da39eadfe6e50c9e2937cbc06d899d9", size = 5173, upload-time = "2018-08-18T01:00:41.215Z" },
 ]
 
 [[package]]

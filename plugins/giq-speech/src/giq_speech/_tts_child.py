@@ -5,7 +5,7 @@
 """Child process for the Kokoro TTS worker.
 
 Invoked by ``TtsAdapter`` (parent) via
-``python -u -m giq.adapters._tts_child --lang-code a``.
+``python -u -m giq_speech._tts_child --lang-code a``.
 
 Kokoro was the last CUDA worker still running inside giq's own process. That
 meant its context was never destroyed: the runner would log "Kokoro TTS
@@ -31,9 +31,9 @@ import sys  # noqa: E402
 import traceback  # noqa: E402
 from typing import Any  # noqa: E402
 
-from giq.adapters.tts import KOKORO_SAMPLE_RATE, KOKORO_VOICES, VOICE_MAP  # noqa: E402
 from giq.models import JobResult  # noqa: E402
 from giq_child import run_ipc_child_loop, write_startup_error  # noqa: E402
+from giq_speech.tts import KOKORO_SAMPLE_RATE, KOKORO_VOICES, VOICE_MAP  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

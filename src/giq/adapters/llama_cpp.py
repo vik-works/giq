@@ -43,10 +43,11 @@ def weights_installed(model: str) -> bool:
     """
     from giq.adapters.engine import engine_for
 
-    if engine_for(model) == "vllm":
-        from giq.adapters.vllm import weights_installed as vllm_weights_installed
+    if engine_for(model) != "llama.cpp":
+        # Another engine's weights: every file and part its recipe names.
+        from giq.storage import installed
 
-        return vllm_weights_installed(model)
+        return installed(model)
     path = resolved_model_path(model)
     return bool(path) and Path(path).exists()
 

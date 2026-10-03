@@ -73,8 +73,9 @@ from giq.adapters.engine import Concurrency, ServedLLM, StartError, open_engine_
 from giq.gpus import compute_capability, device_env, device_port, resolve_device, server_port
 from giq.models import JobResult
 from giq.paths import cache_dir, model_path, state_dir
-from giq.recipes.schema import Recipe, VllmParams, mtp_layers, read_hf_config
+from giq.recipes.schema import Recipe
 from giq.registry import vram_for
+from giq_vllm.params import VllmParams, mtp_layers, read_hf_config
 
 if TYPE_CHECKING:
     from giq.queue import JobStream

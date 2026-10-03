@@ -4,7 +4,7 @@
 
 [project]
 name = "giq"
-version = "0.5.3"
+version = "0.6.0"
 description = "GPU Inference Queue - efficient GPU worker management for multimodal AI"
 readme = "README.md"
 license = "Apache-2.0"
@@ -12,83 +12,18 @@ license-files = ["LICENSE", "LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    # Everything giq needs to serve every model its registry declares. Nothing
-    # here is optional: `uv sync` with no flags must produce a working install,
-    # because it PRUNES to the lock — a bare sync that left the TTS stack in an
-    # extra silently removed it and left /capabilities advertising models that
-    # could no longer load.
-    #
-    # --- service -------------------------------------------------------------
+    # The service: queue, scheduler, API, dashboard, recipes and weights.
+    # Nothing a model needs: every engine and modality past llama.cpp comes
+    # with a plugin (ADR-004), and `giq-defaults` installs the curated ones.
+    # A checkout gets them all through the dev group.
     "fastapi>=0.141.1",
     "uvicorn>=0.40.0",
     "pydantic>=2.12.5",
     "httpx>=0.28.1",
-    "aiofiles>=25.1.0",
     "pyyaml>=6.0.3",
-    "pillow>=12.1.1",
-    "numpy>=2.4.2",
-    "scipy>=1.17.1",
-    "psutil>=7.2.2",
     "python-multipart>=0.0.22",
-    "einops>=0.8.2",
-
-    # --- torch trio: upgrade these three together, never one alone -----------
-    # The line is vllm's: giq's own venv runs the torch the vllm engine pins
-    # (torch 2.13, torchvision 0.28, torchaudio 2.11 in vllm 0.30), so a card
-    # sees one torch, VRAM figures compare across engines, and the next vllm
-    # upgrade sets the pace for both instead of leaving giq a step behind.
-    #
-    # torchvision pins torch exactly (0.28 -> 2.13). torchaudio's newest
-    # release is 2.11, and pyannote and speechbrain need it; 2.11 declares NO
-    # torch requirement, so it is pinned here rather than left to float — a
-    # torchaudio built for another libtorch once broke _torchaudio.abi3.so.
-    # 2.11 on torch 2.13 is the pairing vllm ships, and its compiled extension
-    # loads and runs (resample, MFCC) on that line.
-    #
-    # This line is cu130 and needs a CUDA 13 driver (>= 580). Moving it
-    # re-dates every `measured: true` VRAM figure in src/giq/recipes/.
-    "torch>=2.13.0,<2.14.0",
-    "torchvision>=0.28.0,<0.29.0",
-    "torchaudio>=2.11.0,<2.12.0",
-    "torchsde>=0.2.6",
-
-    # --- audio: ASR, diarization, voiceprints --------------------------------
-    # faster-whisper does the transcription (ctranslate2, no torch); pyannote
-    # does diarization; speechbrain does ECAPA voiceprints. whisperx is not
-    # used: it pins torch~=2.8 and would force a second interpreter.
-    # pyannote pulls torchcodec, its declared reader. It works on this cu130
-    # line (it did not on 2.10+cu128 — 0.14+ link CUDA 13). The audio child
-    # still decodes once with PyAV and passes a waveform, because one decode
-    # shared by ASR and diarizer beats two.
-    "faster-whisper>=1.2.1",
-    "pyannote-audio>=4.0.7",
-    "speechbrain>=1.1.0",
-    "soundfile>=0.13.1",
-
-    # --- text to speech ------------------------------------------------------
-    # kokoro -> misaki -> spacy. spacy's English model is not on PyPI, and if it
-    # is absent misaki fetches it on first use by shelling out to `pip install`
-    # — so the TTS child needs network on its first run and dies outright with
-    # "No module named pip" if pip is missing (uv does not put pip in a venv).
-    # Declaring the model wheel directly makes a synced checkout complete and
-    # offline-ready; pip stays because misaki still reaches for it.
-    "kokoro>=0.9.4",
-
-    "pip>=26.0",
-
-    # --- document OCR --------------------------------------------------------
-    # transformers 5 is what GLM-OCR (5.1+) and PP-DocLayoutV3 (5.3+) need.
-    # Unlimited-OCR's remote code was written against 4.57; giq's OCR child
-    # adapts it to 5.x (giq.adapters._ocr_child) with output identical to
-    # 4.57's, so it runs here too.
-    "transformers>=5.16.1",
-    # easydict is imported by Unlimited-OCR's remote code; pypdfium2 rasterizes
-    # PDFs (BSD/Apache — the README's PyMuPDF is AGPL, which is why not that);
-    # opencv is what PP-DocLayoutV3's processor turns masks into polygons with.
-    "easydict>=1.13",
-    "pypdfium2>=4.30.0",
-    "opencv-python-headless>=4.10.0",
-    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    # Fetching a recipe's weights (ADR-005).
+    "huggingface-hub>=1.30.0",
 ]
 
 [project.urls]
@@ -111,15 +46,10 @@ artifacts = ["src/giq/static/ui/**"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/giq", "src/giq_child"]
 
-# spacy's English model is pinned by URL (it is not on PyPI). hatchling refuses
-# to build metadata containing a direct reference unless this is set.
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-src = ["src", "tests"]
+src = ["src", "tests", "plugins/*/src", "plugins/*/tests"]
 
 [tool.ruff.lint]
 select = [
@@ -134,12 +64,13 @@ select = [
 ignore = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["giq"]
+known-first-party = ["giq", "giq_child", "giq_vllm", "giq_sdcpp", "giq_speech", "giq_ocr", "giq_depth"]
 
 [tool.ruff.lint.per-file-ignores]
 # FastAPI's `Depends()` / `File(...)` / `Form(...)` defaults look like B008
 # violations but are the framework's intended dependency-injection idiom.
 "src/giq/api/*" = ["B008"]
+"plugins/*/src/*/api.py" = ["B008"]
 
 [tool.ty.environment]
 # ty moved this under [tool.ty.environment]; at the top level it now hard-fails
@@ -148,12 +79,33 @@ python-version = "3.11"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+# Core's suite, and each curated plugin's under plugins/<name>/tests; the
+# checkout's root is importable so a plugin's conftest can take core's
+# isolation (tests/conftest.py).
+testpaths = ["tests", "plugins"]
+pythonpath = ["."]
 asyncio_default_fixture_loop_scope = "function"
 
-# uv installs this group by default, so `uv sync` gives a dev-ready checkout.
+# The curated plugins are packages of this workspace (ADR-004 D7), released
+# with core. Core's wheel depends on none of them; a checkout gets them all
+# through the dev group below.
+[tool.uv.workspace]
+members = ["plugins/*"]
+
+[tool.uv.sources]
+giq = { workspace = true }
+giq-vllm = { workspace = true }
+giq-sdcpp = { workspace = true }
+giq-speech = { workspace = true }
+giq-ocr = { workspace = true }
+giq-depth = { workspace = true }
+giq-defaults = { workspace = true }
+
+# uv installs this group by default, so `uv sync` gives a dev-ready checkout:
+# core, every curated plugin, and the tools.
 [dependency-groups]
 dev = [
+    "giq-defaults",
     "httpx>=0.28.1",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",

@@ -105,6 +105,12 @@ class Engine:
     # ("12.0"), or None when it can. A recipe no card can run is shown as
     # unfit for this machine (ADR-005).
     check: Callable[[Any, str], str | None] | None = None
+    # The context window an LLM recipe is served with, from its validated
+    # params; None leaves it to llama.cpp's tables.
+    context: Callable[[Any], int | None] | None = None
+    # How an LLM recipe on this engine thinks: "on", "off" or "template"
+    # (the chat template decides). None leaves it to llama.cpp's tables.
+    reasoning: Callable[[Any], str | None] | None = None
 
     @property
     def runtime(self) -> str:

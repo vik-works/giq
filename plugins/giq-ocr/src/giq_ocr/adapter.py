@@ -10,7 +10,7 @@ recipe file names (``giq.weights``), which the parent passes on its
 command line. Everything that turns that into a document — dropping
 headers, footers and page numbers, re-joining a table or paragraph the page
 break cut in two, and rendering HTML — happens here in the parent through
-``giq.ocrdoc``, on plain strings, so it is testable without a GPU and without
+``giq_ocr.ocrdoc``, on plain strings, so it is testable without a GPU and without
 a real document.
 
 Sleepy model: loads on demand, evictable. A pass over a dozen pages runs a
@@ -23,11 +23,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
-from giq import ocrdoc
 from giq.adapters._subprocess import SubprocessAdapter
 from giq.models import OCRResult
 from giq.registry import vram_for
 from giq.weights import recipe_of, require_path
+from giq_ocr import ocrdoc
 
 # 8266 MiB per-process peak measured on an RTX 5090 (4-page pass at 1024px);
 # 6.3 GiB idle after load. Declared above the peak, as a gate figure
@@ -41,11 +41,11 @@ OCR_VRAM_GB = 9.0
 # is another checkpoint of one of the two, and is read the same way. Both run
 # in giq's own interpreter on its transformers.
 CHILD_OF_ARCHITECTURE: dict[str, str] = {
-    "UnlimitedOCRForCausalLM": "giq.adapters._ocr_child",
-    "GlmOcrForConditionalGeneration": "giq.adapters._glm_ocr_child",
+    "UnlimitedOCRForCausalLM": "giq_ocr._ocr_child",
+    "GlmOcrForConditionalGeneration": "giq_ocr._glm_ocr_child",
 }
 # The parts a child cannot run without, besides the main weights.
-PARTS_OF_CHILD: dict[str, tuple[str, ...]] = {"giq.adapters._glm_ocr_child": ("layout",)}
+PARTS_OF_CHILD: dict[str, tuple[str, ...]] = {"giq_ocr._glm_ocr_child": ("layout",)}
 
 
 def child_of(weights: str) -> str:
@@ -81,7 +81,7 @@ class OcrConfig:
 class OcrAdapter(SubprocessAdapter):
     """An OCR model in a child process; documents assembled in the parent."""
 
-    child_module: ClassVar[str] = "giq.adapters._ocr_child"  # per checkpoint; see child_of
+    child_module: ClassVar[str] = "giq_ocr._ocr_child"  # per checkpoint; see child_of
     modality: ClassVar[str] = "ocr"
     # A long document is several passes of a few minutes each.
     run_batch_timeout: ClassVar[float] = 3600.0

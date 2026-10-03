@@ -13,11 +13,11 @@ PORT ?= 8084
 # your network — see docs/access-and-privacy.md.
 HOST ?= 127.0.0.1
 
-# Plain `uv sync` is now the whole story: every runtime dependency is a default
-# dependency and the dev tools are in the default group, so a fresh clone needs
-# no flags. It used to need `--extra tts --extra tts-qwen`, and since uv sync
-# PRUNES to the lock, forgetting them removed the TTS stack from a working
-# venv. That is why nothing giq needs lives in an extra any more.
+# Plain `uv sync` is the whole story: the default dev group pulls in
+# giq-defaults, which is every curated plugin of the workspace (plugins/), and
+# the dev tools, so a fresh clone needs no flags. Plugins are packages, not
+# extras, because uv sync PRUNES to the lock: an extra it was not told about
+# disappears from a working venv.
 #
 # SKIP_UI=1 leaves the dashboard alone: deploy/install-debian.sh passes it
 # because it installs the dashboard itself, from a tarball, a release or a
@@ -72,12 +72,12 @@ test:
 	uv run pytest -v
 
 fmt:
-	uv run ruff format src tests
-	uv run ruff check --fix src tests
+	uv run ruff format src tests plugins
+	uv run ruff check --fix src tests plugins
 
 check:
-	uv run ruff check src tests
-	uv run ty check src
+	uv run ruff check src tests plugins
+	uv run ty check src plugins/*/src
 
 # Systemd user service, for a desktop or development checkout: runs as you,
 # from this directory. A server install is deploy/giq.service instead (a

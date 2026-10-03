@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-speech"
+version = "0.6.0"
+description = "Speech for giq: speech to text with diarization, text to speech, voiceprints"
+license = "Apache-2.0"
+authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
+requires-python = ">=3.11,<3.13"
+# torchaudio's newest release is 2.11, and pyannote and speechbrain need it;
+# it declares no torch requirement, so it is pinned next to torch: a
+# torchaudio built for another libtorch once broke _torchaudio.abi3.so.
+#
+# kokoro -> misaki -> spacy. spacy's English model is not on PyPI, and
+# without it misaki shells out to `pip install` on first use (and dies where
+# pip is missing, as in a uv venv); the model wheel is declared directly, and
+# pip stays because misaki still reaches for it.
+dependencies = [
+    "giq==0.6.0",
+    "numpy>=2.4.2",
+    "torch>=2.13.0,<2.14.0",
+    "torchaudio>=2.11.0,<2.12.0",
+    "faster-whisper>=1.2.1",
+    "pyannote-audio>=4.0.7",
+    "speechbrain>=1.1.0",
+    "soundfile>=0.13.1",
+    "kokoro>=0.9.4",
+    "pip>=26.0",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+]
+
+[project.entry-points."giq.plugins"]
+giq-speech = "giq_speech:plugin"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/giq_speech"]
+
+# The spacy model is pinned by URL (it is not on PyPI); hatchling refuses
+# metadata with a direct reference unless this is set.
+[tool.hatch.metadata]
+allow-direct-references = true

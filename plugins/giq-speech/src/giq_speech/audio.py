@@ -47,7 +47,7 @@ class AudioConfig:
 class AudioAdapter(SubprocessAdapter):
     """Transcription + diarization (faster-whisper + pyannote)."""
 
-    child_module: ClassVar[str] = "giq.adapters._audio_child"
+    child_module: ClassVar[str] = "giq_speech._audio_child"
     modality: ClassVar[str] = "audio"
     # Diarizing an hours-long recording takes minutes; allow close to a 900s
     # client batch budget rather than the 600s subprocess default.
@@ -86,7 +86,7 @@ class EmbedConfig:
 class EmbedAdapter(SubprocessAdapter):
     """Speaker voiceprints (speechbrain ECAPA-TDNN), stateless clip → vector."""
 
-    child_module: ClassVar[str] = "giq.adapters._embed_child"
+    child_module: ClassVar[str] = "giq_speech._embed_child"
     modality: ClassVar[str] = "embed"
 
     def __init__(self, config: EmbedConfig, device: str | None = None):

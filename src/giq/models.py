@@ -30,7 +30,7 @@ class Modality(StrEnum):
     audio = "audio"
     embed = "embed"
     # Document parsing (baidu/Unlimited-OCR in a child process): PDF or page
-    # images in, layout-tagged text and HTML out. See giq.ocrdoc.
+    # images in, layout-tagged text and HTML out. See giq_ocr.ocrdoc.
     ocr = "ocr"
     # Monocular depth (Depth Anything V2 in a child process): one RGB image
     # in, a 16-bit depth map at the input resolution out.

@@ -71,29 +71,31 @@ jobs:
       # The service process never imports the ML stack — torch, transformers,
       # faster-whisper and friends load only inside the worker children — so
       # the tests run in a lean environment instead of pulling several GB of
-      # CUDA wheels onto a CPU runner. A test that starts needing one of those
-      # packages fails here with ImportError, which is the point.
+      # CUDA wheels onto a CPU runner: core with its own dependencies, and the
+      # curated plugins without theirs. A test that starts needing one of
+      # those packages fails here with ImportError, which is the point.
       - name: Test environment (without the ML stack)
         run: |
           uv venv --python 3.12
-          uv pip install fastapi uvicorn pydantic httpx aiofiles pyyaml pillow numpy \
-            psutil python-multipart pypdfium2 pytest pytest-asyncio ruff
-          uv pip install --no-deps -e .
+          uv pip install -e . pillow numpy pypdfium2 pytest pytest-asyncio ruff
+          uv pip install --no-deps -e plugins/giq-vllm -e plugins/giq-sdcpp \
+            -e plugins/giq-speech -e plugins/giq-ocr -e plugins/giq-depth
       - name: Tests (CPU)
         run: .venv/bin/python -m pytest -q --ignore=tests/test_dirty_workers_integration.py
       - name: Lint
-        run: .venv/bin/ruff check src tests && .venv/bin/ruff format --check src tests
+        run: .venv/bin/ruff check src tests plugins && .venv/bin/ruff format --check src tests plugins
       - name: REUSE
         run: uvx reuse lint
 
       # --- package ---------------------------------------------------------
-      - name: Build the wheel
-        run: uv build
+      # Core, each curated plugin and giq-defaults, released together.
+      - name: Build the wheels
+        run: uv build --all-packages
       - name: The wheel carries the dashboard
         run: |
           python3 - <<'PY'
           import glob, sys, zipfile
-          wheel = glob.glob("dist/*.whl")[0]
+          wheel = glob.glob("dist/giq-[0-9]*.whl")[0]
           names = zipfile.ZipFile(wheel).namelist()
           if "giq/static/ui/index.html" not in names:
               sys.exit(f"{wheel} has no giq/static/ui/index.html — the built UI was left out")
@@ -124,6 +126,8 @@ jobs:
           path: |
             dist/giq-${{ steps.version.outputs.version }}-*.whl
             dist/giq-${{ steps.version.outputs.version }}.tar.gz
+            dist/giq_*-${{ steps.version.outputs.version }}-*.whl
+            dist/giq_*-${{ steps.version.outputs.version }}.tar.gz
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -148,7 +152,8 @@ jobs:
       - name: SHA256SUMS
         working-directory: dist
         run: |
-          for f in "giq-$VERSION-py3-none-any.whl" "giq-$VERSION.tar.gz" "giq-ui-$VERSION.tar.gz"; do
+          for f in "giq-$VERSION-py3-none-any.whl" "giq-$VERSION.tar.gz" "giq-ui-$VERSION.tar.gz" \
+                   giq_{vllm,sdcpp,speech,ocr,depth,defaults}-"$VERSION"-py3-none-any.whl; do
             [ -f "$f" ] || { echo "::error::$f is missing from the build's artifacts"; exit 1; }
           done
           sha256sum -- *.whl *.tar.gz >SHA256SUMS

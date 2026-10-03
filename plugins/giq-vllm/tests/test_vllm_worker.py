@@ -13,19 +13,19 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from giq.adapters import vllm
 from giq.adapters.engine import ServedLLM, StartError
-from giq.adapters.vllm import (
+from giq.models import Modality
+from giq.queue import JobQueue, JobStream
+from giq.recipes.schema import Recipe
+from giq_vllm import adapter as vllm
+from giq_vllm.adapter import (
     VllmAdapter,
     VllmConfig,
     VLLMConfigError,
     check_checkpoint,
     flashinfer_arch,
 )
-from giq.models import Modality
-from giq.queue import JobQueue, JobStream
-from giq.recipes.schema import Recipe
-from tests._vllm import NAME, doc, make_checkpoint, make_recipe, params_of
+from vllm_fixtures import NAME, doc, make_checkpoint, make_recipe, params_of
 
 
 def worker_for(recipe: Recipe, **kw) -> VllmAdapter:

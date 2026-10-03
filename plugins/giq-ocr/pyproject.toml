@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-ocr"
+version = "0.6.0"
+description = "Document OCR for giq: GLM-OCR with its layout model, and Unlimited-OCR"
+license = "Apache-2.0"
+authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
+requires-python = ">=3.11,<3.13"
+# transformers 5 is what GLM-OCR (5.1+) and PP-DocLayoutV3 (5.3+) need;
+# Unlimited-OCR's remote code, written against 4.57, is adapted to 5.x by the
+# OCR child with output identical to 4.57's. easydict and einops are imported
+# by that remote code; pypdfium2 rasterizes PDFs (PyMuPDF is AGPL); opencv
+# turns PP-DocLayoutV3's masks into polygons.
+dependencies = [
+    "giq==0.6.0",
+    "numpy>=2.4.2",
+    "pillow>=12.1.1",
+    "torch>=2.13.0,<2.14.0",
+    "torchvision>=0.28.0,<0.29.0",
+    "transformers>=5.16.1",
+    "einops>=0.8.2",
+    "easydict>=1.13",
+    "pypdfium2>=4.30.0",
+    "opencv-python-headless>=4.10.0",
+]
+
+[project.entry-points."giq.plugins"]
+giq-ocr = "giq_ocr:plugin"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/giq_ocr"]

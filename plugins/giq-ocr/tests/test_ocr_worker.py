@@ -14,8 +14,8 @@ import sys
 
 import pytest
 
-from giq.adapters.ocr import OcrAdapter, OcrConfig, hydrate
 from giq.models import OCRResult
+from giq_ocr.adapter import OcrAdapter, OcrConfig, hydrate
 
 RAW = (
     "<PAGE>\n<|det|>header [100, 36, 400, 70]<|/det|>Example AG\n"
@@ -113,9 +113,9 @@ def test_the_checkpoint_picks_the_child(tmp_path, monkeypatch):
     monkeypatch.setenv("GIQ_GLM_LAYOUT_DIR", str(tmp_path / "layout"))
 
     cmd = OcrAdapter(OcrConfig(model="unlimited-ocr"))._command()
-    assert cmd[1:4] == ["-u", "-m", "giq.adapters._ocr_child"]
+    assert cmd[1:4] == ["-u", "-m", "giq_ocr._ocr_child"]
     cmd = OcrAdapter(OcrConfig(model="glm-ocr"))._command()
-    assert cmd[1:4] == ["-u", "-m", "giq.adapters._glm_ocr_child"]
+    assert cmd[1:4] == ["-u", "-m", "giq_ocr._glm_ocr_child"]
     with pytest.raises(ValueError):
         OcrAdapter(OcrConfig(model="no-such-ocr"))
 

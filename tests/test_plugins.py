@@ -57,10 +57,14 @@ def echo_plugin(tmp_path: Path, **overrides) -> Plugin:
 
 @pytest.fixture
 def installed(monkeypatch):
-    """Install plugins for one test: call with (name, dist, plugin or error) rows."""
+    """Install plugins for one test, next to the installed ones: call with
+    (name, dist, plugin or error) rows."""
+
+    # The curated plugins are installed packages too: the test's rows join them.
+    real = plugins._installed()
 
     def install(*rows):
-        monkeypatch.setattr(plugins, "_installed", lambda: list(rows))
+        monkeypatch.setattr(plugins, "_installed", lambda: [*real, *rows])
         plugins.reset()
         recipes.builtin.cache_clear()
         reload_registry()
@@ -283,7 +287,7 @@ def test_a_modality_without_a_smoke_test_is_a_404(api):
     [("whisper-1", "whisper-large-v3"), ("whisper-large-v3", "whisper-large-v3")],
 )
 def test_the_audio_routes_run_the_recipe_a_request_names(model, expected):
-    from giq.api.audio_api import _recipe_for
+    from giq_speech.api import _recipe_for
 
     assert _recipe_for(model, "audio", "whisper-large-v3") == expected
 
@@ -291,7 +295,7 @@ def test_the_audio_routes_run_the_recipe_a_request_names(model, expected):
 def test_a_recipe_that_does_not_serve_the_route_is_a_400():
     from fastapi import HTTPException
 
-    from giq.api.audio_api import _recipe_for
+    from giq_speech.api import _recipe_for
 
     with pytest.raises(HTTPException, match="does not serve tts"):
         _recipe_for("gemma-4-12b", "tts", "kokoro")

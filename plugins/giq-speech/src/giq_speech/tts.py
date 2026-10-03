@@ -9,7 +9,7 @@ Kokoro was the last CUDA worker still running in giq's own process, which meant
 it never gave its VRAM back: the runner logged "Kokoro TTS stopped" and
 ``active_worker`` went None while ~968 MiB stayed held until giq restarted.
 See ``giq.adapters._subprocess`` for the mechanism; child entry point is
-``giq.adapters._tts_child``.
+``giq_speech._tts_child``.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ class TtsConfig:
 class TtsAdapter(SubprocessAdapter):
     """TTS worker — Kokoro runs in a child process for CUDA isolation."""
 
-    child_module: ClassVar[str] = "giq.adapters._tts_child"
+    child_module: ClassVar[str] = "giq_speech._tts_child"
     modality: ClassVar[str] = "tts"
 
     def __init__(self, config: TtsConfig, device: str | None = None):

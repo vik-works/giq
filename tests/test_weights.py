@@ -43,8 +43,8 @@ def _add(directory, filename: str, text: str) -> None:
 
 
 def test_an_ocr_instance_under_a_new_name_loads_its_own_weights(operator_dir, monkeypatch):
-    from giq.adapters.ocr import OcrAdapter, OcrConfig
     from giq.registry import get_recipe
+    from giq_ocr.adapter import OcrAdapter, OcrConfig
 
     # The built-in's override is scoped to the built-in's name.
     monkeypatch.setenv("GIQ_OCR_MODEL_DIR", "/elsewhere/unlimited")
@@ -62,7 +62,7 @@ def test_an_ocr_instance_under_a_new_name_loads_its_own_weights(operator_dir, mo
 
 
 def test_a_layout_ocr_instance_reads_its_layout_part(operator_dir):
-    from giq.adapters.ocr import OcrAdapter, OcrConfig
+    from giq_ocr.adapter import OcrAdapter, OcrConfig
 
     _add(
         operator_dir,
@@ -84,7 +84,7 @@ def test_a_layout_ocr_instance_without_its_layout_is_refused_at_start(operator_d
     stage; known once the weights are read, which is at start."""
     import json
 
-    from giq.adapters.ocr import OcrAdapter, OcrConfig
+    from giq_ocr.adapter import OcrAdapter, OcrConfig
 
     ckpt = tmp_path / "glm-ft"
     ckpt.mkdir()
@@ -102,7 +102,7 @@ def test_a_layout_ocr_instance_without_its_layout_is_refused_at_start(operator_d
 
 
 def test_an_instance_without_weights_fails_at_construction(operator_dir):
-    from giq.adapters.depth import DepthAdapter, DepthConfig
+    from giq_depth.adapter import DepthAdapter, DepthConfig
 
     _add(
         operator_dir,
@@ -114,9 +114,9 @@ def test_an_instance_without_weights_fails_at_construction(operator_dir):
 
 
 def test_speech_models_load_the_repository_their_instance_names(operator_dir, monkeypatch):
-    from giq.adapters.audio import AudioAdapter, AudioConfig, EmbedAdapter, EmbedConfig
-    from giq.adapters.stt import model_ref
-    from giq.adapters.tts import TtsAdapter, TtsConfig
+    from giq_speech.audio import AudioAdapter, AudioConfig, EmbedAdapter, EmbedConfig
+    from giq_speech.stt import model_ref
+    from giq_speech.tts import TtsAdapter, TtsConfig
 
     assert model_ref("large-v3") == "Systran/faster-whisper-large-v3"
     _add(
@@ -162,8 +162,8 @@ def test_the_storage_catalog_finds_repositories_in_the_hf_cache(tmp_path, monkey
 
 
 def test_image_models_take_their_files_from_the_instance():
-    from giq.adapters.sdcpp import SdCppConfig
-    from giq.weights import image_files
+    from giq_sdcpp.adapter import SdCppConfig
+    from giq_sdcpp.files import image_files
 
     cfg = SdCppConfig(model="flux_klein", device="GPU-x", port=1)
     assert cfg.diffusion == str(models_dir() / "diffusion_models/flux-2-klein-4b.safetensors")
@@ -189,7 +189,7 @@ def test_config_image_models_are_no_longer_read(tmp_path, caplog):
 
 
 def test_an_image_instance_without_its_files_fails_at_construction(operator_dir):
-    from giq.adapters.sdcpp import SdCppConfig
+    from giq_sdcpp.adapter import SdCppConfig
 
     _add(
         operator_dir,

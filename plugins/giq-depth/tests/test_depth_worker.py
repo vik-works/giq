@@ -17,8 +17,8 @@ import sys
 import numpy as np
 import pytest
 
-from giq.adapters.depth import DepthAdapter, DepthConfig, hydrate
 from giq.models import DepthResult
+from giq_depth.adapter import DepthAdapter, DepthConfig, hydrate
 
 # Answers each task with a 2x2 map, or an error when the task id says so.
 CHILD_SCRIPT = """
@@ -118,7 +118,7 @@ def test_the_child_gets_the_instance_weights_under_an_overridable_root(monkeypat
     assert w._command()[1:] == [
         "-u",
         "-m",
-        "giq.adapters._depth_child",
+        "giq_depth._depth_child",
         "--model",
         second_model,
         "--weights",
@@ -133,7 +133,7 @@ def test_the_child_gets_the_instance_weights_under_an_overridable_root(monkeypat
 
 
 def test_sixteen_bit_mapping_spans_the_prediction_and_survives_a_flat_map():
-    from giq.adapters._depth_child import _to_16bit
+    from giq_depth._depth_child import _to_16bit
 
     depth = np.array([[0.5, 9.0], [4.75, 0.5]], dtype=np.float32)
     map16, lo, hi = _to_16bit(depth)
@@ -144,7 +144,7 @@ def test_sixteen_bit_mapping_spans_the_prediction_and_survives_a_flat_map():
 
 
 def test_visualization_paints_near_red_and_far_blue():
-    from giq.adapters._depth_child import visualize
+    from giq_depth._depth_child import visualize
 
     depth = np.array([[0.0, 1.0]], dtype=np.float32)  # inverse depth: 1.0 is near
     rgb = visualize(depth)

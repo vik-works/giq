@@ -136,13 +136,15 @@ def engine_for(model: str) -> str:
 
 def context_size(model: str) -> int:
     """The context window an LLM is served with, whichever engine runs it."""
-    if engine_for(model) == "vllm":
-        from giq.adapters.vllm import recipe_for
-        from giq.recipes.schema import VllmParams
+    from giq import plugins
+    from giq.registry import get_recipe
 
-        recipe = recipe_for(model)
-        if recipe is not None and isinstance(recipe.params, VllmParams):
-            return recipe.params.max_model_len
+    recipe = get_recipe(model)
+    engine = plugins.engine(recipe.engine) if recipe is not None else None
+    if recipe is not None and engine is not None and engine.context is not None:
+        served = engine.context(recipe.params)
+        if served is not None:
+            return served
     from giq.adapters.llama_cpp import DEFAULT_CTX_SIZE, MODEL_CTX_SIZE
 
     return MODEL_CTX_SIZE.get(model, DEFAULT_CTX_SIZE)

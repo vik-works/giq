@@ -17,7 +17,8 @@ import pytest
 
 from giq import recipes
 from giq.adapters import llama_cpp
-from giq.recipes.schema import Recipe, VllmParams
+from giq.recipes.schema import Recipe
+from giq_vllm.params import VllmParams
 from tests._catalog_baseline import BUILTIN_SPECS, LLM_DEFAULTS, LLM_TABLES
 
 

@@ -100,7 +100,7 @@ def test_an_engine_check_can_rule_out_every_card(machine, monkeypatch):
 
 
 def test_the_vllm_floor():
-    from giq.builtins import _vllm_check
+    from giq_vllm import _vllm_check
 
     assert _vllm_check(None, "12.0") is None and _vllm_check(None, "7.0") is None
     assert "7.0 or newer" in str(_vllm_check(None, "6.1"))

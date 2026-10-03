@@ -103,10 +103,11 @@ def _reasoning(recipe: Recipe) -> str | None:
     """
     if not recipe.serves("llm"):
         return None
-    if recipe.engine == "vllm":
-        # No server-level switch: the chat template decides, and a caller
-        # turns it off per request with chat_template_kwargs.
-        return "template"
+    from giq import plugins
+
+    engine = plugins.engine(recipe.engine)
+    if engine is not None and engine.reasoning is not None:
+        return engine.reasoning(recipe)
     from giq.adapters.llama_cpp import DEFAULT_REASONING, MODEL_REASONING
 
     return MODEL_REASONING.get(recipe.name, DEFAULT_REASONING)

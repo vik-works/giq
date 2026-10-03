@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-defaults"
+version = "0.6.0"
+description = "giq with its curated plugins: what the documented install serves"
+license = "Apache-2.0"
+authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
+requires-python = ">=3.11,<3.13"
+# The torch line, held here for every curated plugin at once: upgrade the
+# three together, never one alone. It is vllm's (torch 2.13, torchvision
+# 0.28, torchaudio 2.11 in vllm 0.30), so giq's interpreter runs the torch
+# the vllm engine pins: a card sees one torch, VRAM figures compare across
+# engines, and the next vllm upgrade sets the pace for both. torchvision pins
+# torch exactly; torchaudio 2.11 declares no torch requirement and is pinned
+# for that reason; 2.11 on torch 2.13 is the pairing vllm ships. The line is
+# cu130 and needs a CUDA 13 driver (>= 580). Moving it re-dates every
+# `measured: true` VRAM figure in the recipes.
+dependencies = [
+    "torch>=2.13.0,<2.14.0",
+    "torchvision>=0.28.0,<0.29.0",
+    "torchaudio>=2.11.0,<2.12.0",
+    "giq==0.6.0",
+    "giq-vllm==0.6.0",
+    "giq-sdcpp==0.6.0",
+    "giq-speech==0.6.0",
+    "giq-ocr==0.6.0",
+    "giq-depth==0.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# A meta-package: its dependencies are the point, it carries no code.
+[tool.hatch.build.targets.wheel]
+bypass-selection = true

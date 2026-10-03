@@ -27,9 +27,9 @@ import subprocess
 
 import pytest
 
-from giq.adapters.sdcpp import SdCppAdapter, SdCppConfig
-from giq.adapters.tts import TtsAdapter, TtsConfig
 from giq.vram import get_free_vram
+from giq_sdcpp.adapter import SdCppAdapter, SdCppConfig
+from giq_speech.tts import TtsAdapter, TtsConfig
 
 
 def _has_nvidia_gpu() -> bool:

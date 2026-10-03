@@ -162,7 +162,7 @@ def test_estimated_vram_matches_the_gate():
     so a victim's freed VRAM was mis-sized.
     """
     from giq.adapters.llama_cpp import LlamaCppAdapter, LlamaCppConfig
-    from giq.adapters.sdcpp import SdCppAdapter, SdCppConfig
+    from giq_sdcpp.adapter import SdCppAdapter, SdCppConfig
 
     llm = LlamaCppAdapter(config=LlamaCppConfig(model="gemma-4-12b"))
     assert llm.estimated_vram_gb == get_vram_requirement("gemma-4-12b")

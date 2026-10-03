@@ -81,7 +81,7 @@ def test_llama_ready_timeout_is_the_engine_default_unless_the_instance_sets_one(
 
 
 def test_vllm_start_budget_is_the_instance_ready_timeout():
-    from giq.adapters.vllm import recipe_for
+    from giq_vllm.adapter import recipe_for
 
     recipe = recipe_for("qwen3.8-27b-nvfp4")
     assert recipe is not None

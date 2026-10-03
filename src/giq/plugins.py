@@ -341,6 +341,16 @@ def catalog() -> list[dict[str, Any]]:
 # --- dashboard UI (ADR-004 D6) -------------------------------------------------
 
 
+def curated_ui(name: str) -> Path | None:
+    """A curated plugin's dashboard UI. The curated plugins are released
+    with core (ADR-004 D7), and their panels are built with the dashboard
+    (frontend/plugins/<name>, `make ui`) into its tree, so the UI tarball
+    and core's wheel carry them. None without a build: the plugin serves,
+    its sandbox panels are absent. A third-party plugin ships its own."""
+    ui = Path(__file__).parent / "static" / "ui" / "plugins" / name
+    return ui if (ui / "manifest.json").is_file() else None
+
+
 def ui_dir(name: str) -> Path | None:
     """The UI directory of loaded plugin ``name``, if it ships one."""
     plugin = next((p for p in loaded() if p.name == name), None)

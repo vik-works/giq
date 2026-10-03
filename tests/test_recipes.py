@@ -39,10 +39,14 @@ def _write(directory: Path, filename: str, text: str) -> Path:
 
 @pytest.fixture
 def builtin_dir(tmp_path, monkeypatch):
-    """A stand-in for the shipped recipes, so override rules can be tested."""
+    """A stand-in for the shipped recipes, so override rules can be tested;
+    the installed plugins' recipes are left out of it."""
+    from giq import plugins
+
     directory = tmp_path / "builtin"
     directory.mkdir()
     monkeypatch.setattr(recipes, "BUILTIN_DIR", directory)
+    monkeypatch.setattr(plugins, "recipe_dirs", lambda: [])
     recipes.builtin.cache_clear()
     yield directory
     recipes.builtin.cache_clear()
@@ -170,7 +174,7 @@ def test_every_builtin_recipe_says_where_its_weights_come_from():
 
 
 def test_vllm_takes_no_parts(tmp_path):
-    from tests._vllm import doc, make_checkpoint
+    from vllm_fixtures import doc, make_checkpoint
 
     bad = doc(make_checkpoint(tmp_path))
     bad["weights"]["parts"] = {"mmproj": "p.gguf"}

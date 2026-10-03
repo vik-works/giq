@@ -4,7 +4,7 @@
 
 """Depth child process: Depth Anything V2, native transformers.
 
-Invoked by ``DepthAdapter`` via ``python -u -m giq.adapters._depth_child
+Invoked by ``DepthAdapter`` via ``python -u -m giq_depth._depth_child
 --model depth-anything-v2-small --weights <dir>``. Loads the local snapshot
 the recipe names, with the hub disabled before transformers is imported,
 so nothing is ever fetched.

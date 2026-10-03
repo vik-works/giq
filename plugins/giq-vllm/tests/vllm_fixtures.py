@@ -7,7 +7,8 @@
 import json
 from pathlib import Path
 
-from giq.recipes.schema import Recipe, VllmParams
+from giq.recipes.schema import Recipe
+from giq_vllm.params import VllmParams
 
 NAME = "qwen3.8-27b-nvfp4"
 BUDGET = {"kv_cache_memory": "6G", "max_model_len": 131072}

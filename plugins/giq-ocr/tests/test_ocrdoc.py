@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""giq.ocrdoc on synthetic model output.
+"""giq_ocr.ocrdoc on synthetic model output.
 
 The fixtures are invented documents in the model's exact tag grammar: no real
 page ever needs to be in a test file for the strip and merge rules to be
 pinned down.
 """
 
-from giq import ocrdoc
+from giq_ocr import ocrdoc
 
 # Two pages. Page 1 ends with a table; page 2 opens (after its running
 # header) with the same table continued, restating the column titles.

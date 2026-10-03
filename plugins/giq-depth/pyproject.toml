@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-depth"
+version = "0.6.0"
+description = "Monocular depth maps for giq with Depth Anything V2"
+license = "Apache-2.0"
+authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "giq==0.6.0",
+    "numpy>=2.4.2",
+    "pillow>=12.1.1",
+    "torch>=2.13.0,<2.14.0",
+    "torchvision>=0.28.0,<0.29.0",
+    "transformers>=5.16.1",
+]
+
+[project.entry-points."giq.plugins"]
+giq-depth = "giq_depth:plugin"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/giq_depth"]

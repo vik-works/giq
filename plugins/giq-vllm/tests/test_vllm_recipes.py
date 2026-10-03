@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from giq import recipes
 from giq.adapters.engine import context_size, engine_for
 from giq.recipes.schema import Recipe
-from tests._vllm import NAME, doc, make_checkpoint, make_recipe, params_of
+from vllm_fixtures import NAME, doc, make_checkpoint, make_recipe, params_of
 
 
 def test_refuses_an_instance_without_a_budget():
@@ -72,7 +72,7 @@ def test_throughput_profile():
 
 
 def test_profiles_leave_the_budget_to_the_instance():
-    from giq.recipes.schema import ENGINE_PROFILES
+    from giq_vllm.params import ENGINE_PROFILES
 
     for name, values in ENGINE_PROFILES["vllm"].items():
         assert not {"kv_cache_memory", "gpu_memory_utilization"} & set(values), name

@@ -29,7 +29,7 @@ page is rendered. Nothing is written to disk, tmp included.
 
 Wire protocol: see giq.adapters._subprocess. Task shape:
   {"id": str, "pdf_b64": str | "images_b64": [str], "dpi": int?, "pages": [int]?}
-Result shape (raw; the parent turns it into html via giq.ocrdoc):
+Result shape (raw; the parent turns it into html via giq_ocr.ocrdoc):
   {"id", "raw", "pages", "tokens_in", "tokens_out", "truncated", "error": str|null}
 """
 

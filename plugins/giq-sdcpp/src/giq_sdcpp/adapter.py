@@ -46,7 +46,7 @@ RENDER_TIMEOUT_SECONDS = 600.0
 
 @dataclass
 class SdCppConfig:
-    """Paths come from the model's recipe file (``giq.weights.image_files``)."""
+    """Paths come from the model's recipe file (``giq_sdcpp.files.image_files``)."""
 
     model: str
     diffusion: str = ""
@@ -72,7 +72,7 @@ class SdCppConfig:
             self.port = device_port(INTERNAL_SD_PORT, self.device)
         if not self.diffusion:
             from giq.config import get_config
-            from giq.weights import image_files
+            from giq_sdcpp.files import image_files
 
             cfg = image_files(self.model)
             self.diffusion = cfg.diffusion

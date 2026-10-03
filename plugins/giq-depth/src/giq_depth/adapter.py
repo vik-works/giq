@@ -44,7 +44,7 @@ class DepthConfig:
 class DepthAdapter(SubprocessAdapter):
     """Depth Anything V2 in a child process."""
 
-    child_module: ClassVar[str] = "giq.adapters._depth_child"
+    child_module: ClassVar[str] = "giq_depth._depth_child"
     modality: ClassVar[str] = "depth"
 
     def __init__(self, config: DepthConfig, device: str | None = None):

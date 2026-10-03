@@ -25,15 +25,17 @@ including tool-calling chat, goes through it. Keep it that way.
 - `src/giq/api/` — HTTP routers (`router.py` job API and `/instances`, `recipes_api.py` `/recipes`, `openai_compat.py`, `openai_responses.py`, `stats_api.py` stats, `/storage` and `/weights`, `access.py`)
 - `src/giq/services/orchestration.py` — `Orchestrator`, the one way into the queue
 - `src/giq/runner.py` — the scheduler: residency, eviction, and the instances it starts and stops
-- `src/giq/recipes/` — the built-in recipes, one YAML file each (`<name>.yaml`: modalities, weights, engine, parameters, residency, measured VRAM, and the reasoning as comments), plus the schema and loader; operator files in `GIQ_RECIPES_DIR` add or replace recipes (ADR-002, ADR-003 for the terms)
+- `src/giq/recipes/` — core's built-in recipes (the llama.cpp ones), one YAML file each (`<name>.yaml`: modalities, weights, engine, parameters, residency, measured VRAM, and the reasoning as comments), plus the schema and loader; operator files in `GIQ_RECIPES_DIR` add or replace recipes (ADR-002, ADR-003 for the terms)
 - `src/giq/registry.py` — the catalog: recipes by name (aliases resolved), and the default resident set
 - `src/giq/weights.py` — where a recipe's weights are: its `weights.path`/`weights.parts`, under the models directory, with the env overrides, and the weights inventory; every adapter and the storage report ask here
-- `src/giq/adapters/` — the engine adapters, one module per engine or modality (`llama_cpp.py`, `vllm.py`, `sdcpp.py`, `stt.py` …); `_*_child.py` run in subprocesses
+- `src/giq/adapters/` — core's engine adapter (`llama_cpp.py`), the engine contract (`engine.py`) and the child-process base (`_subprocess.py`) plugins build on
+- `src/giq/plugin.py`, `src/giq/plugins.py`, `src/giq/builtins.py` — the plugin contract, the registry, and core's own registrations (ADR-004); `src/giq_child/` the stdlib-only protocol children speak
+- `plugins/<name>/` — the curated plugins, each a package of the uv workspace with its own `pyproject.toml`, `src/giq_<name>/` (registration in `__init__.py`, adapters, `_*_child.py`, routes as `api.py`, `recipes/`) and `tests/`: `giq-vllm`, `giq-sdcpp`, `giq-speech`, `giq-ocr`, `giq-depth`, and `giq-defaults`, which installs them all. Core depends on none of them; a checkout gets them through the dev group
 - `src/giq/paths.py` — every filesystem location, resolved from env > `config.yaml` `paths:` > `GIQ_HOME` > defaults
 - `deploy/` — the systemd unit and Debian install script (see `docs/deployment.md`)
 - `frontend/` — the dashboard: React + TypeScript + Vite, built into `src/giq/static/ui/` (gitignored, shipped in the wheel) and served at `/dash`. `src/components/` shared UI and charts, `src/state/` the app-wide pollers, `src/api/` the typed client, `src/views/<view>/` one folder per page, `src/locales/<lang>/<ns>.json` strings; `src/plugins/` the host plugins' UI runs against (ADR-004 D6), `plugin-ui/` `@giq/plugin-ui` (the types, the shims onto the host, the Vite preset), and `plugins/<name>/` the curated plugins' sandbox panels, built into `src/giq/static/ui/plugins/<name>/`
 - `envs/vllm/` — the vllm engine's own uv project: vllm pins its torch, transformers and fastapi, so it runs as a separate server process on its own interpreter, like llama-server
-- `tests/` — pytest; `docs/` — user docs (API, configuration, access and privacy, engines, development), ADRs, and `docs/images/` (README screenshots)
+- `tests/` — core's pytest suite (it runs with the curated plugins installed; each plugin's own tests sit in its `tests/`); `docs/` — user docs (API, configuration, access and privacy, engines, development), ADRs, and `docs/images/` (README screenshots)
 
 ## Commands
 

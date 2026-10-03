@@ -29,7 +29,7 @@ cloud path or PyMuPDF, and emitting giq's tagged-text result shape.
 
 Output is the same tagged text the Unlimited-OCR child emits —
 ``<|det|>label [x1, y1, x2, y2]<|/det|>content`` on a 0-999 page box, pages
-introduced by ``<PAGE>`` — so ``giq.ocrdoc`` strips, merges and renders
+introduced by ``<PAGE>`` — so ``giq_ocr.ocrdoc`` strips, merges and renders
 either model's output identically. Labels are mapped onto that vocabulary.
 
 Wire protocol: see giq.adapters._subprocess. Task and result shapes match
@@ -66,7 +66,7 @@ PROMPTS = {
     "text": "Text Recognition:",
 }
 
-# PP-DocLayoutV3 label → (what to do, giq.ocrdoc label). "abandon" regions
+# PP-DocLayoutV3 label → (what to do, giq_ocr.ocrdoc label). "abandon" regions
 # are emitted as empty tagged blocks so the furniture is visible in the raw
 # output and stripped by label like Unlimited-OCR's; "skip" regions become
 # image placeholders.

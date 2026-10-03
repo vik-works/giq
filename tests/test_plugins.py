@@ -394,3 +394,28 @@ def test_a_plugins_ui_loads_without_the_token():
     assert token_exempt(request("/plugins/giq-sdcpp/ui/index.js"))
     assert not token_exempt(request("/plugins"))
     assert not token_exempt(request("/plugins/giq-sdcpp/ui/index.js", "POST"))
+
+
+async def test_the_vram_sampler_records_a_plugins_modality():
+    """active_modality is a plain name since modalities are registered; the
+    sampler once called .value on it, and every tick with a job running failed."""
+    from types import SimpleNamespace
+
+    from giq.core.lifecycle import sample_once
+
+    calls = []
+
+    class Stats:
+        async def sample_vram(self, used, free, active, ready):
+            calls.append((active, ready))
+
+        async def note_gpus(self, gpus):
+            pass
+
+        async def sample_gpus(self, gpus):
+            pass
+
+    runner = SimpleNamespace(active_modality="echo", resident_models={"a": True, "b": False})
+    vram = SimpleNamespace(used_gb=1.0, free_gb=2.0)
+    await sample_once(runner, Stats(), lambda: vram, lambda: [])
+    assert calls == [("echo", 1)]

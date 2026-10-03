@@ -40,17 +40,23 @@ async def _vram_sampler_loop(runner):
     while True:
         try:
             await asyncio.sleep(VRAM_SAMPLE_INTERVAL_SECONDS)
-            vram = await asyncio.to_thread(get_vram_status)
-            ready = sum(1 for ok in runner.resident_models.values() if ok)
-            active = runner.active_modality.value if runner.active_modality else None
-            await stats.sample_vram(vram.used_gb, vram.free_gb, active, ready)
-            gpus = await asyncio.to_thread(get_gpus)
-            await stats.note_gpus(gpus)  # catches a card swapped in mid-run
-            await stats.sample_gpus(gpus)
+            await sample_once(runner, stats, get_vram_status, get_gpus)
         except asyncio.CancelledError:
             raise
         except Exception as e:
             logger.warning(f"vram sampler tick failed: {e}")
+
+
+async def sample_once(runner, stats, get_vram_status, get_gpus) -> None:
+    """One sampler tick: VRAM with what is running, then each card."""
+    vram = await asyncio.to_thread(get_vram_status)
+    ready = sum(1 for ok in runner.resident_models.values() if ok)
+    # A modality is a registered name (ADR-004), a plain string.
+    active = str(runner.active_modality) if runner.active_modality else None
+    await stats.sample_vram(vram.used_gb, vram.free_gb, active, ready)
+    gpus = await asyncio.to_thread(get_gpus)
+    await stats.note_gpus(gpus)  # catches a card swapped in mid-run
+    await stats.sample_gpus(gpus)
 
 
 async def _kill_stale_servers(port: int = INTERNAL_LLM_PORT):

@@ -108,6 +108,10 @@ A `Plugin` declares, all optional except its name and API version:
   Python dependencies, and with it a plain `giq` install serves GGUF chat out
   of the box. It registers through the same registry as everything else,
   from inside core. vllm, the heavy LLM engine, is a plugin.
+- **The `transformers` engine name.** OCR and depth both run on it, and two
+  plugins registering one engine would clash (D5). Core declares the name
+  only, as "runs in giq's own interpreter". The library itself is a
+  dependency of each plugin that uses it, so core still needs no torch.
 
 Core defines the adapter contracts:
 - the `Adapter` protocol the runner already relies on;
@@ -188,7 +192,7 @@ are released together:
 
 | Package | Registers | Brings |
 |---|---|---|
-| `giq` | core, `llm` modality, chat API, engine `llama.cpp`, chat/tools/vision panels | fastapi, pydantic, httpx, pyyaml — no torch |
+| `giq` | core, `llm` modality, chat API, engines `llama.cpp` and `transformers` (the name), chat/tools/vision panels | fastapi, pydantic, httpx, pyyaml — no torch |
 | `giq-vllm` | engine `vllm`, `giq prepare vllm` | nothing in giq's env (vllm runs in `envs/vllm`) |
 | `giq-sdcpp` | engine `sd.cpp`, modalities `text2image`, `image_edit`, their panels | nothing (sd-server is a binary) |
 | `giq-speech` | engines `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro`; modalities `stt`, `audio`, `embed`, `tts`; `/v1/audio/*`; their panels | torch, faster-whisper, pyannote, speechbrain, kokoro |

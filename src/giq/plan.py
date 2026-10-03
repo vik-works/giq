@@ -285,6 +285,23 @@ def _pinned(plan_checks: list[Check], moves: list[Transfer]) -> None:
         )
 
 
+def _shape(plan_checks: list[Check], moves: list[Transfer]) -> None:
+    """A source naming a whole repository for a path that is one file would
+    put the repository in a directory named like the file."""
+    from giq._fetch_child import WEIGHT_FILE_SUFFIXES
+
+    for move in moves:
+        if move.file is None and move.dest is not None and move.dest.suffix in WEIGHT_FILE_SUFFIXES:
+            plan_checks.append(
+                Check(
+                    "weights",
+                    "fail",
+                    f"the source names the whole repository {move.repo}, but {move.dest.name} "
+                    f"is one file: name it in the source, hf:{move.repo}/<file in the repository>",
+                )
+            )
+
+
 def plan(name: str, *, online: bool = True) -> Plan:
     """The plan for recipe ``name``. Raises KeyError for an unknown recipe."""
     recipe = get_recipe(name)
@@ -294,6 +311,7 @@ def plan(name: str, *, online: bool = True) -> Plan:
     avail = availability_of(found)
     moves = transfers(recipe) if avail != "ready" else []
     if moves:
+        _shape(found, moves)
         if online:
             _hub(found, moves, recipe)
         _already_here(found, recipe)

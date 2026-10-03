@@ -30,6 +30,10 @@ import time
 from pathlib import Path
 from typing import Any
 
+# A path ending in one of these is one file of weights: a whole repository
+# cannot go there.
+WEIGHT_FILE_SUFFIXES = frozenset({".gguf", ".safetensors", ".bin", ".pt", ".pth", ".ckpt", ".onnx"})
+
 _SHARD_RE = re.compile(r"^(.*)-00001-of-(\d{5})\.gguf$")
 
 
@@ -103,6 +107,10 @@ def transfer(
     partial = partial_dir(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     if file is None:
+        if target.suffix in WEIGHT_FILE_SUFFIXES:
+            # The plan refuses this; a hand-run child must not make a
+            # directory named like a weights file either.
+            raise ValueError(f"{target.name} is one file; name it in the source: hf:{repo}/<file>")
         snapshot_download(repo, revision=revision, local_dir=partial, **bars)
         os.replace(partial, target)
         return

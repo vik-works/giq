@@ -32,7 +32,7 @@ from giq.recipes.schema import Recipe
 from giq.registry import all_recipes, get_recipe, resident_defaults
 from giq.runner import get_runner
 from giq.storage import installed
-from giq.vram import get_vram_status, margin_for, reserve_for
+from giq.vram import get_vram_status, margin_of, reserve_for
 from giq.weights import locations, weights_id
 
 router = APIRouter()
@@ -79,7 +79,7 @@ class _Machine:
 
 def _fit(recipe: Recipe, where: str | None, m: _Machine) -> tuple[str, float]:
     """Does ``recipe`` fit its card now, after evictions, or never — and what it needs."""
-    needed = recipe.vram_gb + margin_for(recipe.vram_gb) + reserve_for(where)
+    needed = recipe.vram_gb + margin_of(recipe.name, recipe.vram_gb) + reserve_for(where)
     inst = m.instances.get(recipe.name)
     if inst is not None and inst.state == "ready":
         return "loaded", needed

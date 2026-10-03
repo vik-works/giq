@@ -308,7 +308,9 @@ and outrank `config.yaml`'s `residents:`, which outranks a recipe's own
 Before a load, giq gates on the recipe's declared VRAM figure (measured on
 real hardware where the recipe says so) plus a margin against the card's
 free VRAM, and evicts keep-warm instances on that card when that is what it
-takes. `GET /instances` lists what is running, card by card.
+takes. The margin is half the figure up to 2 GB, against the compute buffers
+an engine grows into; vllm, which reserves everything its figure covers at
+start, gets 0.5 GB. A keep-warm reload gets 0.5 GB on every engine. `GET /instances` lists what is running, card by card.
 
 ## Multiple GPUs
 

@@ -105,6 +105,11 @@ class Engine:
     # ("12.0"), or None when it can. A recipe no card can run is shown as
     # unfit for this machine (ADR-005).
     check: Callable[[Any, str], str | None] | None = None
+    # VRAM to keep free on top of a recipe's figure when it loads on demand,
+    # in GB; None is the scaled default (up to 2 GB, against the compute
+    # buffers an engine grows into). An engine that reserves everything at
+    # start and never grows past its declared figure needs only a little.
+    vram_margin: float | None = None
     # The context window an LLM recipe is served with, from its validated
     # params; None leaves it to llama.cpp's tables.
     context: Callable[[Any], int | None] | None = None

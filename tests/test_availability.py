@@ -218,3 +218,39 @@ def test_one_file_or_the_whole_repository(file, expected):
     repository = ["a.gguf", "b-00001-of-00002.gguf", "b-00002-of-00002.gguf", "c.json"]
     siblings = [(name, 1) for name in repository]
     assert sorted(n for n, _ in plan._wanted(siblings, file)) == expected
+
+
+def test_a_whole_repository_for_one_file_fails_the_plan(machine, hub, tmp_path):
+    """The repository would land in a directory named like the GGUF."""
+    (tmp_path / "recipes" / "d-gguf.yaml").write_text(
+        DEPTH.format(
+            name="d-gguf", path="repo/model-Q6_K.gguf", source=", source: 'hf:org/repo'", gb=1.0
+        )
+    )
+    reload_registry()
+    hub(FakeHub([("model-Q6_K.gguf", 10), ("model-Q4_K_M.gguf", 8)]))
+    p = plan.plan("d-gguf")
+    shape = [c for c in p.checks if c.check == "weights" and c.status == "fail"]
+    assert shape and "name it in the source" in shape[0].message
+    assert not p.can_fetch
+
+
+def test_the_fetch_child_refuses_it_too(tmp_path):
+    from giq import _fetch_child
+
+    with pytest.raises(ValueError, match="one file"):
+        _fetch_child.transfer("org/repo", None, None, str(tmp_path / "model.gguf"))
+    assert not (tmp_path / "model.gguf").exists()
+
+
+def test_an_engine_that_reserves_up_front_loads_with_a_small_margin():
+    """vllm's figure is all it ever takes: the 2 GB default margin kept a
+    29.7 GB recipe from ever loading on demand on a 32 GB card."""
+    from giq.registry import get_recipe
+    from giq.vram import margin_for, margin_of
+
+    chat = get_recipe("qwen3.8-27b-nvfp4-chat")
+    assert chat is not None and margin_of(chat.name) == 0.5
+    assert chat.vram_gb + margin_of(chat.name) < 31.3, "fits the 5090's free VRAM"
+    gemma = get_recipe("gemma-4-12b")
+    assert margin_of(gemma.name) == margin_for(gemma.vram_gb), "other engines keep the default"

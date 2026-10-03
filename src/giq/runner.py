@@ -1325,14 +1325,14 @@ class Runner:
         (no llama slots active, no lane in-flight) up to the deferral cap so
         live sessions aren't SIGTERMed mid-request.
         """
-        from giq.vram import get_vram_requirement, margin_for, reserve_for
+        from giq.vram import get_vram_requirement, margin_of, reserve_for
 
         if not self._residents or model in self._resident_keys:
             return
 
         device = self._device_for(model)
         base = get_vram_requirement(model)
-        required = base + margin_for(base) + reserve_for(device)
+        required = base + margin_of(model, base) + reserve_for(device)
         free = get_free_vram(device)
         if free >= required:
             return

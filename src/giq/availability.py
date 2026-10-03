@@ -66,7 +66,7 @@ def _engine(recipe: Recipe) -> Check:
 def _cards(recipe: Recipe) -> list[Check]:
     """Is there a card large enough, and one the engine can use?"""
     from giq.gpus import compute_capabilities, get_gpus
-    from giq.vram import margin_for, reserve_for
+    from giq.vram import margin_of, reserve_for
 
     cards = get_gpus()
     if not cards:
@@ -86,7 +86,7 @@ def _cards(recipe: Recipe) -> list[Check]:
             cards = []
         elif len(usable) < len(reasons):
             checks.append(Check("compute", "warn", "some cards cannot run it"))
-    needed = recipe.vram_gb + margin_for(recipe.vram_gb)
+    needed = recipe.vram_gb + margin_of(recipe.name, recipe.vram_gb)
     room = max((c.vram_total_gb - reserve_for(c.uuid) for c in cards), default=0.0)
     if cards and needed > room:
         checks.append(

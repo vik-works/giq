@@ -59,6 +59,19 @@ def margin_for(required_gb: float) -> float:
     return min(VRAM_SAFETY_MARGIN, max(0.5, required_gb * 0.5))
 
 
+def margin_of(name: str, required_gb: float | None = None) -> float:
+    """The safety margin for loading recipe ``name``: its engine's declared
+    one, else the scaled default for its VRAM figure."""
+    from giq import plugins
+    from giq.registry import get_recipe
+
+    recipe = get_recipe(name)
+    engine = plugins.engine(recipe.engine) if recipe is not None else None
+    if engine is not None and engine.vram_margin is not None:
+        return engine.vram_margin
+    return margin_for(required_gb if required_gb is not None else get_vram_requirement(name))
+
+
 def get_vram_requirement(name: str) -> float:
     """VRAM recipe ``name`` needs, from its recipe file.
 
@@ -163,12 +176,13 @@ def can_load(name: str, device: str | int | None = None) -> tuple[bool, str]:
     required = get_vram_requirement(name)
     status = get_vram_status(device)
     reserve = reserve_for(device)
-    needed = required + margin_for(required) + reserve
+    margin = margin_of(name, required)
+    needed = required + margin + reserve
 
     if needed > status.total_gb:
         return False, (
             f"Model can never fit: {needed:.1f}GB needed > {status.total_gb:.1f}GB total "
-            f"({required:.1f}GB model + {VRAM_SAFETY_MARGIN:.1f}GB margin"
+            f"({required:.1f}GB model + {margin:.1f}GB margin"
             + (f" + {reserve:.1f}GB reserved)" if reserve else ")")
         )
     if status.free_gb >= needed:
@@ -176,7 +190,7 @@ def can_load(name: str, device: str | int | None = None) -> tuple[bool, str]:
     else:
         msg = (
             f"Insufficient VRAM: {status.free_gb:.1f}GB free < {needed:.1f}GB needed "
-            f"({required:.1f}GB model + {VRAM_SAFETY_MARGIN:.1f}GB margin"
+            f"({required:.1f}GB model + {margin:.1f}GB margin"
             + (f" + {reserve:.1f}GB reserved)" if reserve else ")")
         )
         return False, msg
@@ -211,7 +225,7 @@ async def wait_for_vram(
     required = get_vram_requirement(name)
     needed = (
         required
-        + (margin_gb if margin_gb is not None else margin_for(required))
+        + (margin_gb if margin_gb is not None else margin_of(name, required))
         + reserve_for(device)
     )
     elapsed = 0.0

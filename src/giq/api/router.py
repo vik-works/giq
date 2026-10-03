@@ -35,7 +35,7 @@ from giq.vram import (
     get_free_vram,
     get_vram_requirement,
     get_vram_status,
-    margin_for,
+    margin_of,
     reserve_for,
 )
 
@@ -266,7 +266,7 @@ async def get_service_status() -> ServiceStatus:
                 continue
             on = device_for_recipe(model)
             need = get_vram_requirement(model)
-            need += margin_for(need) + reserve_for(on)
+            need += margin_of(model, need) + reserve_for(on)
             free = get_free_vram(on)
             if free >= need:
                 continue

@@ -7,6 +7,7 @@ import { stateMessage } from "../lib/stateMessage";
 import { useFormat } from "../lib/useFormat";
 import { LIVE_POLL_MS, useStatus } from "../state";
 import { LiveDot } from "./LiveDot";
+import { useModalityLabel } from "../lib/modalities";
 
 /* The page header's pulse: live while /status answers, neutral when
    serving is paused, red when giq stops answering. What giq is doing rides
@@ -14,6 +15,7 @@ import { LiveDot } from "./LiveDot";
    server's own English sentence is the tooltip. */
 export function LiveStatus() {
   const { t } = useTranslation();
+  const modalityLabel = useModalityLabel();
   const f = useFormat();
   const { data, error, loading } = useStatus();
   if (error) return <LiveDot state="down" label={t("live.unreachable")} />;
@@ -23,7 +25,7 @@ export function LiveStatus() {
   const p = msg.params;
   const text = t(`stateMessage.${msg.key}`, {
     ...p,
-    modality: typeof p.modality === "string" ? t(`worker.${p.modality}`, { defaultValue: p.modality }) : undefined,
+    modality: typeof p.modality === "string" ? modalityLabel(p.modality) : undefined,
     free: typeof p.free === "number" ? f.gb(p.free) : undefined,
   });
   return (

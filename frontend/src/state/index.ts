@@ -6,6 +6,7 @@ export { DataProvider } from "./DataProvider";
 export {
   LIVE_POLL_MS,
   SLOW_POLL_MS,
+  useCapabilities,
   useDownloads,
   useEngines,
   useGpus,

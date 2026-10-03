@@ -2,9 +2,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { useTranslation } from "react-i18next";
 import { WorkerIcon } from "./WorkerIcon";
 import "./ModelLabel.css";
+import { useModalityLabel } from "../lib/modalities";
 
 export interface ModelLabelProps {
   worker: string;
@@ -17,14 +17,14 @@ export interface ModelLabelProps {
 
 /** A model as the job and usage tables name it: swatch, worker icon, name, worker. */
 export function ModelLabel({ worker, model, color, showWorker }: ModelLabelProps) {
-  const { t } = useTranslation();
+  const modalityLabel = useModalityLabel();
   return (
     <span className="model-label">
       {color && <span className="model-label-swatch" style={{ background: color }} aria-hidden />}
       <WorkerIcon worker={worker} size={13} labelled={!showWorker} />
       <span className="model-label-name">{model}</span>
       {showWorker && (
-        <span className="model-label-worker">· {t(`worker.${worker}`, { defaultValue: worker })}</span>
+        <span className="model-label-worker">· {modalityLabel(worker)}</span>
       )}
     </span>
   );

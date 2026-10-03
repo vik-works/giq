@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Modality } from "../api/types";
+import { registrationIndex } from "./modalities";
 
 /* Series colours as CSS variable references, never resolved hex: an SVG
    fill of var(--s-llm) follows a theme switch by itself, where a colour read
@@ -20,9 +21,12 @@ const KNOWN = new Set<string>([
   "depth",
 ]);
 
-/** The fixed colour of a worker (its series slot). Colour follows the entity, not its rank. */
+/** The fixed colour of a worker (its series slot). Colour follows the entity, not its rank.
+ * A modality a plugin adds takes the series slot of its place in the server's
+ * registration order (ADR-004 D6); past the eighth, the neutral "other". */
 export function workerColor(worker: Modality | string): string {
-  return KNOWN.has(worker) ? `var(--s-${worker})` : "var(--series-other)";
+  if (KNOWN.has(worker)) return `var(--s-${worker})`;
+  return seriesColor(registrationIndex(worker));
 }
 
 /** Stack/legend order for workers: the slot order, so stacks look the same everywhere. */

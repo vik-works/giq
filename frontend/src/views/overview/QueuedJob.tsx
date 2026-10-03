@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Icon } from "../../components/Icon";
 import { WorkerIcon } from "../../components/WorkerIcon";
 import type { JobInfo } from "./useJobDetails";
+import { useModalityLabel } from "../../lib/modalities";
 
 export interface QueuedJobProps {
   id: string;
@@ -21,11 +22,12 @@ export interface QueuedJobProps {
 /** One job in the queue card: what it is, where it stands, and (queued only) a way to cancel it. */
 export function QueuedJob({ id, pos, info, running, onCancel, cancelling }: QueuedJobProps) {
   const { t } = useTranslation("overview");
+  const modalityLabel = useModalityLabel();
   const what = info ? (
     <>
       <WorkerIcon worker={info.worker} size={running ? 14 : 13} colored={running} />
       <span className="ov-jq-model">{info.model}</span>
-      <span className="ov-jq-worker">{t(`common:worker.${info.worker}`, { defaultValue: info.worker })}</span>
+      <span className="ov-jq-worker">{modalityLabel(info.worker)}</span>
     </>
   ) : (
     <span className="ov-jq-worker">{info === null ? t("queue.gone") : t("queue.resolving")}</span>

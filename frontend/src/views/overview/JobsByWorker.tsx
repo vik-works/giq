@@ -9,6 +9,7 @@ import { WorkerIcon } from "../../components/WorkerIcon";
 import { Legend, StackedBars, type BarBucket } from "../../components/charts";
 import { workerColor, workerRank } from "../../lib/series";
 import { useFormat } from "../../lib/useFormat";
+import { useModalityLabel } from "../../lib/modalities";
 
 type Point = StatsTimeline["points"][number];
 
@@ -17,6 +18,7 @@ type Point = StatsTimeline["points"][number];
    slot order, so a colour sits at the same height in every column. */
 export function JobsByWorker({ timeline, hours }: { timeline: StatsTimeline | undefined; hours: number }) {
   const { t } = useTranslation("overview");
+  const modalityLabel = useModalityLabel();
   const f = useFormat();
   const bucket = timeline?.bucket_s ?? 3600;
   const nowS = Date.now() / 1000;
@@ -50,7 +52,7 @@ export function JobsByWorker({ timeline, hours }: { timeline: StatsTimeline | un
             const p = per!.get(w)!;
             return (
               <div key={w}>
-                <WorkerIcon worker={w} size={12} /> {t(`common:worker.${w}`, { defaultValue: w })}: {f.num(p.jobs)}
+                <WorkerIcon worker={w} size={12} /> {modalityLabel(w)}: {f.num(p.jobs)}
                 {p.failed > 0 && <span className="text-critical"> ({t("common:chart.failed", { count: p.failed })})</span>}
               </div>
             );
@@ -74,7 +76,7 @@ export function JobsByWorker({ timeline, hours }: { timeline: StatsTimeline | un
         items={workers.map((w) => ({
           id: w,
           color: workerColor(w),
-          label: t(`common:worker.${w}`, { defaultValue: w }),
+          label: modalityLabel(w),
           icon: <WorkerIcon worker={w} size={13} />,
         }))}
       />

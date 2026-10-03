@@ -19,6 +19,7 @@ import { RecipeFacts } from "./RecipeFacts";
 import { PolicyControl } from "./PolicyControl";
 import type { RecipeActions } from "./useRecipeActions";
 import "./RecipeCard.css";
+import { useModalityLabel } from "../../lib/modalities";
 
 export interface RecipeCardProps {
   r: RecipeEntry;
@@ -33,6 +34,7 @@ export interface RecipeCardProps {
    what it is, whether it fits, how it is kept, where it runs, what runs it. */
 export function RecipeCard({ r, weights, cards, versions, actions }: RecipeCardProps) {
   const { t } = useTranslation("recipes");
+  const modalityLabel = useModalityLabel();
   const busy = actions.isBusy(r);
   const modality = primaryModality(r);
   const policy = r.residency.policy;
@@ -67,7 +69,7 @@ export function RecipeCard({ r, weights, cards, versions, actions }: RecipeCardP
         <RecipeCardMenu r={r} />
       </header>
       <p className="rc-recipe-meta">
-        {r.modalities.map((x) => t(`common:worker.${x}`, { defaultValue: x })).join(" · ")}
+        {r.modalities.map((x) => modalityLabel(x)).join(" · ")}
         {r.detail && <> · {r.detail}</>}
       </p>
       <RecipeFacts r={r} weights={weightsOf(r, weights)} />

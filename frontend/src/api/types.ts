@@ -615,13 +615,23 @@ export interface StatsEvent {
 
 // --- GET /capabilities -------------------------------------------------------------
 
+export interface ModalityCapability {
+  /** Engines of the ready recipes, comma-separated. */
+  engine: string;
+  /** The recipes that run here now, kept warm first (ADR-005 D7). */
+  recipes: string[];
+  default: string | null;
+  available: { name: string; availability: Availability; verdict: string }[];
+  max_batch: number | null;
+  voices: string[] | null;
+  /** How the dashboard names and draws it, as its plugin registered it. */
+  label: string;
+  icon: string;
+}
+
 export interface Capabilities {
-  modalities: Partial<
-    Record<
-      Modality,
-      { engine: string; recipes: string[]; max_batch: number | null; voices: string[] | null }
-    >
-  >;
+  /** In the server's registration order. */
+  modalities: Record<string, ModalityCapability>;
   constraints: Record<string, unknown>;
 }
 

@@ -16,6 +16,7 @@ import { AddRecipeRow } from "./AddRecipeRow";
 import { PluginOffer } from "./PluginOffer";
 import { useAddActions } from "./useAddActions";
 import "./AddRecipes.css";
+import { useModalityLabel } from "../../lib/modalities";
 
 /* The Add page (ADR-005 D6): everything giq could run that is not on this
    machine, by the modality it adds, opened on purpose rather than pushed
@@ -23,6 +24,7 @@ import "./AddRecipes.css";
    last, folded, with the reason. */
 export function AddRecipes() {
   const { t } = useTranslation("recipes");
+  const modalityLabel = useModalityLabel();
   const recipes = useRecipes();
   const plugins = usePlugins();
   const downloads = useDownloads();
@@ -63,7 +65,7 @@ export function AddRecipes() {
         <section key={g.modality} className="rc-add-group" aria-labelledby={`rc-add-${g.modality}`}>
           <h2 id={`rc-add-${g.modality}`} className="section-title rc-add-group-title">
             <WorkerIcon worker={g.modality} size={14} />
-            {t(`common:worker.${g.modality}`, { defaultValue: g.modality })}
+            {modalityLabel(g.modality)}
           </h2>
           <div className="rc-add-grid">
             {g.offered.map((r) => (

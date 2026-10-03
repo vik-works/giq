@@ -11,6 +11,7 @@ import { WorkerIcon } from "../../components/WorkerIcon";
 import { useEngines, useGpus, useRecipes, useStorage, useWeights } from "../../state";
 import { cardChoices } from "../../lib/cards";
 import { useHashRoute } from "../../lib/useHashRoute";
+import { useModalityLabel } from "../../lib/modalities";
 import { AddRecipes } from "./AddRecipes";
 import { onThisMachine } from "./adding";
 import { ENGINE_NOTE_KEY, engineVersions, facetCounts, matches, toggled } from "./catalog";
@@ -47,6 +48,7 @@ export default function RecipesView() {
 
 function OnThisMachine() {
   const { t } = useTranslation("recipes");
+  const modalityLabel = useModalityLabel();
   const recipes = useRecipes();
   const weights = useWeights();
   const storage = useStorage();
@@ -83,7 +85,7 @@ function OnThisMachine() {
               renderLabel={(w) => (
                 <>
                   <WorkerIcon worker={w} size={14} />
-                  {t(`common:worker.${w}`, { defaultValue: w })}
+                  {modalityLabel(w)}
                 </>
               )}
             />

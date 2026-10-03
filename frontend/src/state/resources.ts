@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type {
+  Capabilities,
   DownloadsResponse,
   EnginesResponse,
   GpusResponse,
@@ -73,4 +74,11 @@ export const [PluginsProvider, usePlugins] = createPolledResource<PluginsRespons
   "Plugins",
   "/plugins",
   0,
+);
+
+/** GET /capabilities every 60 s: the registered modalities, their labels and icons, what runs. */
+export const [CapabilitiesProvider, useCapabilities] = createPolledResource<Capabilities>(
+  "Capabilities",
+  "/capabilities",
+  SLOW_POLL_MS,
 );

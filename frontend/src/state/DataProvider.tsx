@@ -2,14 +2,17 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { setModalities } from "../lib/modalities";
 import {
+  CapabilitiesProvider,
   DownloadsProvider,
   EnginesProvider,
   GpusProvider,
   InstancesProvider,
   PluginsProvider,
   RecipesProvider,
+  useCapabilities,
   StatusProvider,
   StorageProvider,
   WeightsProvider,
@@ -26,7 +29,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
               <StorageProvider>
                 <EnginesProvider>
                   <DownloadsProvider>
-                    <PluginsProvider>{children}</PluginsProvider>
+                    <PluginsProvider>
+                      <CapabilitiesProvider>
+                        <ModalitySync />
+                        {children}
+                      </CapabilitiesProvider>
+                    </PluginsProvider>
                   </DownloadsProvider>
                 </EnginesProvider>
               </StorageProvider>
@@ -36,4 +44,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
       </GpusProvider>
     </StatusProvider>
   );
+}
+
+/* Hands the server's modality list (labels, icons, registration order) to
+   the module-level registry the icons, labels and series colours read. */
+function ModalitySync() {
+  const caps = useCapabilities();
+  useEffect(() => {
+    if (!caps.data) return;
+    setModalities(
+      Object.entries(caps.data.modalities).map(([name, m]) => ({ name, label: m.label, icon: m.icon })),
+    );
+  }, [caps.data]);
+  return null;
 }

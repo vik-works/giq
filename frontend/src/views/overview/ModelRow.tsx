@@ -12,6 +12,7 @@ import { shortGpuName } from "../../lib/cards";
 import { primaryModality } from "../../lib/recipes";
 import { useFormat } from "../../lib/useFormat";
 import type { LaneRow } from "./laneRows";
+import { useModalityLabel } from "../../lib/modalities";
 
 const POLICY_TONE: Record<Policy, TagTone> = { pinned: "accent", auto: "neutral", off: "outline" };
 
@@ -28,6 +29,7 @@ export interface ModelRowProps {
 
 export function ModelRow({ row, card, lastUsed, busy, locked, onPolicy }: ModelRowProps) {
   const { t } = useTranslation("overview");
+  const modalityLabel = useModalityLabel();
   const f = useFormat();
   const m = row.recipe;
   const modality = primaryModality(m);
@@ -44,7 +46,7 @@ export function ModelRow({ row, card, lastUsed, busy, locked, onPolicy }: ModelR
         <WorkerIcon worker={m.vision ? "vision" : modality} size={14} />
         <span>{m.label || m.name}</span>
       </td>
-      <td className="muted">{t(`common:worker.${modality}`, { defaultValue: modality })}</td>
+      <td className="muted">{modalityLabel(modality)}</td>
       <td className="mono muted ov-mir-engine" title={m.runtime ? `${m.engine} · ${m.runtime}` : m.engine}>
         {m.engine}
       </td>

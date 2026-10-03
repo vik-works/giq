@@ -4,6 +4,7 @@
 
 import {
   ChatTextIcon,
+  CubeIcon,
   EyeIcon,
   FileTextIcon,
   GraphicsCardIcon,
@@ -15,9 +16,9 @@ import {
   WaveformIcon,
   type Icon as PhosphorIcon,
 } from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
 import { workerColor } from "../lib/series";
 import { Icon } from "./Icon";
+import { modalityMeta, useModalityLabel } from "../lib/modalities";
 
 /* Shape says what the model does; colour (optional) says which worker, in
    the same slot colour the charts use for it. Vision is a capability of an
@@ -36,6 +37,22 @@ export const WORKER_ICONS: Record<string, PhosphorIcon> = {
   gpu: GraphicsCardIcon,
 };
 
+/* The icon names a plugin may give its modality (giq.plugin.Modality.icon),
+   for modalities the table above does not know. Anything else gets the
+   generic cube, never a wrong picture. */
+const ICON_BY_NAME: Record<string, PhosphorIcon> = {
+  chat: ChatTextIcon,
+  eye: EyeIcon,
+  image: ImageIcon,
+  "paint-brush": PaintBrushIcon,
+  waveform: WaveformIcon,
+  speaker: SpeakerHighIcon,
+  vector: VectorThreeIcon,
+  "file-text": FileTextIcon,
+  mountains: MountainsIcon,
+  gpu: GraphicsCardIcon,
+};
+
 export interface WorkerIconProps {
   /** A worker type, or "vision" / "gpu". */
   worker: string;
@@ -48,15 +65,15 @@ export interface WorkerIconProps {
 }
 
 export function WorkerIcon({ worker, size = 14, colored = true, labelled = false, className }: WorkerIconProps) {
-  const { t } = useTranslation();
-  const glyph = WORKER_ICONS[worker] ?? ChatTextIcon;
+  const modalityLabel = useModalityLabel();
+  const glyph = WORKER_ICONS[worker] ?? ICON_BY_NAME[modalityMeta(worker)?.icon ?? ""] ?? CubeIcon;
   return (
     <Icon
       as={glyph}
       size={size}
       className={className}
       style={{ flex: "none", verticalAlign: "-2px", color: colored ? workerColor(worker) : undefined }}
-      label={labelled ? t(`worker.${worker}`, { defaultValue: worker }) : undefined}
+      label={labelled ? modalityLabel(worker) : undefined}
     />
   );
 }

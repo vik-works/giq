@@ -17,7 +17,16 @@ engine: llama.cpp
 detail: "chat + vision · 128k ctx"
 weights:
   path: unsloth-Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf
+  source: hf:unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf
+  revision: 4ca720788d1e01f1bff70c033e0d0028fd02e502
   format: gguf
+  licence: apache-2.0
+  parts:
+    # llama.cpp's vision projector.
+    mmproj:
+      path: unsloth-Qwen3.8-27B-GGUF/mmproj-F16.gguf
+      source: hf:unsloth/Qwen3.8-27B-GGUF/mmproj-F16.gguf
+      revision: 4ca720788d1e01f1bff70c033e0d0028fd02e502
 capabilities: [chat, vision]
 params:
   # 128k, not the native 256k. qwen35 is an SSM hybrid, not a dense
@@ -39,7 +48,6 @@ params:
   cache_type_k: q8_0
   cache_type_v: q8_0
   reasoning: "on"
-  mmproj: unsloth-Qwen3.8-27B-GGUF/mmproj-F16.gguf
 # Qwen's sampling guidance for thinking mode, plus DRY against verbatim loops
 # (why DRY rather than a token penalty is in the request-defaults notes in
 # adapters/llama_cpp.py). Defaults, not overrides: the caller's body wins.

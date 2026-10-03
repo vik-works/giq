@@ -9,7 +9,10 @@ modalities: [llm]
 engine: llama.cpp
 weights:
   path: unsloth-gemma-4-31B-it-GGUF/gemma-4-31B-it-Q4_K_M.gguf
+  source: hf:unsloth/gemma-4-31B-it-GGUF/gemma-4-31B-it-Q4_K_M.gguf
+  revision: b241aace32afad79999d561431643b0524ec6126
   format: gguf
+  licence: apache-2.0
 capabilities: [chat]
 vram:
   gb: 22.0

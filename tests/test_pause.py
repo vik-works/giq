@@ -198,7 +198,7 @@ async def test_paused_runner_refuses_to_load(queue: JobQueue):
     await runner.pause()
 
     with pytest.raises(RuntimeError, match="paused"):
-        await runner._ensure_worker("llama-3.2-3b")
+        await runner._ensure_worker("gemma-4-26b-a4b-it")
     assert runner.active_modality is None
 
     await runner._load_resident(RESIDENTS[0])

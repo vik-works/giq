@@ -25,7 +25,7 @@ curl -X POST http://localhost:8084/run \
   -H "Content-Type: application/json" \
   -d '{
     "modality": "llm",
-    "model": "gemma-3-27b-it-qat",
+    "model": "gemma-4-12b",
     "tasks": [{"id": "1", "messages": [{"role": "user", "content": "Hello!"}]}]
   }'
 

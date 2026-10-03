@@ -105,9 +105,17 @@ def require_path(name: str, part: str | None = None) -> str:
 
 
 def hub_repo(source: str | None) -> str | None:
-    """``org/repo`` of an ``hf:org/repo`` source, else None."""
+    """``org/repo`` of an ``hf:org/repo`` or ``hf:org/repo/file`` source, else None."""
     if source and source.startswith(HF_PREFIX):
-        return source[len(HF_PREFIX) :] or None
+        return "/".join(source[len(HF_PREFIX) :].split("/")[:2]) or None
+    return None
+
+
+def hub_file(source: str | None) -> str | None:
+    """The file in the repository an ``hf:org/repo/file`` source names, else None."""
+    if source and source.startswith(HF_PREFIX):
+        parts = source[len(HF_PREFIX) :].split("/", 2)
+        return parts[2] if len(parts) == 3 else None
     return None
 
 

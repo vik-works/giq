@@ -257,7 +257,7 @@ async def test_a_slot_per_card_survives_the_other_cards_load(two_cards, store):
     runner = Runner(JobQueue())
     with two_cards(bind={"flux_klein": "1"}):
         other = AsyncMock()
-        runner._slots[BIG] = Instance(other, "llama-3.2-3b", BIG)
+        runner._slots[BIG] = Instance(other, "gemma-4-26b-a4b-it", BIG)
 
         built = AsyncMock()
         built.is_ready = True
@@ -268,7 +268,7 @@ async def test_a_slot_per_card_survives_the_other_cards_load(two_cards, store):
 
     assert worker is built
     assert runner._slots[SMALL].model == "flux_klein"
-    assert runner._slots[BIG].model == "llama-3.2-3b"  # still loaded
+    assert runner._slots[BIG].model == "gemma-4-26b-a4b-it"  # still loaded
     other.stop.assert_not_awaited()
 
 

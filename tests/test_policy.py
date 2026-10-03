@@ -451,10 +451,10 @@ async def test_overcommit_can_be_forced_but_warns(client, store, sixteen_gb_card
 
 @pytest.mark.asyncio
 async def test_pinning_a_second_llm_is_refused(client, store):
-    r = await client.put("/recipes/llama-3.2-3b/residency", json={"policy": "pinned"})
+    r = await client.put("/recipes/gemma-4-26b-a4b-it/residency", json={"policy": "pinned"})
     assert r.status_code == 409
     assert "One resident LLM per card" in r.json()["detail"]
-    assert store.policy_for("llama-3.2-3b") == AUTO
+    assert store.policy_for("gemma-4-26b-a4b-it") == AUTO
 
 
 @pytest.mark.asyncio
@@ -463,9 +463,9 @@ async def test_swapping_the_pinned_llm_works(client, store):
     assert (
         await client.put("/recipes/gemma-4-12b/residency", json={"policy": "auto"})
     ).status_code == 200
-    r = await client.put("/recipes/llama-3.2-3b/residency", json={"policy": "pinned"})
+    r = await client.put("/recipes/gemma-4-26b-a4b-it/residency", json={"policy": "pinned"})
     assert r.status_code == 200
-    assert store.resident_llm() == "llama-3.2-3b"
+    assert store.resident_llm() == "gemma-4-26b-a4b-it"
 
 
 @pytest.mark.asyncio

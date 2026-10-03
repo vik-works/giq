@@ -69,6 +69,27 @@ class _Strict(BaseModel):
 PartName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=64)]
 
 
+def _source_file(source: str | None) -> str | None:
+    """The file in the repository an ``hf:org/repo/file`` source names, or None."""
+    if source is None or not source.startswith("hf:"):
+        return None
+    return source[3:].split("/", 2)[2] if source.count("/") >= 2 else None
+
+
+def _fetchable(path: str | None, source: str | None) -> None:
+    """A source giq can fetch: ``hf:org/repo`` or ``hf:org/repo/file``.
+
+    One file has nowhere to go but the path it is loaded from; a whole
+    repository without a path goes to the Hugging Face cache.
+    """
+    if source is None:
+        return
+    if source.startswith("hf:") and source[3:].count("/") < 1:
+        raise ValueError(f"source {source!r} names no repository: hf:org/repo[/file]")
+    if _source_file(source) and not path:
+        raise ValueError(f"source {source!r} names one file; give the path it goes to")
+
+
 class WeightsPart(_Strict):
     """One file or snapshot of a multi-part model, with its own provenance.
 
@@ -88,6 +109,7 @@ class WeightsPart(_Strict):
     def _somewhere(self) -> WeightsPart:
         if not (self.path or self.source):
             raise ValueError("a part needs a path or a source")
+        _fetchable(self.path, self.source)
         return self
 
 
@@ -96,8 +118,8 @@ class Weights(_Strict):
 
     # Relative to giq.paths.models_dir(); `~` or absolute is used as written.
     path: str | None = None
-    # Provenance: where the files came from and at which revision. Recorded,
-    # not fetched — giq downloads nothing on its own.
+    # Where the files come from and at which revision (ADR-005): `hf:org/repo`
+    # for a whole repository, `hf:org/repo/path/in/repo` for one file of it.
     source: str | None = None
     revision: str | None = None
     format: Literal["gguf", "safetensors", "modelopt"] | None = None
@@ -112,6 +134,11 @@ class Weights(_Strict):
         if isinstance(v, dict):
             return {k: {"path": p} if isinstance(p, str) else p for k, p in v.items()}
         return v
+
+    @model_validator(mode="after")
+    def _source(self) -> Weights:
+        _fetchable(self.path, self.source)
+        return self
 
 
 class Vram(_Strict):
@@ -183,8 +210,6 @@ class LlamaCppParams(EngineParams):
     reasoning_budget: int | None = Field(default=None, ge=0)
     parallel: int | None = Field(default=None, ge=1)
     spec_type: Arg | None = None
-    # The vision projector, resolved like weights.path.
-    mmproj: Arg | None = None
     # --alias: the id llama-server reports on /v1/models.
     alias: Arg | None = None
     # giq's in-flight loop guard on the thinking channel.
@@ -385,6 +410,30 @@ def read_hf_config(weights_dir: str | Path) -> dict[str, Any] | None:
         return None
 
 
+def _projector_part(data: dict[str, Any]) -> dict[str, Any]:
+    """``params.mmproj`` read as ``weights.parts.mmproj`` (ADR-005 D2).
+
+    The projector is weights: inventoried, sized, fetched and deleted with
+    the rest. A file that still names it as a parameter loads, with a warning.
+    """
+    params = data.get("params")
+    if not (isinstance(params, dict) and "mmproj" in params):
+        return data
+    logger.warning(
+        f"recipe {data.get('name')!r}: `params.mmproj` is now `weights.parts.mmproj` (ADR-005)"
+    )
+    weights = dict(data.get("weights") or {})
+    parts = dict(weights.get("parts") or {})
+    if "mmproj" in parts:
+        raise ValueError("the projector is given twice: params.mmproj and weights.parts.mmproj")
+    parts["mmproj"] = params["mmproj"]
+    return {
+        **data,
+        "params": {k: v for k, v in params.items() if k != "mmproj"},
+        "weights": {**weights, "parts": parts},
+    }
+
+
 class Recipe(_Strict):
     """One servable model, as a recipe file declares it."""
 
@@ -458,6 +507,7 @@ class Recipe(_Strict):
         # rather than by a union that would accept whichever variant fits.
         if not isinstance(data, dict):
             return data
+        data = _projector_part(data)
         params = data.get("params")
         if isinstance(params, EngineParams):
             return data
@@ -589,8 +639,10 @@ class Recipe(_Strict):
 
     @property
     def mmproj(self) -> str | None:
-        """llama.cpp's projector file, without which the weights are text-only."""
-        return self.params.mmproj if isinstance(self.params, LlamaCppParams) else None
+        """llama.cpp's projector file, without which the weights are text-only:
+        the ``mmproj`` part's path, unresolved."""
+        part = self.weights.parts.get("mmproj") if self.weights else None
+        return part.path if part is not None else None
 
     @property
     def lanes(self) -> int:
@@ -625,9 +677,9 @@ def llamacpp_consistent(recipe: Recipe) -> None:
     if not (recipe.weights and recipe.weights.path):
         raise ValueError("a llama.cpp recipe needs weights.path")
     # Without the projector the weights serve text and silently drop image
-    # parts, so vision and mmproj are declared together.
-    if ("vision" in recipe.capabilities) != bool(params.mmproj):
-        raise ValueError("capability `vision` and params.mmproj go together")
+    # parts, so vision and the projector are declared together.
+    if ("vision" in recipe.capabilities) != bool(recipe.mmproj):
+        raise ValueError("capability `vision` and weights.parts.mmproj go together")
 
 
 def vllm_consistent(recipe: Recipe) -> None:
@@ -639,6 +691,10 @@ def vllm_consistent(recipe: Recipe) -> None:
     # D4 accepts(): vllm reads Hugging Face checkpoint directories.
     if recipe.weights.format not in ("safetensors", "modelopt"):
         raise ValueError("a vllm recipe needs weights.format safetensors or modelopt")
+    if recipe.weights.parts:
+        # The checkpoint directory carries everything vllm loads, a vision
+        # tower included.
+        raise ValueError("a vllm recipe reads one checkpoint directory; it takes no parts")
     if recipe.lane_width is not None:
         raise ValueError("lane_width is derived from params.max_num_seqs for vllm (D8)")
     kv = params.kv_cache_memory_bytes

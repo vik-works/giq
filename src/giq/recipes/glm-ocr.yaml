@@ -16,13 +16,13 @@ detail: "layout + per-region recognition · tables as HTML · fits beside anythi
 weights:
   path: zai-GLM-OCR
   source: hf:zai-org/GLM-OCR
-  revision: ca5d8b3
+  revision: ca5d8b3e287e52589e37c28385d9655ee4372f9d
   format: safetensors
   parts:
     layout:
       path: PaddlePaddle-PP-DocLayoutV3
       source: hf:PaddlePaddle/PP-DocLayoutV3_safetensors
-      revision: 97d101e
+      revision: 97d101e6db2642e162a1d05392d1b0231c91033e
       format: safetensors
 vram:
   # 2.26 GiB after load, 3.19 GiB peak through a 4-page invoice at 200 dpi,

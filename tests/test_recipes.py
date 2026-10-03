@@ -99,6 +99,85 @@ def test_what_is_not_understood_is_refused(tmp_path, extra, complaint):
         load_file(_write(tmp_path, "a.yaml", LLM.format(name="m") + extra))
 
 
+def _llm(weights: str, extra: str = "") -> str:
+    head = "name: m\nmodalities: [llm]\nengine: llama.cpp\nweights:\n"
+    return f"{head}{weights}vram: {{gb: 1}}\n{extra}"
+
+
+GGUF = "  path: some-GGUF/model-Q4_K_M.gguf\n"
+
+
+def test_the_projector_is_a_part(tmp_path):
+    weights = GGUF + "  parts:\n    mmproj: some-GGUF/mmproj-F16.gguf\n"
+    recipe = load_file(_write(tmp_path, "a.yaml", _llm(weights, "capabilities: [vision]\n")))
+    assert recipe.mmproj == "some-GGUF/mmproj-F16.gguf" and recipe.vision
+
+
+def test_a_projector_given_as_a_parameter_still_loads_as_the_part(tmp_path, caplog):
+    text = _llm(GGUF, "capabilities: [vision]\nparams:\n  mmproj: some-GGUF/mmproj-F16.gguf\n")
+    with caplog.at_level(logging.WARNING):
+        recipe = load_file(_write(tmp_path, "a.yaml", text))
+    assert recipe.weights.parts["mmproj"].path == "some-GGUF/mmproj-F16.gguf"
+    assert "weights.parts.mmproj" in caplog.text
+
+
+def test_a_projector_given_twice_is_refused(tmp_path):
+    weights = GGUF + "  parts:\n    mmproj: a.gguf\n"
+    text = _llm(weights, "capabilities: [vision]\nparams:\n  mmproj: b.gguf\n")
+    with pytest.raises(RecipeError, match="given twice"):
+        load_file(_write(tmp_path, "a.yaml", text))
+
+
+@pytest.mark.parametrize(
+    "weights, complaint",
+    [
+        # One file has nowhere to go but the path it is loaded from.
+        ("  source: hf:org/repo/model.gguf\n", "names one file"),
+        (GGUF + "  source: hf:org\n", "names no repository"),
+        (GGUF + "  parts:\n    mmproj: {source: 'hf:org/repo/p.gguf'}\n", "names one file"),
+    ],
+)
+def test_a_source_must_be_fetchable(tmp_path, weights, complaint):
+    with pytest.raises(RecipeError, match=complaint):
+        load_file(_write(tmp_path, "a.yaml", _llm(weights)))
+
+
+def test_a_file_source_names_the_repository_and_the_file():
+    from giq.weights import hub_file, hub_repo
+
+    source = "hf:Comfy-Org/z_image_turbo/split_files/vae/ae.safetensors"
+    assert hub_repo(source) == "Comfy-Org/z_image_turbo"
+    assert hub_file(source) == "split_files/vae/ae.safetensors"
+    assert (hub_repo("hf:org/repo"), hub_file("hf:org/repo")) == ("org/repo", None)
+
+
+def test_every_builtin_recipe_says_where_its_weights_come_from():
+    """ADR-005 D2: a built-in recipe giq cannot fetch is one a fresh install
+    can never run. Weights under the models directory are pinned to the
+    files their VRAM figure was measured with; the ones the children load
+    from the Hugging Face cache by repository follow its main branch."""
+    for recipe, _ in recipes.builtin().values():
+        assert recipe.weights is not None, recipe.name
+        blocks = [recipe.weights, *recipe.weights.parts.values()]
+        for block in blocks:
+            if block is recipe.weights and recipe.weights.parts and not block.path:
+                continue  # the parts carry the files
+            assert block.source and block.source.startswith("hf:"), recipe.name
+            if block.path:
+                assert block.revision and len(block.revision) == 40, (
+                    f"{recipe.name}: pin the full commit"
+                )
+
+
+def test_vllm_takes_no_parts(tmp_path):
+    from tests._vllm import doc, make_checkpoint
+
+    bad = doc(make_checkpoint(tmp_path))
+    bad["weights"]["parts"] = {"mmproj": "p.gguf"}
+    with pytest.raises(ValueError, match="takes no parts"):
+        Recipe.model_validate(bad)
+
+
 @pytest.mark.parametrize(
     "text, complaint",
     [

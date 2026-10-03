@@ -10,7 +10,10 @@ engine: llama.cpp
 detail: "chat · 128k ctx · 4 slots"
 weights:
   path: unsloth-gemma-4-12B-it-qat-GGUF/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf
+  source: hf:unsloth/gemma-4-12B-it-qat-GGUF/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf
+  revision: f18012b8f690e563b7f872cb764b4cb3de90b14a
   format: gguf
+  licence: apache-2.0
 capabilities: [chat]
 params:
   # 128k q8_0 KV is cheap on this arch: 5:1 sliding-window attention caps

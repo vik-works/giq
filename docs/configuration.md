@@ -106,14 +106,17 @@ engine: llama.cpp
 detail: "chat + vision · 192k ctx"
 weights:
   path: unsloth-Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf   # under GIQ_MODELS_DIR
+  source: hf:unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf
+  revision: 4ca720788d1e01f1bff70c033e0d0028fd02e502
   format: gguf
+  parts:
+    mmproj: unsloth-Qwen3.8-27B-GGUF/mmproj-F16.gguf      # the vision projector
 capabilities: [chat, vision]
 params:
   ctx_size: 196608
   cache_type_k: q8_0
   cache_type_v: q8_0
   reasoning: "on"            # quoted: a bare on is YAML's true
-  mmproj: unsloth-Qwen3.8-27B-GGUF/mmproj-F16.gguf
 vram:
   gb: 29.0
   measured: false            # an upper-bound estimate until measured
@@ -128,8 +131,9 @@ max_batch: 32
 | `label`, `detail` | Dashboard presentation; `label` defaults to the name |
 | `weights.path` | The weights file (a checkpoint directory for `vllm`), relative to `GIQ_MODELS_DIR`; `~` or absolute is used as written. Required for `llama.cpp` and `vllm`; `vllm` also needs `format: safetensors` or `modelopt` |
 | `weights.parts` | The other files the model needs, by the name its modality's engine reads them under (see [Weights](#weights)) |
-| `weights.source`, `revision`, `format`, `licence` | Provenance (`hf:org/repo`, a pinned revision, `gguf`/`safetensors`/`modelopt`). Recorded, never fetched |
-| `capabilities` | `chat`, `vision`. For llama.cpp `vision` needs `params.mmproj` and vice versa; for vllm, leaving it out serves a multimodal checkpoint as text |
+| `weights.source`, `revision` | Where the weights come from: `hf:org/repo` for a whole repository, `hf:org/repo/path/in/repo` for one file of it (which then needs a `path` to go to), at a pinned commit |
+| `weights.format`, `licence` | `gguf`/`safetensors`/`modelopt`, and the licence the weights are under |
+| `capabilities` | `chat`, `vision`. For llama.cpp `vision` needs `weights.parts.mmproj` and vice versa; for vllm, leaving it out serves a multimodal checkpoint as text |
 | `profile` | vllm only: a named parameter set (`interactive`, `throughput`) under `params`, which outrank it ([engines.md](engines.md#profiles)) |
 | `params` | The engine's parameters, below. Unset ones take the engine's defaults |
 | `request_defaults` | Body fields sent under each request; the caller's own values win. llama.cpp: samplers, `reasoning_budget_tokens`; vllm: `top_k`, `min_p`, `presence_penalty`, `frequency_penalty`, `repetition_penalty` |
@@ -142,7 +146,7 @@ llama.cpp `params`: `ctx_size` (shared by the slots), `parallel` (slots;
 more than one turns on continuous batching), `cache_type_k` and
 `cache_type_v` (set together and equal — a mixed pair falls off the fused
 attention kernel), `reasoning` (`on`, `off`, `auto`, or `template` to let the
-chat template decide), `reasoning_budget`, `spec_type`, `mmproj`, `alias`,
+chat template decide), `reasoning_budget`, `spec_type`, `alias`,
 `loop_guard`, `ready_timeout` (seconds a start may take, default 300 — raise
 it for a big GGUF on a slow disk; a server that exits while starting fails at
 once, and its output is in `<state>/logs/llama-<model>.log`). vllm `params` — a VRAM budget (`kv_cache_memory`, preferred,
@@ -157,23 +161,29 @@ other engines take no parameters from a recipe yet.
 Every engine loads the weights its recipe names, so a recipe file with a
 new name is a new model — no table in giq's code has to know it. The main
 weights are `weights.path`; the other files a model needs are
-`weights.parts`, each a path or a mapping with its own provenance:
+`weights.parts`, each a path or a mapping with its own source:
 
 ```yaml
 weights:
   path: zai-GLM-OCR                      # under GIQ_MODELS_DIR
   source: hf:zai-org/GLM-OCR
-  revision: ca5d8b3
+  revision: ca5d8b3e287e52589e37c28385d9655ee4372f9d
   parts:
-    layout:                              # a mapping, with its own provenance
+    layout:                              # a mapping, with its own source
       path: PaddlePaddle-PP-DocLayoutV3
       source: hf:PaddlePaddle/PP-DocLayoutV3_safetensors
-      revision: 97d101e
+      revision: 97d101e6db2642e162a1d05392d1b0231c91033e
 ```
+
+A source names a whole repository, whose files go in the directory `path`
+names, or one file of it, which becomes the file `path` names: one
+quantisation of a GGUF repository, or one component of a ComfyUI-style
+repository (`hf:Comfy-Org/z_image_turbo/split_files/vae/ae.safetensors`).
+Without a `path`, a whole repository is loaded from the Hugging Face cache.
 
 | Modality | Main weights | Parts |
 |--------|--------------|-------|
-| `llm` | the GGUF | — (the projector is `params.mmproj`) |
+| `llm` | the GGUF | `mmproj` (llama.cpp's vision projector; `params.mmproj` in an older file is read as this part, with a warning) |
 | `text2image`, `image_edit` | — | `diffusion`, `text_encoder`, `vae` (required), `lora` |
 | `ocr` | the snapshot directory | `layout` (engine `transformers`: GLM-OCR's layout model) |
 | `depth` | the snapshot directory | — |

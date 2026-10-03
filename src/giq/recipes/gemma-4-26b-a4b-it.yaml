@@ -7,7 +7,10 @@ modalities: [llm]
 engine: llama.cpp
 weights:
   path: unsloth-gemma-4-26B-A4B-it-GGUF/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+  source: hf:unsloth/gemma-4-26B-A4B-it-GGUF/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf
+  revision: b68961b3c96e42475123a39fe3f8aa149163cf8b
   format: gguf
+  licence: apache-2.0
 capabilities: [chat]
 params:
   # q8_0 for high attention fidelity on recently emitted tokens (exact recall

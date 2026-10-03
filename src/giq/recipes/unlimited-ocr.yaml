@@ -16,7 +16,7 @@ detail: "PDF / page images → layout-tagged text · 32k ctx · dozens of pages 
 weights:
   path: baidu-Unlimited-OCR
   source: hf:baidu/Unlimited-OCR
-  revision: 07dea83
+  revision: 07dea832e22aefee32ad281d4b80551282e1c168
   format: safetensors
 vram:
   # 6.3 GiB idle after load, 8266 MiB per-process peak through a 4-page pass

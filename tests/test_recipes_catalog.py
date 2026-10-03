@@ -17,7 +17,7 @@ import pytest
 
 from giq import recipes
 from giq.adapters import llama_cpp
-from giq.recipes.schema import LlamaCppParams, Recipe, VllmParams
+from giq.recipes.schema import Recipe, VllmParams
 from tests._catalog_baseline import BUILTIN_SPECS, LLM_DEFAULTS, LLM_TABLES
 
 
@@ -37,7 +37,7 @@ def _flat(recipe: Recipe, modality: str) -> dict:
         "lane_width": params.max_num_seqs if isinstance(params, VllmParams) else recipe.lane_width,
         "max_batch": recipe.max_batch_for(modality),
         "measured": recipe.measured,
-        "mmproj": params.mmproj if isinstance(params, LlamaCppParams) else None,
+        "mmproj": recipe.mmproj,
         "model": recipe.name,
         "resident_priority": recipe.residency.priority,
         "vision": recipe.vision,

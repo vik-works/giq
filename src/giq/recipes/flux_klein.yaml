@@ -10,9 +10,9 @@
 # Image files are single safetensors, one subfolder per part
 # (diffusion_models/, text_encoders/, vae/, loras/) under GIQ_MODELS_DIR.
 #
-# The VAE: the klein 4B repository ships the FLUX.2 VAE under the same
-# Apache-2.0 licence. A repack of it sits in the FLUX.2 [dev] repository,
-# whose card is non-commercial, so take it from klein for commercial use.
+# The VAE: the klein 4B repack ships the FLUX.2 VAE under klein's
+# Apache-2.0 licence. The same VAE sits in the FLUX.2 [dev] repository,
+# whose card is non-commercial, so it is taken from klein for commercial use.
 #
 # Image figures plus the gate's margin must stay under a 16 GB card's
 # 15.93 GB, or these models can never load there.
@@ -22,9 +22,22 @@ engine: sd.cpp
 weights:
   licence: apache-2.0
   parts:
-    diffusion: diffusion_models/flux-2-klein-4b.safetensors
-    text_encoder: text_encoders/qwen_3_4b_flux2_klein.safetensors
-    vae: {path: vae/flux2-vae.safetensors, licence: apache-2.0}
+    diffusion:
+      path: diffusion_models/flux-2-klein-4b.safetensors
+      source: hf:black-forest-labs/FLUX.2-klein-4B/flux-2-klein-4b.safetensors
+      revision: e7b7dc27f91deacad38e78976d1f2b499d76a294
+      licence: apache-2.0
+    # Qwen3-4B, byte for byte the encoder z-image uses: one file for both.
+    text_encoder:
+      path: text_encoders/qwen_3_4b.safetensors
+      source: hf:Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors
+      revision: 6fc90a3b1b653e935a0d175e260736de25b84df5
+      licence: apache-2.0
+    vae:
+      path: vae/flux2-vae.safetensors
+      source: hf:Comfy-Org/vae-text-encorder-for-flux-klein-4b/split_files/vae/flux2-vae.safetensors
+      revision: 5f526678002e43af5551dadb73ce2e8c91b43afe
+      licence: apache-2.0
 vram:
   # sd.cpp with --offload-to-cpu: sd-server's own peak is 7.91 GB, sampled
   # per process through a live render (a whole-card reading says ~8.5, which

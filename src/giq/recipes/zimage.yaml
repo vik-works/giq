@@ -10,10 +10,23 @@ name: zimage
 modalities: [text2image]
 engine: sd.cpp
 weights:
+  licence: apache-2.0
   parts:
-    diffusion: diffusion_models/z_image_turbo_bf16.safetensors
-    text_encoder: text_encoders/qwen_3_4b.safetensors
-    vae: vae/ae.safetensors
+    diffusion:
+      path: diffusion_models/z_image_turbo_bf16.safetensors
+      source: hf:Comfy-Org/z_image_turbo/split_files/diffusion_models/z_image_turbo_bf16.safetensors
+      revision: 6fc90a3b1b653e935a0d175e260736de25b84df5
+      licence: apache-2.0
+    text_encoder:
+      path: text_encoders/qwen_3_4b.safetensors
+      source: hf:Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors
+      revision: 6fc90a3b1b653e935a0d175e260736de25b84df5
+      licence: apache-2.0
+    vae:
+      path: vae/ae.safetensors
+      source: hf:Comfy-Org/z_image_turbo/split_files/vae/ae.safetensors
+      revision: 6fc90a3b1b653e935a0d175e260736de25b84df5
+      licence: apache-2.0
 vram:
   # bf16, 12 GB of weights; peaks 12.6 GB even offloaded, so it takes the full
   # eviction. Validated on a 16 GB card: 14.4 GB peak including the desktop.

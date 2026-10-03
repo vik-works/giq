@@ -22,7 +22,7 @@ detail: "relative depth · ViT-S 25M · Apache-2.0 · fits beside anything"
 weights:
   path: depth-anything-Depth-Anything-V2-Small-hf
   source: hf:depth-anything/Depth-Anything-V2-Small-hf
-  revision: 5426e4f
+  revision: 5426e4f0f36572d16453bbda7a8389317b1bef99
   format: safetensors
   licence: apache-2.0
 vram:

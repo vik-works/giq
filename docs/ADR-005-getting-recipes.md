@@ -80,8 +80,11 @@ opens on purpose.
   stays accepted for one release, with a warning, and is read as that part.
   The projector is then inventoried, sized, fetched and deleted like any
   other weights.
-- Every built-in recipe gets a `source` and a `revision`, pinned to the files
-  its VRAM figure was measured with. Recipes that predate the models giq is
+- Every built-in recipe gets a `source`. Weights under the models directory
+  get a `revision` too, pinned to the files their VRAM figure was measured
+  with. The speech recipes' weights stay unpinned: their children load them
+  from the Hugging Face cache by repository, at its main branch, and
+  pinning them needs every child to load by revision. Recipes that predate the models giq is
   tuned for (gemma-3-27b-it-qat, llama-3.2-3b, qwen-coder-30b,
   qwen3.5-35b-a3b, qwen3.6-27b) leave the built-in catalog; an operator who
   still runs one keeps its file in their recipes directory.
@@ -101,7 +104,7 @@ user can act on:
 | Already here | the weights inventory | (ok) "4.1 of 12.3 GB already on disk": a part another recipe shares |
 | Access | the Hub's `gated` flag and whether a token is configured | the repository is gated and there is no token, or the token lacks access (fail) |
 | Licence | `weights.licence` and the Hub's licence tag | the licence is non-commercial or custom (warn, shown before the fetch) |
-| Pinned | `weights.revision` | there is none (warn) |
+| Pinned | `weights.revision` | weights under the models directory have none (warn) |
 
 Checks that need the Hub degrade without network. Size and access then
 read "unknown", and the plan says so; it does not fail.

@@ -81,8 +81,8 @@ async def _prime_warm_worker(runner: Runner, modality: Modality, model: str):
 @pytest.mark.asyncio
 async def test_warm_timeout_keeps_worker_for_matching_model(queue: JobQueue, runner: Runner):
     """Same (modality, model) pending: stay warm (don't eager-unload)."""
-    await _prime_warm_worker(runner, Modality.llm, "gemma-3-27b-it-qat")
-    await queue.add(make_job("j1", model="gemma-3-27b-it-qat"))
+    await _prime_warm_worker(runner, Modality.llm, "gemma-4-31b-it")
+    await queue.add(make_job("j1", model="gemma-4-31b-it"))
 
     # Drop into the eager-check branch only (skip the 120s sleep by cancelling
     # the task immediately after the branch decides).
@@ -97,14 +97,14 @@ async def test_warm_timeout_keeps_worker_for_matching_model(queue: JobQueue, run
         pass
 
     assert runner._slots  # still loaded
-    assert runner.active_recipe == "gemma-3-27b-it-qat"
+    assert runner.active_recipe == "gemma-4-31b-it"
 
 
 @pytest.mark.asyncio
 async def test_warm_timeout_evicts_for_different_model(queue: JobQueue, runner: Runner):
     """Same modality, different model pending: eager-unload."""
-    await _prime_warm_worker(runner, Modality.llm, "gemma-3-27b-it-qat")
-    await queue.add(make_job("j1", model="qwen-coder-30b"))
+    await _prime_warm_worker(runner, Modality.llm, "gemma-4-31b-it")
+    await queue.add(make_job("j1", model="gemma-4-26b-a4b-it"))
 
     await runner._warm_timeout_check()
 
@@ -114,7 +114,7 @@ async def test_warm_timeout_evicts_for_different_model(queue: JobQueue, runner: 
 @pytest.mark.asyncio
 async def test_warm_timeout_evicts_for_different_worker_type(queue: JobQueue, runner: Runner):
     """Different modality pending: eager-unload."""
-    await _prime_warm_worker(runner, Modality.llm, "gemma-3-27b-it-qat")
+    await _prime_warm_worker(runner, Modality.llm, "gemma-4-31b-it")
     job = Job(
         job_id="img1",
         request=JobRequest(
@@ -183,7 +183,7 @@ def test_resident_key_detection(queue: JobQueue):
     runner = Runner(queue, residents=RESIDENTS)
     assert runner.is_resident_key("gemma-4-12b")
     assert not runner.is_resident_key("flux_klein")
-    assert not runner.is_resident_key("qwen3.6-27b")
+    assert not runner.is_resident_key("qwen3.8-27b")
 
 
 @pytest.mark.asyncio
@@ -198,11 +198,11 @@ async def test_eviction_picks_minimal_single_victim(
     audio = _prime_resident(runner, RESIDENTS[1], vram_gb=4.0)
     _prime_resident(runner, RESIDENTS[2], vram_gb=0.6)
 
-    # 2.4GB free; llama-3.2-3b needs 3+1.5=4.5 → deficit 2.1 → audio alone
+    # 2.4GB free; faster-whisper-large-v3 needs 3+1.5=4.5 → deficit 2.1 → audio alone
     # covers it (smallest single ≥ deficit); embed and gemma keep serving.
     monkeypatch.setattr(runner_mod, "get_free_vram", lambda *a: 2.4)
 
-    await runner._evict_residents_for("llama-3.2-3b")
+    await runner._evict_residents_for("faster-whisper-large-v3")
 
     assert RESIDENTS[0] in runner._residents  # gemma survives
     assert RESIDENTS[1] not in runner._residents  # audio evicted

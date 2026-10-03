@@ -82,7 +82,15 @@ def _core() -> Plugin:
         modalities=(
             # llama-server's 4 slots: a client fanning out a few chat calls
             # at once gets them served in parallel.
-            Modality("llm", label="LLM", icon="chat", lane_width=4, smoke_test=_llm_smoke),
+            Modality(
+                "llm",
+                label="LLM",
+                icon="chat",
+                lane_width=4,
+                # llama.cpp's vision projector.
+                parts=frozenset({"mmproj"}),
+                smoke_test=_llm_smoke,
+            ),
         ),
         adapters={("llama.cpp", "llm"): _llamacpp},
         routers=(

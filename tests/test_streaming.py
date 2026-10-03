@@ -395,7 +395,7 @@ def test_dry_penalty_last_n_is_a_real_number_and_not_minus_one():
     llama-sampler.cpp:3640 clamps it with max(n, 0) and line 3645 treats 0 as
     disabled, so -1 silently switches DRY back off. The default of 64 is no
     better here — it is shorter than one of the repeating fragments."""
-    for model in ("qwen3.8-27b", "qwen-coder-30b"):
+    for model in ("qwen3.8-27b",):
         last_n = LlamaCppAdapter(LlamaCppConfig(model=model)).request_defaults()[
             "dry_penalty_last_n"
         ]
@@ -657,8 +657,8 @@ def test_the_http_read_budget_follows_the_context():
     first chunk only exists once the prompt is processed, and prefill measured
     ~1400 tok/s at 32k and falls from there. A full-context prompt needs minutes
     before its first token."""
-    big = LlamaCppAdapter(LlamaCppConfig(model="qwen3.6-27b")).http_timeout()
-    small = LlamaCppAdapter(LlamaCppConfig(model="llama-3.2-3b", ctx_size=8192)).http_timeout()
+    big = LlamaCppAdapter(LlamaCppConfig(model="qwen3.8-27b")).http_timeout()
+    small = LlamaCppAdapter(LlamaCppConfig(model="gemma-4-12b", ctx_size=8192)).http_timeout()
 
     assert big.read > 120.0
     assert big.read > small.read, "a bigger context must get a longer budget"
@@ -672,7 +672,7 @@ def test_the_job_timeout_still_fires_before_the_http_one():
     from giq.models import JobRequest, Modality
     from giq.queue import Job
 
-    model = "qwen3.6-27b"
+    model = "qwen3.8-27b"
     job = Job(job_id="j", request=JobRequest(modality="llm", model=model, chat_request={}))
     job_limit = _job_timeout(Modality.llm, job)
     http_limit = LlamaCppAdapter(LlamaCppConfig(model=model)).http_timeout().read
@@ -708,7 +708,7 @@ def mtp_pair(monkeypatch):
                 "name": fast,
                 "label": "",
                 "capabilities": tuple(c for c in base.capabilities if c != "vision"),
-                "params": base.params.model_copy(update={"mmproj": None}),
+                "weights": base.weights.model_copy(update={"parts": {}}),
             }
         ),
     )

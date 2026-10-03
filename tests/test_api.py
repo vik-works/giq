@@ -39,7 +39,7 @@ async def test_run_job(client: AsyncClient):
         "/run",
         json={
             "worker": "llm",
-            "model": "gemma-3-27b-it-qat",
+            "model": "gemma-4-31b-it",
             "tasks": [
                 {"id": "t1", "system": "You are helpful.", "user": "Hello!"},
             ],
@@ -59,7 +59,7 @@ async def test_run_job_multiple_tasks(client: AsyncClient):
         "/run",
         json={
             "worker": "llm",
-            "model": "gemma-3-27b-it-qat",
+            "model": "gemma-4-31b-it",
             "params": {"temperature": 0.7},
             "tasks": [
                 {"id": "t1", "user": "First task"},

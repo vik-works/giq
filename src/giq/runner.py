@@ -14,14 +14,13 @@ from datetime import datetime
 from time import monotonic
 from typing import Any, Protocol
 
+from giq import plugins
 from giq.adapters.engine import ServedLLM, context_size
-from giq.adapters.llama_cpp import LlamaCppAdapter, LlamaCppConfig
-from giq.adapters.stt import SttAdapter
-from giq.models import ImageResult, JobRequest, JobStatus, LLMResult, Modality
+from giq.models import JobRequest, JobStatus
 from giq.paths import inflight_log
+from giq.plugin import AdapterContext
 from giq.privacy import safe_extra
 from giq.queue import Job, JobQueue, get_queue
-from giq.recipes.schema import VllmParams
 from giq.registry import get_recipe, lane_width_for
 from giq.vram import get_free_vram, wait_for_vram
 
@@ -136,15 +135,6 @@ WARM_TIMEOUT_SECONDS = 120
 # Max time a single job can run before being killed
 JOB_TIMEOUT_SECONDS = 300
 
-# Per-adapter-type overrides. Audio: diarizing an hours-long recording takes
-# minutes of GPU time; give it a full batch budget, just under 15 minutes.
-JOB_TIMEOUT_OVERRIDES: dict[Modality, float] = {
-    Modality.audio: 870.0,
-    # A long PDF is several passes of a few minutes each (~80 tok/s, up to
-    # 32k tokens a pass). Matches OcrAdapter.run_batch_timeout.
-    Modality.ocr: 3600.0,
-}
-
 
 # Slowest generation rate we plan for, tokens/sec. Measured on qwen3.8-27b
 # (a 27B Q6_K on an RTX 5090): 59-61 tok/s across four prompts, flat.
@@ -152,7 +142,7 @@ JOB_TIMEOUT_OVERRIDES: dict[Modality, float] = {
 FLOOR_TOKENS_PER_SECOND = 20.0
 
 
-def _job_timeout(modality: Modality, job: "Job | None" = None) -> float:
+def _job_timeout(modality: str, job: "Job | None" = None) -> float:
     """How long a job may run before it is killed and its adapter unloaded.
 
     The flat 300s was fine while answers were a few hundred tokens. It is not
@@ -162,7 +152,10 @@ def _job_timeout(modality: Modality, job: "Job | None" = None) -> float:
     should not be cut off by a constant chosen before anyone asked for it, so
     the ceiling follows the requested token budget at a pessimistic rate.
     """
-    base = JOB_TIMEOUT_OVERRIDES.get(modality, JOB_TIMEOUT_SECONDS)
+    # A modality whose jobs run long (diarizing hours of audio, a long PDF)
+    # registers its own budget; giq.builtins says which and why.
+    spec = plugins.modality(str(modality))
+    base = spec.job_timeout if spec is not None and spec.job_timeout else JOB_TIMEOUT_SECONDS
     if job is None:
         return base
     request = job.request
@@ -197,19 +190,11 @@ def start_budget(model: str) -> float:
     engine says so, and a recipe can say more.
     """
     recipe = get_recipe(model)
-    if recipe is None:
+    engine = plugins.engine(recipe.engine) if recipe is not None else None
+    if engine is None or engine.start_budget is None:
         return DEFAULT_START_BUDGET_SECONDS
-    if isinstance(recipe.params, VllmParams):
-        return float(recipe.params.ready_timeout)
-    if recipe.engine == "llama.cpp":
-        from giq.adapters.llama_cpp import DEFAULT_READY_TIMEOUT, MODEL_READY_TIMEOUT
-
-        return float(MODEL_READY_TIMEOUT.get(recipe.name, DEFAULT_READY_TIMEOUT))
-    if recipe.engine == "sd.cpp":
-        from giq.adapters.sdcpp import READY_TIMEOUT_SECONDS
-
-        return READY_TIMEOUT_SECONDS
-    return DEFAULT_START_BUDGET_SECONDS
+    budget = engine.start_budget(recipe)
+    return float(budget) if budget is not None else DEFAULT_START_BUDGET_SECONDS
 
 
 def wait_budget(job: Job) -> float:
@@ -222,8 +207,7 @@ def wait_budget(job: Job) -> float:
     waits in the queue, and an over-generous wait costs a caller nothing that
     a too-short one doesn't cost more.
     """
-    modality = Modality(job.request.modality)
-    return start_budget(job.request.model) + _job_timeout(modality, job)
+    return start_budget(job.request.model) + _job_timeout(job.request.modality, job)
 
 
 def _context_budget(request: JobRequest) -> int | None:
@@ -232,7 +216,7 @@ def _context_budget(request: JobRequest) -> int | None:
     An upper bound, not a prediction — the prompt occupies part of that
     context, so the completion is always shorter. Only LLMs have one.
     """
-    if request.modality != Modality.llm:
+    if request.modality != "llm":
         return None
     return context_size(request.model)
 
@@ -390,14 +374,12 @@ class Adapter(Protocol):
 
     async def stop(self) -> None: ...
 
-    async def run_batch(
-        self, tasks: list[dict], params: dict | None = None
-    ) -> list[LLMResult] | list[ImageResult]: ...
+    async def run_batch(self, tasks: list[dict], params: dict | None = None) -> list[Any]: ...
 
 
 # Lane widths: how many jobs may run concurrently on a resident's adapter.
-# llm matches llama-server's 4 slots; embed takes 2; audio is GPU-heavy and
-# serial. The figures live in registry.DEFAULT_LANE_WIDTH.
+# Each modality registers its default (giq.builtins); a recipe or its engine
+# can say otherwise (Recipe.lanes).
 
 
 def _lane_width(model: str, adapter: Any) -> int:
@@ -466,10 +448,10 @@ class Instance:
         return self.recipe
 
     @property
-    def modality(self) -> Modality:
+    def modality(self) -> str:
         """The recipe's first modality, as the status scalars report an instance."""
         recipe = get_recipe(self.recipe)
-        return Modality(recipe.modality) if recipe is not None else Modality.llm
+        return recipe.modality if recipe is not None else "llm"
 
     @property
     def state(self) -> str:
@@ -590,7 +572,7 @@ class Runner:
         return None
 
     @property
-    def active_modality(self) -> Modality | None:
+    def active_modality(self) -> str | None:
         """A currently loaded on-demand instance's (first) modality.
 
         Scalar for back-compat (/status, the stats sampler). With one slot per
@@ -659,7 +641,7 @@ class Runner:
             pid = getattr(slot.adapter, "pid", None)
             if pid:
                 owned[pid] = f"{slot.model}"
-            elif isinstance(slot.adapter, SttAdapter):
+            elif getattr(slot.adapter, "in_process", False):
                 owned[os.getpid()] = f"{slot.model}"
         return owned
 
@@ -1045,62 +1027,28 @@ class Runner:
     def _build_worker(self, model: str, model_path: str | None = None):
         """Construct (but don't start) the adapter that runs recipe ``model``.
 
-        Chosen by the recipe's engine and its first modality: a recipe serving
-        several (flux_klein) runs them all in one process, so any of them
-        picks the same adapter. Every adapter is handed the card its recipe is
-        bound to. That is what makes a binding real: it decides
-        CUDA_VISIBLE_DEVICES for the child, and for the server backends the
-        port as well, so two cards can each run their own llama-server or
-        sd-server.
+        Chosen by the recipe's engine and its first modality, through the
+        plugin registry (ADR-004): a recipe serving several (flux_klein) runs
+        them all in one process, so any of them picks the same adapter.
+        Every adapter is handed the card its recipe is bound to. That is what
+        makes a binding real: it decides CUDA_VISIBLE_DEVICES for the child,
+        and for the server backends the port as well, so two cards can each
+        run their own llama-server or sd-server.
         """
         recipe = get_recipe(model)
         if recipe is None:
             raise ValueError(f"unknown recipe {model!r}")
-        model = recipe.name
-        modality = Modality(recipe.modality)
-        device = self._device_for(model)
-        if recipe.engine == "vllm":
-            from giq.adapters.vllm import VllmAdapter, VllmConfig
-
-            if model_path:
-                # A path override names a GGUF for llama-server; a vllm
-                # model's weights are part of its declaration.
-                logger.warning(f"llm/{model}: model_path ignored, vllm serves its declared weights")
-            return VllmAdapter(config=VllmConfig(model=model, device=device))
-        if modality == Modality.llm:
-            return LlamaCppAdapter(
-                config=LlamaCppConfig(model=model, model_path=model_path, device=device)
+        factory = plugins.adapter(recipe.engine, recipe.modality)
+        if factory is None:
+            raise ValueError(
+                f"no adapter runs {recipe.name}'s modality {recipe.modality} on engine "
+                f"{recipe.engine}: is its plugin installed?"
             )
-        if modality == Modality.audio:
-            from giq.adapters.audio import AudioAdapter, AudioConfig
-
-            return AudioAdapter(config=AudioConfig(model=model), device=device)
-        if modality == Modality.embed:
-            from giq.adapters.audio import EmbedAdapter, EmbedConfig
-
-            return EmbedAdapter(config=EmbedConfig(model=model), device=device)
-        if modality in (Modality.text2image, Modality.image_edit):
-            # sd.cpp is the one image runtime; the recipe schema admits no other.
-            from giq.adapters.sdcpp import SdCppAdapter, SdCppConfig
-
-            return SdCppAdapter(config=SdCppConfig(model=model, device=device))
-        if modality == Modality.tts:
-            from giq.adapters.tts import TtsAdapter, TtsConfig
-
-            return TtsAdapter(config=TtsConfig(model=model), device=device)
-        if modality == Modality.stt:
-            from giq.adapters.stt import SttAdapter, SttConfig
-
-            return SttAdapter(config=SttConfig(model=model, gpu_device=device))
-        if modality == Modality.ocr:
-            from giq.adapters.ocr import OcrAdapter, OcrConfig
-
-            return OcrAdapter(config=OcrConfig(model=model), device=device)
-        if modality == Modality.depth:
-            from giq.adapters.depth import DepthAdapter, DepthConfig
-
-            return DepthAdapter(config=DepthConfig(model=model), device=device)
-        raise ValueError(f"no adapter for {model}'s modality {modality}")
+        return factory(
+            AdapterContext(
+                recipe=recipe.name, device=self._device_for(recipe.name), model_path=model_path
+            )
+        )
 
     async def _process_resident_job(self, job: Job, key: str) -> None:
         """Run one job on a resident's lane (concurrent with other lanes)."""

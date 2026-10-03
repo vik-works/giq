@@ -23,7 +23,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from giq.engines import ENGINE_OF_BACKEND
+from giq.engines import runtime_of
 from giq.gpus import get_gpus, resolve_device, selected_device
 from giq.policy import RESIDENT_SET_HEADROOM_GB, get_policy_store
 from giq.recipes.schema import Recipe
@@ -124,7 +124,7 @@ def recipe_entry(recipe: Recipe, m: _Machine) -> dict[str, Any]:
         "modalities": list(recipe.modalities),
         "engine": recipe.engine,
         # The declared binary or interpreter that executes the engine.
-        "runtime": ENGINE_OF_BACKEND.get(recipe.engine, recipe.engine),
+        "runtime": runtime_of(recipe.engine),
         "aliases": list(recipe.aliases),
         "capabilities": list(recipe.capabilities),
         "vision": recipe.vision,

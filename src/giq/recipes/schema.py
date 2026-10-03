@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -34,8 +35,8 @@ from pydantic import (
     model_validator,
 )
 
-from giq.engines import ENGINE_ALIASES, ENGINE_OF_BACKEND, canonical_engine
-from giq.models import Modality
+from giq import plugins
+from giq.engines import canonical_engine
 
 logger = logging.getLogger(__name__)
 
@@ -48,30 +49,10 @@ Name = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$", max_length=
 # it can never be read as a flag of its own.
 Arg = Annotated[str, Field(min_length=1, pattern=r"^[^-]")]
 
-# Which engines can serve which worker. The workers are written against one
-# runtime each (ocr against two), so a recipe that pairs a
-# worker with a foreign engine could never load.
-MODALITY_ENGINES: dict[str, frozenset[str]] = {
-    "llm": frozenset({"llama.cpp", "vllm"}),
-    "text2image": frozenset({"sd.cpp"}),
-    "image_edit": frozenset({"sd.cpp"}),
-    "tts": frozenset({"kokoro"}),
-    "stt": frozenset({"faster-whisper"}),
-    "audio": frozenset({"faster-whisper+pyannote"}),
-    "embed": frozenset({"speechbrain"}),
-    "ocr": frozenset({"transformers"}),
-    "depth": frozenset({"transformers"}),
-}
-
 # llama.cpp's KV cache types (`--cache-type-k/-v`).
 KvCacheType = Literal["f32", "f16", "bf16", "q8_0", "q4_0", "q4_1", "iq4_nl", "q5_0", "q5_1"]
 
 Capability = Literal["chat", "vision"]
-
-# Concurrent jobs allowed on a resident's lane, by modality. llm matches
-# llama-server's 4 slots, so a client fanning out a few chat calls at once
-# gets them served in parallel; embed takes 2; audio is GPU-heavy and serial.
-DEFAULT_LANE_WIDTH: dict[str, int] = {"llm": 4, "audio": 1, "embed": 2}
 
 # Request-body values: the sampler fields llama-server reads are scalars.
 RequestValue = bool | int | float | str
@@ -86,15 +67,6 @@ class _Strict(BaseModel):
 # layout model. Lower-case identifiers, so a part name reads the same in a
 # file, a log line and an error.
 PartName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=64)]
-
-# The parts each modality's adapter reads. A part it does not know would be a
-# file written down and never loaded, so it is refused like an unknown key.
-MODALITY_PARTS: dict[str, frozenset[str]] = {
-    "text2image": frozenset({"diffusion", "text_encoder", "vae", "lora"}),
-    "image_edit": frozenset({"diffusion", "text_encoder", "vae", "lora"}),
-    "ocr": frozenset({"layout"}),
-    "audio": frozenset({"asr", "diarization"}),
-}
 
 
 class WeightsPart(_Strict):
@@ -413,9 +385,6 @@ def read_hf_config(weights_dir: str | Path) -> dict[str, Any] | None:
         return None
 
 
-ENGINE_PARAMS: dict[str, type[EngineParams]] = {"llama.cpp": LlamaCppParams, "vllm": VllmParams}
-
-
 class Recipe(_Strict):
     """One servable model, as a recipe file declares it."""
 
@@ -463,22 +432,23 @@ class Recipe(_Strict):
     @field_validator("modalities")
     @classmethod
     def _known_modalities(cls, v: tuple[str, ...]) -> tuple[str, ...]:
-        known = {m.value for m in Modality}
+        known = plugins.modalities()
         if unknown := [m for m in v if m not in known]:
             raise ValueError(
                 f"unknown modality {', '.join(map(repr, unknown))} "
-                f"(known: {', '.join(sorted(known))})"
+                f"(known: {', '.join(sorted(known))}; a plugin adds others)"
             )
         if len(set(v)) != len(v):
             raise ValueError("modalities repeat")
-        return tuple(Modality(m).value for m in v)
+        return tuple(str(m) for m in v)
 
     @field_validator("engine")
     @classmethod
     def _known_engine(cls, v: str) -> str:
         v = canonical_engine(v, "recipe file")
-        if v not in ENGINE_OF_BACKEND:
-            raise ValueError(f"unknown engine {v!r} (known: {', '.join(ENGINE_OF_BACKEND)})")
+        if plugins.engine(v) is None:
+            known = ", ".join(sorted(plugins.engines()))
+            raise ValueError(f"unknown engine {v!r} (known: {known}; a plugin adds others)")
         return v
 
     @model_validator(mode="before")
@@ -491,15 +461,15 @@ class Recipe(_Strict):
         params = data.get("params")
         if isinstance(params, EngineParams):
             return data
-        engine = str(data.get("engine"))
+        engine = plugins.engine(str(data.get("engine")))
         # A profile is a set of engine defaults under the file's own params;
         # an unknown one is left for _consistent to report.
-        profile = ENGINE_PROFILES.get(ENGINE_ALIASES.get(engine, engine), {}).get(
-            str(data.get("profile"))
-        )
+        profile = engine.profiles.get(str(data.get("profile"))) if engine else None
         if profile is not None:
             params = {**profile, **(params or {})}
-        schema = ENGINE_PARAMS.get(ENGINE_ALIASES.get(engine, engine), EngineParams)
+        schema: type[EngineParams] = (
+            engine.params if engine is not None and engine.params is not None else EngineParams
+        )
         try:
             validated = schema.model_validate(params if params is not None else {})
         except ValidationError as e:
@@ -519,20 +489,24 @@ class Recipe(_Strict):
         data = {**data, "params": validated}
         vram = data.get("vram")
         if (
-            isinstance(validated, VllmParams)
+            engine is not None
+            and engine.derive_vram is not None
             and isinstance(vram, dict)
             and "gb" not in vram
-            and validated.kv_cache_memory_bytes is not None
             and isinstance(vram.get("weights_gb"), int | float)
             and isinstance(vram.get("overhead_gb"), int | float)
         ):
-            data["vram"] = {**vram, "gb": _derived_vram(vram, validated)}
+            derived = engine.derive_vram(vram, validated)
+            if derived is not None:
+                data["vram"] = {**vram, "gb": derived}
         return data
 
     @model_validator(mode="after")
     def _consistent(self) -> Recipe:
+        engine = plugins.engine(self.engine)
+        assert engine is not None  # _known_engine
         for modality in self.modalities:
-            engines = MODALITY_ENGINES.get(modality, frozenset())
+            engines = plugins.engines_for(modality)
             if self.engine not in engines:
                 raise ValueError(
                     f"engine {self.engine!r} cannot serve modality {modality!r} "
@@ -544,20 +518,22 @@ class Recipe(_Strict):
                     f"max_batch names {', '.join(stray)}, which this recipe does not serve"
                 )
         if self.profile is not None:
-            profiles = ENGINE_PROFILES.get(self.engine)
+            profiles = engine.profiles
             if not profiles:
                 raise ValueError(f"engine {self.engine!r} has no profiles; set params directly")
             if self.profile not in profiles:
                 raise ValueError(
                     f"unknown {self.engine} profile {self.profile!r} (known: {', '.join(profiles)})"
                 )
-        if self.engine != "vllm" and (
+        if engine.derive_vram is None and (
             self.vram.weights_gb is not None or self.vram.overhead_gb is not None
         ):
-            raise ValueError("vram.weights_gb and vram.overhead_gb are for engine vllm")
+            raise ValueError(
+                f"vram.weights_gb and vram.overhead_gb are not supported for engine {self.engine!r}"
+            )
         if self.weights is not None and self.weights.parts:
             readable = frozenset().union(
-                *(MODALITY_PARTS.get(m, frozenset()) for m in self.modalities)
+                *(spec.parts for m in self.modalities if (spec := plugins.modality(m)))
             )
             if unknown := sorted(set(self.weights.parts) - readable):
                 raise ValueError(
@@ -568,62 +544,15 @@ class Recipe(_Strict):
             raise ValueError(f"alias {self.name!r} repeats the recipe name")
         if len(set(self.aliases)) != len(self.aliases):
             raise ValueError("aliases repeat")
-        if self.engine == "llama.cpp":
-            params = self.params
-            assert isinstance(params, LlamaCppParams)
-            if not (self.weights and self.weights.path):
-                raise ValueError("a llama.cpp recipe needs weights.path")
-            # Without the projector the weights serve text and silently drop
-            # image parts, so vision and mmproj are declared together.
-            if ("vision" in self.capabilities) != bool(params.mmproj):
-                raise ValueError("capability `vision` and params.mmproj go together")
-        elif self.engine == "vllm":
-            self._vllm_consistent()
-        elif self.request_defaults:
-            raise ValueError(f"request_defaults are not supported for engine {self.engine!r}")
-        return self
-
-    def _vllm_consistent(self) -> None:
-        params = self.params
-        assert isinstance(params, VllmParams)
-        if not (self.weights and self.weights.path):
-            raise ValueError("a vllm recipe needs weights.path (a checkpoint directory)")
-        # D4 accepts(): vllm reads Hugging Face checkpoint directories.
-        if self.weights.format not in ("safetensors", "modelopt"):
-            raise ValueError("a vllm recipe needs weights.format safetensors or modelopt")
-        if self.lane_width is not None:
-            raise ValueError("lane_width is derived from params.max_num_seqs for vllm (D8)")
-        stray = sorted(set(self.request_defaults) - VLLM_REQUEST_DEFAULTS)
-        if stray:
+        allowed = engine.request_defaults
+        if allowed is not None and (stray := sorted(set(self.request_defaults) - allowed)):
             raise ValueError(
-                f"request_defaults {stray} are not vllm sampling fields "
-                f"(allowed: {', '.join(sorted(VLLM_REQUEST_DEFAULTS))})"
+                f"request_defaults {stray} are not supported for engine {self.engine!r}"
+                + (f" (allowed: {', '.join(sorted(allowed))})" if allowed else "")
             )
-        kv = params.kv_cache_memory_bytes
-        if kv is None:
-            if self.vram.weights_gb is not None or self.vram.overhead_gb is not None:
-                raise ValueError(
-                    "vram.weights_gb/overhead_gb need a kv_cache_memory budget; with "
-                    "gpu_memory_utilization give vram.gb"
-                )
-        elif self.vram.weights_gb is not None and self.vram.overhead_gb is not None:
-            expected = _derived_vram(self.vram.model_dump(), params)
-            if abs(self.vram.gb - expected) > 0.05:
-                raise ValueError(
-                    f"vram.gb {self.vram.gb} disagrees with weights_gb + kv_cache_memory + "
-                    f"overhead_gb = {expected}"
-                )
-        # D9: what the weights can do. Checked when the checkpoint is on this
-        # machine; the worker checks again before it starts the server.
-        if params.speculative is not None and params.speculative.method == "mtp":
-            from giq.paths import model_path
-
-            hf_config = read_hf_config(model_path(self.weights.path))
-            if hf_config is not None and mtp_layers(hf_config) == 0:
-                raise ValueError(
-                    "params.speculative mtp needs an MTP head, and this checkpoint's "
-                    "config.json declares none"
-                )
+        if engine.validate is not None:
+            engine.validate(self)
+        return self
 
     # --- what the catalog, the scheduler and the dashboard read -----------
 
@@ -667,20 +596,84 @@ class Recipe(_Strict):
     def lanes(self) -> int:
         """Concurrent jobs on this recipe's resident lane.
 
-        vllm's max_num_seqs is how many requests it really runs at once (D8);
-        llama.cpp keeps its separate lane width until its -np is aligned.
+        An engine that runs several requests itself says how many from its
+        params (vllm's max_num_seqs, D8); otherwise the recipe's lane_width,
+        else its modality's default.
         """
-        if isinstance(self.params, VllmParams):
-            return self.params.max_num_seqs
+        engine = plugins.engine(self.engine)
+        if engine is not None and engine.lanes is not None:
+            derived = engine.lanes(self.params)
+            if derived is not None:
+                return derived
         if self.lane_width is not None:
             return self.lane_width
-        return DEFAULT_LANE_WIDTH.get(self.modality, 1)
+        spec = plugins.modality(self.modality)
+        return spec.lane_width if spec is not None else 1
 
     @property
     def display(self) -> str:
         return self.label or self.name
 
 
-def _derived_vram(vram: dict[str, Any], params: VllmParams) -> float:
-    kv = params.kv_cache_memory_bytes or 0
+# --- the engines' own rules, registered with them (giq.builtins) -------------
+
+
+def llamacpp_consistent(recipe: Recipe) -> None:
+    """What a llama.cpp recipe must say besides the schema."""
+    params = recipe.params
+    assert isinstance(params, LlamaCppParams)
+    if not (recipe.weights and recipe.weights.path):
+        raise ValueError("a llama.cpp recipe needs weights.path")
+    # Without the projector the weights serve text and silently drop image
+    # parts, so vision and mmproj are declared together.
+    if ("vision" in recipe.capabilities) != bool(params.mmproj):
+        raise ValueError("capability `vision` and params.mmproj go together")
+
+
+def vllm_consistent(recipe: Recipe) -> None:
+    """What a vllm recipe must say besides the schema."""
+    params = recipe.params
+    assert isinstance(params, VllmParams)
+    if not (recipe.weights and recipe.weights.path):
+        raise ValueError("a vllm recipe needs weights.path (a checkpoint directory)")
+    # D4 accepts(): vllm reads Hugging Face checkpoint directories.
+    if recipe.weights.format not in ("safetensors", "modelopt"):
+        raise ValueError("a vllm recipe needs weights.format safetensors or modelopt")
+    if recipe.lane_width is not None:
+        raise ValueError("lane_width is derived from params.max_num_seqs for vllm (D8)")
+    kv = params.kv_cache_memory_bytes
+    if kv is None:
+        if recipe.vram.weights_gb is not None or recipe.vram.overhead_gb is not None:
+            raise ValueError(
+                "vram.weights_gb/overhead_gb need a kv_cache_memory budget; with "
+                "gpu_memory_utilization give vram.gb"
+            )
+    elif recipe.vram.weights_gb is not None and recipe.vram.overhead_gb is not None:
+        expected = derived_vram(recipe.vram.model_dump(), params)
+        if expected is not None and abs(recipe.vram.gb - expected) > 0.05:
+            raise ValueError(
+                f"vram.gb {recipe.vram.gb} disagrees with weights_gb + kv_cache_memory + "
+                f"overhead_gb = {expected}"
+            )
+    # D9: what the weights can do. Checked when the checkpoint is on this
+    # machine; the worker checks again before it starts the server.
+    if params.speculative is not None and params.speculative.method == "mtp":
+        from giq.paths import model_path
+
+        hf_config = read_hf_config(model_path(recipe.weights.path))
+        if hf_config is not None and mtp_layers(hf_config) == 0:
+            raise ValueError(
+                "params.speculative mtp needs an MTP head, and this checkpoint's "
+                "config.json declares none"
+            )
+
+
+def derived_vram(vram: Mapping[str, Any], params: VllmParams) -> float | None:
+    """vram.gb from its parts: weights + the KV budget + overhead.
+
+    None without a KV budget in bytes: with a fraction of the card the
+    total is not knowable from the recipe, so vram.gb has to be given."""
+    if params.kv_cache_memory_bytes is None:
+        return None
+    kv = params.kv_cache_memory_bytes
     return round(float(vram["weights_gb"]) + kv / 2**30 + float(vram["overhead_gb"]), 2)

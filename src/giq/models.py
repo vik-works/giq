@@ -7,14 +7,16 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 
 class Modality(StrEnum):
-    """The kind of job: it picks the endpoint and the task shape (ADR-003).
+    """The names of the modalities giq ships (ADR-003), for code that means one.
 
-    Not the engine adapter that runs it, and not the recipe: a recipe serves
-    one or more modalities.
+    The kind of job: it picks the endpoint and the task shape. Not the
+    engine adapter that runs it, and not the recipe: a recipe serves one or
+    more modalities. This is not the set giq accepts: that is the plugin
+    registry's (ADR-004), which a plugin extends with modalities of its own.
     """
 
     llm = "llm"
@@ -97,7 +99,7 @@ class JobRequest(BaseModel):
 
     # `worker` is the name before ADR-003, still accepted on input so existing
     # clients keep working; responses and logs say `modality`.
-    modality: Modality = Field(validation_alias=AliasChoices("modality", "worker"))
+    modality: str = Field(validation_alias=AliasChoices("modality", "worker"))
     model: str
     model_path: str | None = None  # Override default model path
     params: dict[str, Any] | None = None  # Worker-level params
@@ -105,6 +107,18 @@ class JobRequest(BaseModel):
     chat_request: dict[str, Any] | None = (
         None  # Raw OpenAI chat completion body (bypasses run_batch)
     )
+
+    @field_validator("modality")
+    @classmethod
+    def _registered(cls, v: str) -> str:
+        from giq import plugins
+
+        known = plugins.modalities()
+        if v not in known:
+            raise ValueError(
+                f"unknown modality {v!r} (known: {', '.join(sorted(known))}; a plugin adds others)"
+            )
+        return v
 
 
 class JobResponse(BaseModel):
@@ -183,7 +197,7 @@ class JobStatusResponse(BaseModel):
 
     job_id: str
     status: JobStatus
-    modality: Modality
+    modality: str
     model: str
     results: list[dict[str, Any]] | None = None  # Polymorphic results
     duration_ms: int | None = None
@@ -209,7 +223,7 @@ class ServiceStatus(BaseModel):
 
     # Active worker info. The scalars report one loaded worker for
     # back-compat; `active` lists every card's slot with its binding.
-    active_modality: Modality | None = None
+    active_modality: str | None = None
     active_recipe: str | None = None
     active: list[dict[str, Any]] = []
 
@@ -279,15 +293,18 @@ class PauseResponse(BaseModel):
 class ModalityCapability(BaseModel):
     """What giq serves for one modality."""
 
-    # Every engine in play for it, comma-separated (ocr runs on two).
+    # Every engine in play for it, comma-separated (llm runs on two).
     engine: str
     recipes: list[str]
     max_batch: int | None = None
     voices: list[str] | None = None  # TTS only
+    # How the dashboard names and draws it, as its plugin registered it.
+    label: str = ""
+    icon: str = ""
 
 
 class Capabilities(BaseModel):
     """Full service capabilities."""
 
-    modalities: dict[Modality, ModalityCapability]
+    modalities: dict[str, ModalityCapability]
     constraints: dict[str, Any]

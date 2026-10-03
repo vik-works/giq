@@ -20,8 +20,8 @@ variable outranks a file everywhere else in giq:
 - a directory for one model's weights (``DIR_OVERRIDES``), which applies to
   that model name only — an operator's second OCR recipe is not redirected
   by a variable documented for the built-in;
-- a root for one modality's relative paths (``ROOT_OVERRIDES``), in place of
-  the models directory.
+- a root for one modality's relative paths (its registered
+  ``weights_root_env``), in place of the models directory.
 
 Models that load by Hugging Face repository rather than by path (the audio
 and speech workers) record it as ``source: hf:org/repo``; :func:`hub_repo`
@@ -48,11 +48,6 @@ DIR_OVERRIDES: dict[tuple[str, str | None], str] = {
     ("glm-ocr", "layout"): "GIQ_GLM_LAYOUT_DIR",
 }
 
-# A root that replaces the models directory for one modality's relative paths.
-ROOT_OVERRIDES: dict[str, str] = {
-    "depth": "GIQ_DEPTH_MODELS_DIR",
-}
-
 HF_PREFIX = "hf:"
 
 
@@ -70,7 +65,10 @@ def resolve_path(modality: str, raw: str) -> str:
     p = Path(raw).expanduser()
     if p.is_absolute():
         return str(p)
-    if root := _env(ROOT_OVERRIDES.get(str(modality))):
+    from giq import plugins
+
+    spec = plugins.modality(str(modality))
+    if root := _env(spec.weights_root_env if spec is not None else None):
         return str(Path(root).expanduser() / p)
     return model_path(p)
 

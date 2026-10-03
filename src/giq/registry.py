@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 
 from giq import recipes
-from giq.recipes.schema import DEFAULT_LANE_WIDTH, Recipe
+from giq.recipes.schema import Recipe
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,10 @@ def lane_width_for(name: str, modality: str | None = None) -> int:
     recipe = get_recipe(name)
     if recipe is not None:
         return recipe.lanes
-    return DEFAULT_LANE_WIDTH.get(str(modality), 1)
+    from giq import plugins
+
+    spec = plugins.modality(str(modality)) if modality is not None else None
+    return spec.lane_width if spec is not None else 1
 
 
 def reload_registry() -> list[Recipe]:

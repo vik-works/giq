@@ -138,15 +138,42 @@ def _alias_clashes(recipes: Iterable[Recipe]) -> list[str]:
     return clashes
 
 
+def _from_plugins(found: dict[Key, tuple[Recipe, Path]]) -> None:
+    """Add the recipes installed plugins ship (ADR-004), into ``found``.
+
+    A plugin's file that fails, or that takes a name already taken, is
+    logged and left out: one plugin's mistake does not stop giq, and a
+    plugin adds recipes, it never replaces one.
+    """
+    from giq import plugins
+
+    for directory in plugins.recipe_dirs():
+        for path in _files(directory):
+            try:
+                recipe = load_file(path)
+            except RecipeError as e:
+                logger.error(f"plugin recipe left out: {e}")
+                continue
+            taken = {n for r, _ in found.values() for n in (r.name, *r.aliases)}
+            if clash := sorted({recipe.name, *recipe.aliases} & taken):
+                logger.error(f"plugin recipe {path} left out: {', '.join(clash)} already taken")
+                continue
+            found[recipe.name] = (recipe, path)
+
+
 @lru_cache(maxsize=1)
 def builtin() -> Mapping[Key, tuple[Recipe, Path]]:
-    """The shipped recipes. Any problem raises: it is a bug, not a setting."""
+    """The shipped recipes: core's, then each plugin's.
+
+    A problem in core's own raises: it is a bug, not a setting.
+    """
     found: dict[Key, tuple[Recipe, Path]] = {}
     for path in _files(BUILTIN_DIR):
         recipe = load_file(path)
         if path.stem != recipe.name:
             raise _file_error(path, "a built-in is named <name>.yaml")
         found[recipe.name] = (recipe, path)
+    _from_plugins(found)
     if clashes := _alias_clashes(recipe for recipe, _ in found.values()):
         raise RecipeError(f"built-in recipes: {'; '.join(clashes)}")
     from giq.weights import provenance_conflicts

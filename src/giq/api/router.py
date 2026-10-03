@@ -394,8 +394,10 @@ async def get_capabilities() -> Capabilities:
     model name that was absent from the VRAM table and therefore unloadable.
     Generating it means a model is discoverable exactly when it is runnable.
     """
-    modalities: dict[Modality, ModalityCapability] = {}
-    for modality in Modality:
+    from giq import plugins
+
+    modalities: dict[str, ModalityCapability] = {}
+    for modality, spec in plugins.modalities().items():
         for recipe in recipes_serving(modality):
             batch = recipe.max_batch_for(modality)
             cap = modalities.get(modality)
@@ -405,6 +407,8 @@ async def get_capabilities() -> Capabilities:
                     recipes=[recipe.name],
                     max_batch=batch,
                     voices=list(recipe.voices) or None,
+                    label=spec.label,
+                    icon=spec.icon,
                 )
                 continue
             cap.recipes.append(recipe.name)

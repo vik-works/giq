@@ -14,7 +14,6 @@ import asyncio
 import pytest
 
 from giq.models import Modality
-from giq.recipes.schema import DEFAULT_LANE_WIDTH
 from giq.registry import (
     all_recipes,
     get_recipe,
@@ -120,8 +119,8 @@ def test_runner_residents_match_the_catalog():
 
 
 def test_lane_width_falls_back_to_the_modality_default():
-    assert lane_width_for("gemma-4-12b") == DEFAULT_LANE_WIDTH["llm"]
-    assert lane_width_for("unknown", "llm") == DEFAULT_LANE_WIDTH["llm"]
+    assert lane_width_for("gemma-4-12b") == 4, "llm's registered default"
+    assert lane_width_for("unknown", "llm") == 4
     assert lane_width_for("tiny") == 1
 
 

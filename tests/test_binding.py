@@ -370,11 +370,11 @@ def test_undeclared_engine_is_an_error():
 def test_every_backend_maps_to_a_runtime():
     """A model whose backend has no engine would report a runtime of its own
     label, which reads as an engine that does not exist."""
-    from giq.engines import ENGINE_OF_BACKEND
+    from giq import plugins
     from giq.registry import all_recipes
 
-    unmapped = {r.engine for r in all_recipes()} - set(ENGINE_OF_BACKEND)
-    assert not unmapped, f"backends with no declared runtime: {unmapped}"
+    unmapped = {r.engine for r in all_recipes()} - set(plugins.engines())
+    assert not unmapped, f"engines nobody registers: {unmapped}"
 
 
 # --- vision ------------------------------------------------------------------

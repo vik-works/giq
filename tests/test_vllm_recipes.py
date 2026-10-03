@@ -147,7 +147,7 @@ def test_request_defaults_are_sampling_fields_only(tmp_path):
     ok = {**doc(make_checkpoint(tmp_path)), "request_defaults": {"top_k": 20}}
     assert Recipe.model_validate(ok).request_defaults == {"top_k": 20}
     bad = {**doc(make_checkpoint(tmp_path)), "request_defaults": {"dry_multiplier": 0.8}}
-    with pytest.raises(ValidationError, match="not vllm sampling fields"):
+    with pytest.raises(ValidationError, match="not supported for engine .vllm."):
         Recipe.model_validate(bad)
 
 

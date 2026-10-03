@@ -10,6 +10,7 @@ import logging
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import ClassVar
 
 from giq.models import JobResult
 from giq.registry import vram_for
@@ -46,6 +47,8 @@ class SttAdapter:
     """STT worker using faster-whisper."""
 
     config: SttConfig
+    # Runs in giq's own process: the VRAM it holds is giq's own pid's.
+    in_process: ClassVar[bool] = True
     _model: object = field(default=None, repr=False)
     _ready: bool = field(default=False, repr=False)
 

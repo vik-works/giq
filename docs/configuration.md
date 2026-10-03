@@ -149,15 +149,19 @@ llama.cpp `params`: `ctx_size` (shared by the slots), `parallel` (slots;
 more than one turns on continuous batching), `cache_type_k` and
 `cache_type_v` (set together and equal — a mixed pair falls off the fused
 attention kernel), `reasoning` (`on`, `off`, `auto`, or `template` to let the
-chat template decide), `reasoning_budget`, `spec_type`, `alias`,
-`loop_guard`, `ready_timeout` (seconds a start may take, default 300 — raise
-it for a big GGUF on a slow disk; a server that exits while starting fails at
-once, and its output is in `<state>/logs/llama-<model>.log`). vllm `params` — a VRAM budget (`kv_cache_memory`, preferred,
+chat template decide), `reasoning_budget`, `spec_type`,
+`chat_template_file` (a Jinja file under `GIQ_MODELS_DIR`, replacing the
+GGUF's embedded template), `alias`, `loop_guard`, `ready_timeout` (seconds a
+start may take, default 300 — raise it for a big GGUF on a slow disk; a
+server that exits while starting fails at once, and its output is in
+`<state>/logs/llama-<model>.log`). vllm `params` — a VRAM budget (`kv_cache_memory`, preferred,
 or `gpu_memory_utilization`; exactly one), `max_model_len` (required),
 `max_num_seqs`, `max_num_batched_tokens`, `kv_cache_dtype`, `speculative`,
-`enforce_eager`, `reasoning_parser`, `tool_call_parser`, `memory_max`,
-`ready_timeout` — are described in [engines.md](engines.md#parameters). The
-other engines take no parameters from a recipe yet.
+`enforce_eager`, `reasoning_parser`, `tool_call_parser`,
+`chat_template_file` (same file rule, replacing the checkpoint's own
+template), `memory_max`, `ready_timeout` — are described in
+[engines.md](engines.md#parameters). The other engines take no parameters
+from a recipe yet.
 
 ### Weights
 

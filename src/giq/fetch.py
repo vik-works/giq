@@ -86,7 +86,7 @@ def _child_env() -> dict[str, str]:
     # nobody looks for them. HF_HUB_OFFLINE keeps the model children from
     # downloading behind giq's back (the systemd unit sets it); a fetch is
     # the one download someone asked for, so it is lifted here only.
-    env = {**os.environ, **cache_env()}
+    env: dict[str, str] = {**os.environ, **cache_env()}
     env.pop("HF_HUB_OFFLINE", None)
     return env
 

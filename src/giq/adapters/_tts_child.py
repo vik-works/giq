@@ -19,7 +19,7 @@ from __future__ import annotations
 
 # FIRST: reserve stdout for JSON IPC — kokoro/torch print during import and
 # would otherwise corrupt the channel before the parent sees {"type":"ready"}.
-from giq.adapters._subprocess import reserve_ipc_stdout
+from giq_child import reserve_ipc_stdout
 
 reserve_ipc_stdout()
 
@@ -31,9 +31,9 @@ import sys  # noqa: E402
 import traceback  # noqa: E402
 from typing import Any  # noqa: E402
 
-from giq.adapters._subprocess import run_ipc_child_loop, write_startup_error  # noqa: E402
 from giq.adapters.tts import KOKORO_SAMPLE_RATE, KOKORO_VOICES, VOICE_MAP  # noqa: E402
 from giq.models import JobResult  # noqa: E402
+from giq_child import run_ipc_child_loop, write_startup_error  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

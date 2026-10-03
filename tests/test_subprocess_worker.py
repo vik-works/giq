@@ -274,9 +274,9 @@ async def test_ipc_child_loop_integration():
     """End-to-end: parent spawns child that uses run_ipc_child_loop helper."""
     script = (
         "import sys\n"
-        # run_ipc_child_loop lives in giq.adapters._subprocess
+        # run_ipc_child_loop lives in giq_child, giq's stdlib-only child side
         "sys.path.insert(0, " + repr(str(_repo_src_path())) + ")\n"
-        "from giq.adapters._subprocess import run_ipc_child_loop\n"
+        "from giq_child import run_ipc_child_loop\n"
         "def echo(tasks, params):\n"
         "    return [{'id': t.get('id'), 'echoed': True} for t in tasks]\n"
         "run_ipc_child_loop(echo)\n"
@@ -300,3 +300,29 @@ def _repo_src_path():
     # tests/test_subprocess_worker.py → repo/
     here = pathlib.Path(__file__).resolve().parent.parent
     return here / "src"
+
+
+def test_the_child_side_needs_nothing_but_the_standard_library(tmp_path):
+    """A plugin's child on its own interpreter installs giq_child and nothing
+    of giq (ADR-004 D4). Imported with no site-packages at all (-S) and
+    nothing else on the path, it still loads, and pulls in no giq module."""
+    import shutil
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import giq_child
+
+    alone = tmp_path / "path"
+    shutil.copytree(Path(giq_child.__file__).parent, alone / "giq_child")
+    probe = (
+        "import sys; sys.path.insert(0, sys.argv[1]); import giq_child; "
+        "print(sorted(m for m in sys.modules if m.startswith('giq')))"
+    )
+    out = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", probe, str(alone)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert out.stdout.strip() == "['giq_child']"

@@ -126,9 +126,11 @@ giq's process, its lanes, its start budget).
 
 A plugin whose dependencies clash with giq's runs its model in a child on a
 declared interpreter, the way vllm does today. The child side of the
-protocol is a small module that imports only the standard library:
-`giq.child` (ready/results/error lines, the `run_batch` loop). It ships in
-core and is published on its own too, as `giq-child`. A foreign interpreter
+protocol is a small package that imports only the standard library:
+`giq_child` (ready/results/error lines, the `run_batch` loop). It is a
+top-level package of its own rather than part of `giq`, so a foreign
+interpreter can have it without any of giq. It ships in giq's wheel and is
+published on its own too, as `giq-child`. A foreign interpreter
 installs `giq-child` and the plugin's own package, never giq's source tree
 and never a `PYTHONPATH` override. That removes for good the problem that
 blocked wheel installs.
@@ -253,7 +255,7 @@ Each step leaves the suite green:
    it, still inside the current package. The enum, the factory chain, the
    schema tables and the class checks give way to registry lookups. Nothing
    changes for users.
-2. **Child protocol.** `giq.child` becomes standalone and stdlib-only;
+2. **Child protocol.** `giq_child` becomes standalone and stdlib-only;
    children import only it.
 3. **Routes, CLI and smoke tests** move behind registrations, and the
    hardcoded recipe names go.

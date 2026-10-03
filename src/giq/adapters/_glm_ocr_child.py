@@ -45,7 +45,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-from giq.adapters._subprocess import (  # noqa: E402
+from giq_child import (  # noqa: E402
     reserve_ipc_stdout,
     run_ipc_child_loop,
     write_startup_error,

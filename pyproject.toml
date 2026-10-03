@@ -109,7 +109,7 @@ build-backend = "hatchling.build"
 artifacts = ["src/giq/static/ui/**"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/giq"]
+packages = ["src/giq", "src/giq_child"]
 
 # spacy's English model is pinned by URL (it is not on PyPI). hatchling refuses
 # to build metadata containing a direct reference unless this is set.

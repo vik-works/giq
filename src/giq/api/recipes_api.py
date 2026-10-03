@@ -376,3 +376,105 @@ async def set_card(name: str, request: CardRequest) -> dict:
 
     await get_stats().record_event("device", f"{recipe.name} -> {target or 'default'}")
     return await _after(recipe, warnings)
+
+
+# --- getting and removing a recipe's weights (ADR-005 D4) ----------------------
+
+
+@router.post("/recipes/{name}/fetch", status_code=202)
+async def fetch_recipe(name: str) -> dict:
+    """Fetch recipe ``name``'s missing weights, after planning it.
+
+    409 when it is already here, when the plan finds something a fetch
+    cannot fix (no card fits, a gated repository without access, no disk),
+    or when the service may not write where the files go: then the
+    operator runs the ``giq add`` command the response carries.
+    """
+    from giq.fetch import get_downloads
+    from giq.plan import plan
+
+    recipe = _recipe_or_404(name)
+    planned = await asyncio.to_thread(plan, recipe.name)
+    if planned.availability == "ready":
+        raise HTTPException(status_code=409, detail=f"{recipe.name} is already on this machine")
+    if not planned.can_fetch:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": f"{recipe.name} cannot be fetched here",
+                "checks": [c.to_dict() for c in planned.checks if c.status == "fail"],
+            },
+        )
+    if not planned.service_can_fetch:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "the service may not write where the weights go; "
+                "fetch them as the operator",
+                "command": planned.command,
+            },
+        )
+    return get_downloads().start(planned).to_dict()
+
+
+@router.get("/downloads")
+async def list_downloads() -> dict:
+    """Every fetch since the service started, newest first."""
+    from giq.fetch import get_downloads
+
+    return {"downloads": [d.to_dict() for d in get_downloads().all()]}
+
+
+@router.get("/downloads/{download_id}")
+async def get_download(download_id: str) -> dict:
+    from giq.fetch import get_downloads
+
+    download = get_downloads().get(download_id)
+    if download is None:
+        raise HTTPException(status_code=404, detail=f"no download {download_id!r}")
+    return download.to_dict()
+
+
+@router.delete("/downloads/{download_id}")
+async def cancel_download(download_id: str) -> dict:
+    """Stop a fetch. What it downloaded so far stays, and the next fetch resumes."""
+    from giq.fetch import get_downloads
+
+    download = get_downloads().cancel(download_id)
+    if download is None:
+        raise HTTPException(status_code=404, detail=f"no download {download_id!r}")
+    return download.to_dict()
+
+
+@router.delete("/recipes/{name}/weights")
+async def remove_recipe_weights(name: str) -> dict:
+    """Delete recipe ``name``'s weights, except those another recipe also loads.
+
+    The recipe stays in the catalog, as fetchable or manual. Refused (409)
+    while it is resident or loaded, like ``DELETE /weights/{id}``.
+    """
+    from giq.storage import StorageError, delete_weights
+    from giq.weights import inventory
+
+    recipe = _recipe_or_404(name)
+    busy = set(get_policy_store().residents()) | get_runner().loaded_keys()
+    if recipe.name in busy:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{recipe.name} is resident or loaded — set it to on-demand or off first",
+        )
+    deleted, kept, freed = [], [], 0
+    for item in await asyncio.to_thread(inventory):
+        if recipe.name not in item.recipes:
+            continue
+        others = sorted(set(item.recipes) - {recipe.name})
+        if others:
+            kept.append({"id": item.id, "used_by": others})
+            continue
+        try:
+            result = await asyncio.to_thread(delete_weights, item.id, busy=busy)
+        except StorageError as e:
+            raise HTTPException(status_code=e.status, detail=str(e)) from e
+        deleted.extend(result["deleted"])
+        freed += result["freed_bytes"]
+    return {"recipe": recipe.name, "deleted": deleted, "kept": kept, "freed_bytes": freed}

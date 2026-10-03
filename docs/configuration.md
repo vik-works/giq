@@ -209,6 +209,37 @@ replaces the models directory for depth recipes' relative paths, and `GIQ_AUDIO_
 `GET /weights` lists every checkpoint where giq resolved it, and whether it
 is there.
 
+### Getting a recipe's weights
+
+Each recipe is, on this machine, `ready` (it runs), `fetchable` (its
+weights are missing and giq can fetch them), `manual` (missing, and the
+recipe says nowhere to fetch them from: place the files where `weights.path`
+says) or `unfit` (it cannot run here: too large for every card, a card its
+engine cannot use, or the engine's binary is missing). `GET /recipes` says
+which, with the reasons; `/capabilities` and `/v1/models` offer only the
+ready ones.
+
+```bash
+giq add glm-ocr --dry-run   # what it takes: size, access, licence, disk
+giq add glm-ocr             # the same, then fetch (asks once; -y does not)
+```
+
+Before fetching, giq plans: whether a card fits it, the download size from
+the Hugging Face Hub, free disk where the files go, parts another recipe
+already brought, whether a gated repository opens with your token, and the
+licence. `GET /recipes/{name}/plan` returns the same plan. A fetch that
+stops (Ctrl-C, a lost connection) resumes when run again; files appear in
+place only once every one of them is there.
+
+The dashboard and `POST /recipes/{name}/fetch` fetch from the service
+itself, when it may write where the files go. Under the hardened systemd
+unit the models directory is read-only to the service: run `giq add` as the
+operator, or add the models directory to the unit's `ReadWritePaths`.
+
+Gated repositories (pyannote's diarization model) need a Hugging Face token
+of an account that accepted their terms: `HF_TOKEN` in the environment, or
+`hf auth login` as the user giq runs as. giq never stores or shows it.
+
 ### Image models
 
 An image recipe's files are its `weights.parts`. The built-ins

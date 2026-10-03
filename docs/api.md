@@ -96,6 +96,10 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/recipes` | GET | Every recipe: modalities, engine, installed, availability (`ready`, `fetchable`, `manual`, `unfit`) with the checks behind it, residency, card, fit, the instance running it, weights ids; per-card pinned budgets; reload order |
 | `/recipes/{name}` | GET | One recipe, by name or alias |
 | `/recipes/{name}/plan` | GET | What fetching it takes: this machine's checks plus, from the Hugging Face Hub, the download size, gated access and licence; the transfers a fetch would make, and the `giq add` command |
+| `/recipes/{name}/fetch` | POST | Fetch its missing weights (202, the download); 409 when it is already here, when the plan fails, or when the service may not write where the files go (the detail carries the `giq add` command) |
+| `/recipes/{name}/weights` | DELETE | Delete its weights, except those another recipe also loads (`kept`); refused while it is resident or loaded |
+| `/downloads` | GET | Every fetch since the service started: state, bytes done and total, the repository being fetched, the error |
+| `/downloads/{id}` | GET, DELETE | One fetch; DELETE cancels it, keeping what arrived so the next fetch resumes |
 | `/recipes/{name}/residency` | PUT, DELETE | `{"policy": "pinned" \| "auto" \| "off", "reason"?, "force"?}`; DELETE returns to the default |
 | `/recipes/{name}/card` | PUT | `{"device": index \| uuid \| null, "force"?}` — bind to a card, or unbind |
 | `/instances` | GET | Every recipe running on a card: residency (`resident`/`on_demand`), state, card, port, pid, lanes, VRAM |

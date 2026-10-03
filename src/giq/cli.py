@@ -123,13 +123,80 @@ def _prepare(argv: list[str]) -> int:
     return engine.prepare(argv[1:])
 
 
+_MARK = {"ok": "ok  ", "warn": "warn", "fail": "FAIL"}
+
+
+def print_plan(planned) -> None:
+    """A plan as ``giq add`` shows it: the verdict, each check, the transfers."""
+    print(f"{planned.recipe}: {planned.availability}")
+    for check in planned.checks:
+        print(f"  {_MARK[check.status]}  {check.check:8} {check.message}")
+    for move in planned.transfers:
+        what = f"{move.repo}/{move.file}" if move.file else move.repo
+        at = f" @ {move.revision[:12]}" if move.revision else ""
+        size = f"{move.bytes / 1e9:.2f} GB" if move.files else "size unknown"
+        print(f"  fetch  {what}{at} ({size}) -> {move.dest or 'the Hugging Face cache'}")
+
+
+def _add(argv: list[str]) -> int:
+    """``giq add <recipe>``: plan, ask, fetch a recipe's weights (ADR-005)."""
+    import subprocess
+
+    from giq.fetch import _child_env, child_command
+    from giq.plan import plan
+    from giq.storage import missing
+
+    parser = argparse.ArgumentParser(
+        prog="giq add",
+        description="Fetch a recipe's weights from the Hugging Face Hub, after showing "
+        "what it takes and whether it can run on this machine.",
+    )
+    parser.add_argument("recipe")
+    parser.add_argument("--dry-run", action="store_true", help="show the plan, fetch nothing")
+    parser.add_argument("--yes", "-y", action="store_true", help="do not ask before fetching")
+    args = parser.parse_args(argv)
+    try:
+        planned = plan(args.recipe)
+    except KeyError:
+        print(f"giq add: no recipe {args.recipe!r}", file=sys.stderr)
+        return 2
+    print_plan(planned)
+    if planned.availability == "ready":
+        print("already on this machine")
+        return 0
+    if not planned.can_fetch:
+        print("giq add: cannot fetch it here (see FAIL above)", file=sys.stderr)
+        return 1
+    if args.dry_run:
+        return 0
+    if not args.yes:
+        size = f"{planned.download_bytes / 1e9:.1f} GB" if planned.download_bytes else "it"
+        if input(f"fetch {size}? [y/N] ").strip().lower() not in ("y", "yes"):
+            return 1
+    for move in planned.transfers:
+        if move.dest is not None and move.dest.exists():
+            continue
+        # The Hub library's own progress bars go to the terminal.
+        if subprocess.run(child_command(move), env=_child_env()).returncode != 0:
+            print(f"giq add: fetching {move.repo} failed; run it again to resume", file=sys.stderr)
+            return 1
+    if gone := missing(planned.recipe):
+        where = ", ".join(str(loc.path or loc.repo) for loc in gone)
+        print(f"giq add: fetched, but not every file is there: {where}", file=sys.stderr)
+        return 1
+    print(f"{planned.recipe} is ready")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Dispatch ``giq [serve|init|prepare] …``; bare options mean ``serve``."""
+    """Dispatch ``giq [serve|init|prepare|add] …``; bare options mean ``serve``."""
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "init":
         sys.exit(_init(args[1:]))
     if args and args[0] == "prepare":
         sys.exit(_prepare(args[1:]))
+    if args and args[0] == "add":
+        sys.exit(_add(args[1:]))
     if args and args[0] == "serve":
         args = args[1:]
     from giq.main import cli

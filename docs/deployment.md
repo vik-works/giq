@@ -301,7 +301,8 @@ carries its reason in the file; the parts that matter operationally:
 
 - **Read-only except state, cache and recipes** (`ProtectSystem=strict`,
   `ReadWritePaths=`). Models and engines are read-only to the service, so
-  deleting weights from the dashboard is refused; do it as the operator. A
+  fetching or deleting weights from the dashboard is refused; do it as the
+  operator (`giq add <recipe>`, see [Getting a recipe's weights](configuration.md#getting-a-recipes-weights)). A
   directory you move elsewhere with `paths:` or an environment variable
   must be added to `ReadWritePaths` if giq writes to it (`systemctl edit
   giq`).

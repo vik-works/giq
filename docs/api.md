@@ -329,9 +329,10 @@ curl -s -X POST localhost:8084/run?wait=true -H 'Content-Type: application/json'
 Query parameters: `model` (`imajev-2b`, the default and only registered one).
 `rotations` (1 default; 4 averages four option orders, about 3x the latency)
 and `calibration` (artifact name, default `calibration.json`) ride in the
-payload. Limits: state 32 KB, 4096 tokens, 0-2 images (JPEG/PNG/WebP, 20 MB
-and 20 Mpixel each). Sleepy model: loads on demand, evictable; about
-6.0 GB (torch-allocated 4.25 GiB on an RTX 4070 plus CUDA context).
+payload. Limits: 128 KB state, 4096 tokens, 0-2 images (JPEG/PNG/WebP, 20 MB
+and 20 Mpixel each). Sleepy model: loads on demand, evictable; 6.0 GB
+estimate (4.25 GiB torch-allocated peak on an RTX 4070 plus CUDA context;
+re-measure with nvidia-smi while resident before claiming measured).
 
 ## Weights
 

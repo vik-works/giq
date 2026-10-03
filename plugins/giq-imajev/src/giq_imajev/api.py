@@ -71,9 +71,7 @@ async def _decide_body(request: Request) -> tuple[dict, list[bytes]]:
             status_code=400, detail="send JSON or multipart with a 'request' part"
         ) from None
     if not isinstance(payload, dict):
-        raise HTTPException(
-            status_code=400, detail="send JSON or multipart with a 'request' part"
-        )
+        raise HTTPException(status_code=400, detail="send JSON or multipart with a 'request' part")
     images = []
     for index in (0, 1):
         blob = payload.pop(f"image{index}_b64", None)

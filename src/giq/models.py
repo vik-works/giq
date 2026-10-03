@@ -41,7 +41,6 @@ class Modality(StrEnum):
     decide = "decide"
 
 
-
 class JobStatus(StrEnum):
     """Job execution status."""
 

@@ -85,7 +85,9 @@ def test_the_builtins_register_through_the_contract():
     assert plugins.engines_for("decide") == {"imajev"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
     loaded = {s.name for s in plugins.status() if s.loaded}
-    assert {"giq", "giq-vllm", "giq-sdcpp", "giq-speech", "giq-ocr", "giq-depth", "giq-imajev"} <= loaded
+    assert {"giq", "giq-vllm", "giq-sdcpp", "giq-speech", "giq-ocr", "giq-depth", "giq-imajev"} <= (
+        loaded
+    )
 
 
 def test_a_plugins_modality_is_served_end_to_end(installed, tmp_path):

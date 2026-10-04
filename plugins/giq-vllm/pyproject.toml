@@ -4,13 +4,13 @@
 
 [project]
 name = "giq-vllm"
-version = "0.6.0"
+version = "0.6.1"
 description = "vllm for giq: Hugging Face checkpoints, continuous batching, MTP speculation"
 license = "Apache-2.0"
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "giq==0.6.0",
+    "giq==0.6.1",
 ]
 
 [project.entry-points."giq.plugins"]

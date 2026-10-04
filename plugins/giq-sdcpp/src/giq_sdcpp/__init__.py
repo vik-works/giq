@@ -17,7 +17,7 @@ from giq.paths import engine_binary
 from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Plugin, SmokeTest
 from giq.plugins import curated_ui
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 _IMAGE_PARTS = frozenset({"diffusion", "text_encoder", "vae", "lora"})
 

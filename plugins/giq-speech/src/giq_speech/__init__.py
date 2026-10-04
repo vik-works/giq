@@ -16,7 +16,7 @@ from pathlib import Path
 from giq.plugin import API_VERSION, AdapterContext, Engine, Modality, Plugin, SmokeTest
 from giq.plugins import curated_ui
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 
 
 def _audio(ctx: AdapterContext):

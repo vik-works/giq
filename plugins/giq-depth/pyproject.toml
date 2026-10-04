@@ -4,13 +4,13 @@
 
 [project]
 name = "giq-depth"
-version = "0.6.0"
+version = "0.6.1"
 description = "Monocular depth maps for giq with Depth Anything V2"
 license = "Apache-2.0"
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "giq==0.6.0",
+    "giq==0.6.1",
     "numpy>=2.4.2",
     "pillow>=12.1.1",
     "torch>=2.13.0,<2.14.0",

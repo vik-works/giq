@@ -4,7 +4,7 @@
 
 [project]
 name = "giq-ocr"
-version = "0.6.0"
+version = "0.6.1"
 description = "Document OCR for giq: GLM-OCR with its layout model, and Unlimited-OCR"
 license = "Apache-2.0"
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
@@ -15,7 +15,7 @@ requires-python = ">=3.11,<3.13"
 # by that remote code; pypdfium2 rasterizes PDFs (PyMuPDF is AGPL); opencv
 # turns PP-DocLayoutV3's masks into polygons.
 dependencies = [
-    "giq==0.6.0",
+    "giq==0.6.1",
     "numpy>=2.4.2",
     "pillow>=12.1.1",
     "torch>=2.13.0,<2.14.0",

@@ -775,7 +775,7 @@ http = [
 
 [[package]]
 name = "giq"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -820,7 +820,7 @@ dev = [
 
 [[package]]
 name = "giq-defaults"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-defaults" }
 dependencies = [
     { name = "giq" },
@@ -849,7 +849,7 @@ requires-dist = [
 
 [[package]]
 name = "giq-depth"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-depth" }
 dependencies = [
     { name = "giq" },
@@ -872,7 +872,7 @@ requires-dist = [
 
 [[package]]
 name = "giq-ocr"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-ocr" }
 dependencies = [
     { name = "easydict" },
@@ -903,7 +903,7 @@ requires-dist = [
 
 [[package]]
 name = "giq-sdcpp"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-sdcpp" }
 dependencies = [
     { name = "giq" },
@@ -914,7 +914,7 @@ requires-dist = [{ name = "giq", editable = "." }]
 
 [[package]]
 name = "giq-speech"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-speech" }
 dependencies = [
     { name = "en-core-web-sm" },
@@ -947,7 +947,7 @@ requires-dist = [
 
 [[package]]
 name = "giq-vllm"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "plugins/giq-vllm" }
 dependencies = [
     { name = "giq" },

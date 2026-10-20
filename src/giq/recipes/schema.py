@@ -212,6 +212,10 @@ class LlamaCppParams(EngineParams):
     reasoning_budget: int | None = Field(default=None, ge=0)
     parallel: int | None = Field(default=None, ge=1)
     spec_type: Arg | None = None
+    # A Jinja chat template file, resolved like weights.path (relative to
+    # GIQ_MODELS_DIR, `~`/absolute as written). Replaces the GGUF's embedded
+    # template — a fixed upstream Qwen file, say. Unset = the model's own.
+    chat_template_file: Arg | None = None
     # --alias: the id llama-server reports on /v1/models.
     alias: Arg | None = None
     # giq's in-flight loop guard on the thinking channel.

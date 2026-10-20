@@ -15,7 +15,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
-from giq.recipes.schema import EngineParams, Recipe
+from giq.recipes.schema import Arg, EngineParams, Recipe
 from giq.recipes.schema import StrictModel as _Strict
 
 # vllm's KV cache element types (`--kv-cache-dtype`).
@@ -97,6 +97,10 @@ class VllmParams(EngineParams):
     enforce_eager: bool = False
     reasoning_parser: Ident | None = None
     tool_call_parser: Ident | None = None
+    # A Jinja chat template file, resolved like weights.path (relative to
+    # GIQ_MODELS_DIR, `~`/absolute as written). Replaces the checkpoint's own
+    # chat_template.jinja. Unset = the checkpoint's template.
+    chat_template_file: Arg | None = None
     # Constrained decoding for json_schema / structured_outputs requests. The
     # default (xgrammar, no free whitespace) keeps a large schema from
     # diverging into a whitespace run; see StructuredOutputs.

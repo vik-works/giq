@@ -130,8 +130,8 @@ needs an adapter, not new UI code. Examples:
 
 | Engine | Parameters (excerpt) |
 |---|---|
-| llama.cpp | `ctx_size`, `cache_type_k/v`, `flash_attn`, `spec_type`, `mmproj`, `reasoning`, `reasoning_budget`, `parallel`, `loop_guard`, `ready_timeout` |
-| vllm | `gpu_memory_utilization` or `kv_cache_memory_bytes` (**one required**), `max_model_len`, `max_num_seqs`, `enforce_eager`, `sleep_mode` |
+| llama.cpp | `ctx_size`, `cache_type_k/v`, `flash_attn`, `spec_type`, `mmproj`, `chat_template_file`, `reasoning`, `reasoning_budget`, `parallel`, `loop_guard`, `ready_timeout` |
+| vllm | `gpu_memory_utilization` or `kv_cache_memory_bytes` (**one required**), `max_model_len`, `max_num_seqs`, `enforce_eager`, `chat_template_file`, `sleep_mode` |
 | sd.cpp | `offload_to_cpu`, `vae_tiling`, `steps`, `cfg_scale`, `sampler`, `scheduler` |
 | transformers | `dtype`, `max_pages`, `pages_per_pass`, … per worker |
 

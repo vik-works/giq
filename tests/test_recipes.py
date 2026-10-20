@@ -86,6 +86,7 @@ def test_only_the_parameters_written_count_as_given(tmp_path):
         ("params:\n  cache_type_k: q8_0\n", "set together"),
         ("params:\n  cache_type_k: q7\n  cache_type_v: q7\n", "cache_type_k"),
         ("params:\n  spec_type: --model-draft\n", "spec_type"),
+        ("params:\n  chat_template_file: --evil.jinja\n", "chat_template_file"),
         ("capabilities: [vision]\n", "mmproj"),
         ("params:\n  mmproj: proj.gguf\n", "vision"),
         ("profile: interactive\n", "profile"),

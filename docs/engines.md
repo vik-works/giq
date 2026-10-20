@@ -54,6 +54,64 @@ read as `sd.cpp`, with a deprecation warning.
 A recipe's runtime is its `engine`. A recipe's VRAM figure is measured
 under its engine; switching engine means measuring again.
 
+## Chat templates
+
+Both LLM engines render a conversation with the checkpoint's own chat
+template: llama-server runs `--jinja` over the GGUF's embedded template,
+vllm uses the checkpoint's `chat_template.jinja`. A recipe can replace it
+with `params.chat_template_file`, a Jinja file resolved like `weights.path`
+(relative to `GIQ_MODELS_DIR`, `~` or absolute as written). llama.cpp gets
+it as `--chat-template-file`, vllm as `--chat-template`:
+
+```yaml
+# a recipe file in GIQ_RECIPES_DIR
+params:
+  chat_template_file: templates/qwen-fixed.jinja
+```
+
+giq ships no template and neither fetches nor lists the file: it is the
+operator's, like a recipe file, and is not part of the weights inventory.
+Pin its content as you would a weights revision — keep its checksum next to
+the recipe — since the template controls the whole prompt.
+
+**Why it exists.** The stock Qwen 3.8 template (as shipped in the NVFP4
+checkpoint) hurts agentic callers in two ways. It defaults the reasoning
+effort to `xhigh` unless the caller passes `reasoning_effort`, which adds
+about 42 prompt tokens to every plain turn and lets long thoughts eat the
+generation budget before the answer starts. And an assistant turn whose
+`tool_calls[].function.arguments` is a JSON string — the OpenAI wire
+shape — fails the template's `| items`: rendered offline it raises
+`TypeError`; through vllm the arguments become an empty object, so the
+model calls the tool again instead of reading its result.
+[froggeric/Qwen-Fixed-Chat-Templates](https://huggingface.co/froggeric/Qwen-Fixed-Chat-Templates)
+(Apache-2.0) is a drop-in file for Qwen 3.5, 3.6 and 3.8 that fixes both:
+`medium` effort by default with no injected tokens, and arguments accepted
+as a mapping or a JSON string.
+
+Checked with v22.5 of that file, through giq's own path (orchestrator,
+runner, llama-server) on a Qwen3.8 GGUF:
+
+| Request | Result |
+|---|---|
+| capital of France, default effort | `Paris`, `stop`, 24 prompt tokens |
+| `2+2` with `enable_thinking: false` | `4`, `stop`, no reasoning |
+| one `get_weather` tool call | the right call, `finish_reason: tool_calls` |
+| history with JSON-string arguments and the tool's result | answers from the result (the stock template calls the tool again) |
+
+A file containing only `raise_exception(...)` fails the start, so the file
+on disk is the one rendered. On the NVFP4 checkpoint through vllm, a plain
+turn's prompt drops from 66 to 24 tokens and the JSON-string history is
+answered the same way.
+
+**Opt-in, per recipe.** The built-in recipes' VRAM figures, reasoning
+budgets and sampler settings were measured against the stock templates; a
+recipe that switches template measures them again. There is no per-request
+template either: vllm accepts one only with `--trust-request-chat-template`,
+and a template is deployment configuration, versioned with the recipe, not
+a client field. The fixed file's inline tags (`<|think_off|>` and the like)
+let user content steer reasoning, which suits one operator and is a policy
+question for a service shared by many users.
+
 ## vllm
 
 A second LLM engine next to llama.cpp, for two things llama-server does not
@@ -204,6 +262,7 @@ guard needs llama-server's control endpoint and does nothing on vllm.
 | `speculative` | `{method: mtp, tokens: N}` — drafts with the checkpoint's own MTP head; refused for weights without one |
 | `enforce_eager` | Skip CUDA graphs: faster start, slower decoding |
 | `reasoning_parser`, `tool_call_parser` | vllm's parser names (`qwen3`, `qwen3_coder`); a tool parser turns on automatic tool choice |
+| `chat_template_file` | Jinja file under `GIQ_MODELS_DIR` replacing the checkpoint's own template; unset = the checkpoint's own ([Chat templates](#chat-templates)) |
 | `structured_outputs` | Constrained decoding for `json_schema` requests: `{backend: xgrammar\|guidance\|auto, disable_any_whitespace: bool}`. Defaults to `{xgrammar, true}` — vllm's own default (`auto`, free whitespace) lets a large schema diverge into an unbounded whitespace run that never closes the object |
 | `memory_max` | RAM ceiling of the engine process (default `40G`; `null` = none) |
 | `ready_timeout` | Seconds a start may take (default 600) |

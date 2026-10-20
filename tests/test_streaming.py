@@ -372,6 +372,26 @@ def test_a_declared_budget_reaches_the_command_line(monkeypatch):
     assert cmd[cmd.index("--reasoning") + 1] == "on"
 
 
+def test_a_declared_chat_template_reaches_the_command_line(monkeypatch):
+    """Opt-in only: unset (every built-in) keeps the GGUF's own template."""
+    from giq.adapters import llama_cpp
+
+    cmd = LlamaCppAdapter(
+        LlamaCppConfig(model="qwen3.8-27b", model_path="/tmp/x.gguf")
+    ).build_command()
+    assert "--chat-template-file" not in cmd
+
+    monkeypatch.setitem(llama_cpp.MODEL_CHAT_TEMPLATE_FILE, "qwen3.8-27b", "qwen-fixed.jinja")
+    monkeypatch.setenv("GIQ_MODELS_DIR", "/srv/models")
+
+    cmd = LlamaCppAdapter(
+        LlamaCppConfig(model="qwen3.8-27b", model_path="/tmp/x.gguf")
+    ).build_command()
+
+    assert cmd[cmd.index("--chat-template-file") + 1] == "/srv/models/qwen-fixed.jinja"
+    assert "--jinja" in cmd, "minja renders the file only with --jinja"
+
+
 # --- repetition control ------------------------------------------------------
 #
 # Before this, giq sent three sampler fields and no others, so llama.cpp's

@@ -548,6 +548,11 @@ class VllmAdapter(ServedLLM):
             cmd += ["--reasoning-parser", p.reasoning_parser]
         if p.tool_call_parser:
             cmd += ["--enable-auto-tool-choice", "--tool-call-parser", p.tool_call_parser]
+        if p.chat_template_file:
+            # A path (vllm reads the file); resolved like weights.path.
+            # A literal template string is read verbatim instead, so a value
+            # without jinja markers only errors at start, not here.
+            cmd += ["--chat-template", model_path(p.chat_template_file)]
         # Constrained decoding: name the grammar backend and forbid the free
         # inter-token whitespace that otherwise lets a large json_schema diverge
         # (schema.StructuredOutputs). vllm takes the whole config as one JSON arg.

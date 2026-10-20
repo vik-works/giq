@@ -88,6 +88,7 @@ def tables_of(declared: Iterable[Recipe]) -> dict[str, dict]:
         "MODEL_CACHE_TYPE_V": given("cache_type_v"),
         "MODEL_REASONING": given("reasoning"),
         "MODEL_REASONING_BUDGET": given("reasoning_budget"),
+        "MODEL_CHAT_TEMPLATE_FILE": given("chat_template_file"),
         "MODEL_REQUEST_DEFAULTS": {
             i.name: dict(i.request_defaults) for i in llm if i.request_defaults
         },
@@ -169,6 +170,10 @@ MODEL_REASONING: dict[str, str] = {}
 # has to serve a 512-token request and a 65k one.)
 DEFAULT_REASONING_BUDGET: int | None = None
 MODEL_REASONING_BUDGET: dict[str, int] = {}
+DEFAULT_CHAT_TEMPLATE_FILE: str | None = None
+# params.chat_template_file: --chat-template-file, resolved like weights.path.
+# Unset = the GGUF's embedded template.
+MODEL_CHAT_TEMPLATE_FILE: dict[str, str] = {}
 
 # K and V must be the SAME type. Benchmarked on Qwen3.8-27B, Q6_K
 # (head_dim 256), prompt-processing throughput, generation unaffected:
@@ -342,6 +347,7 @@ _TABLES: dict[str, dict] = {
     "MODEL_CACHE_TYPE_V": MODEL_CACHE_TYPE_V,
     "MODEL_REASONING": MODEL_REASONING,
     "MODEL_REASONING_BUDGET": MODEL_REASONING_BUDGET,
+    "MODEL_CHAT_TEMPLATE_FILE": MODEL_CHAT_TEMPLATE_FILE,
     "MODEL_REQUEST_DEFAULTS": MODEL_REQUEST_DEFAULTS,
     "MODEL_SPEC_TYPE": MODEL_SPEC_TYPE,
     "MODEL_PARALLEL": MODEL_PARALLEL,
@@ -419,6 +425,8 @@ class LlamaCppConfig:
     reasoning_budget: int | None = None
     # llama.cpp --spec-type. None = no speculative decoding.
     spec_type: str | None = None
+    # llama.cpp --chat-template-file. None = the GGUF's own template.
+    chat_template_file: str | None = None
 
     def __post_init__(self):
         if self.device is None:
@@ -447,6 +455,12 @@ class LlamaCppConfig:
             self.reasoning_budget = MODEL_REASONING_BUDGET.get(self.model, DEFAULT_REASONING_BUDGET)
         if self.spec_type is None:
             self.spec_type = MODEL_SPEC_TYPE.get(self.model, DEFAULT_SPEC_TYPE)
+        if self.chat_template_file is None:
+            self.chat_template_file = MODEL_CHAT_TEMPLATE_FILE.get(
+                self.model, DEFAULT_CHAT_TEMPLATE_FILE
+            )
+        if self.chat_template_file:
+            self.chat_template_file = resolve_path(self.chat_template_file)
         if self.mmproj is None:
             from giq.registry import get_recipe
 
@@ -537,7 +551,7 @@ class LlamaCppAdapter(ServedLLM):
             str(self.config.parallel),
             "--flash-attn",
             "on",  # Smaller compute buffers during long prompts
-            "--jinja",  # Use model's native chat template; enables OpenAI tool-call parsing
+            "--jinja",  # Use the GGUF's template, or --chat-template-file's below
             "--slots",  # /slots endpoint — the runner's always-on idleness signal
         ]
         if self.config.reasoning != "template":
@@ -554,6 +568,10 @@ class LlamaCppAdapter(ServedLLM):
             # Without this the weights load and serve text; image parts in a
             # request are accepted and then quietly ignored by the model.
             cmd += ["--mmproj", self.config.mmproj]
+        if self.config.chat_template_file:
+            # Needs --jinja above: without it the file is parsed but minja
+            # never renders it.
+            cmd += ["--chat-template-file", self.config.chat_template_file]
 
         return cmd
 

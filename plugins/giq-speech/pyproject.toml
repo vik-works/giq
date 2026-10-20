@@ -4,7 +4,7 @@
 
 [project]
 name = "giq-speech"
-version = "0.6.1"
+version = "0.7.0"
 description = "Speech for giq: speech to text with diarization, text to speech, voiceprints"
 license = "Apache-2.0"
 license-files = ["LICENSES/*.txt"]
@@ -19,7 +19,7 @@ requires-python = ">=3.11,<3.13"
 # pip is missing, as in a uv venv); the model wheel is declared directly, and
 # pip stays because misaki still reaches for it.
 dependencies = [
-    "giq==0.6.1",
+    "giq==0.7.0",
     "numpy>=2.4.2",
     "torch>=2.13.0,<2.14.0",
     "torchaudio>=2.11.0,<2.12.0",

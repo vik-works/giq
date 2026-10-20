@@ -4,7 +4,7 @@
 
 [project]
 name = "giq-defaults"
-version = "0.6.1"
+version = "0.7.0"
 description = "giq with its curated plugins: what the documented install serves"
 license = "Apache-2.0"
 license-files = ["LICENSES/*.txt"]
@@ -23,13 +23,13 @@ dependencies = [
     "torch>=2.13.0,<2.14.0",
     "torchvision>=0.28.0,<0.29.0",
     "torchaudio>=2.11.0,<2.12.0",
-    "giq==0.6.1",
-    "giq-vllm==0.6.1",
-    "giq-sdcpp==0.6.1",
-    "giq-speech==0.6.1",
-    "giq-ocr==0.6.1",
-    "giq-depth==0.6.1",
-    "giq-imajev==0.6.1",
+    "giq==0.7.0",
+    "giq-vllm==0.7.0",
+    "giq-sdcpp==0.7.0",
+    "giq-speech==0.7.0",
+    "giq-ocr==0.7.0",
+    "giq-depth==0.7.0",
+    "giq-imajev==0.7.0",
 ]
 
 [build-system]

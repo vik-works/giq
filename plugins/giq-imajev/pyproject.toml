@@ -4,14 +4,14 @@
 
 [project]
 name = "giq-imajev"
-version = "0.6.1"
+version = "0.7.0"
 description = "Typed photo+record decisions for giq (imajev)"
 license = "Apache-2.0"
 license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "giq==0.6.1",
+    "giq==0.7.0",
 ]
 
 [project.entry-points."giq.plugins"]

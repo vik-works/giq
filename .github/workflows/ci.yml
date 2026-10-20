@@ -79,7 +79,8 @@ jobs:
           uv venv --python 3.12
           uv pip install -e . pillow numpy pypdfium2 pytest pytest-asyncio ruff
           uv pip install --no-deps -e plugins/giq-vllm -e plugins/giq-sdcpp \
-            -e plugins/giq-speech -e plugins/giq-ocr -e plugins/giq-depth
+            -e plugins/giq-speech -e plugins/giq-ocr -e plugins/giq-depth \
+            -e plugins/giq-imajev
       - name: Tests (CPU)
         run: .venv/bin/python -m pytest -q --ignore=tests/test_dirty_workers_integration.py
       - name: Lint
@@ -111,7 +112,19 @@ jobs:
               if needle not in text:
                   sys.exit(f"{notices} does not mention {needle!r}")
           print(f"{wheel}: dashboard and its third-party licences included")
+          # Apache-2.0 4(a): every wheel carries the licence texts, the
+          # plugins' too (they link the repository's LICENSE and LICENSES/).
+          for wheel in glob.glob("dist/*.whl"):
+              names = zipfile.ZipFile(wheel).namelist()
+              if not any(n.endswith(".dist-info/licenses/LICENSES/Apache-2.0.txt") for n in names):
+                  sys.exit(f"{wheel} carries no LICENSES/Apache-2.0.txt")
           PY
+      # Every file's copyright and licence, from the REUSE headers, so a
+      # redistributor has them in one document beside the wheels.
+      - name: SPDX bill of materials
+        run: >
+          uvx reuse spdx --creator-organization "vikworks UG (haftungsbeschränkt)"
+          -o "dist/giq-${{ steps.version.outputs.version }}.spdx"
 
       # --- distribution ----------------------------------------------------
       - name: Pack the dashboard
@@ -128,6 +141,7 @@ jobs:
             dist/giq-${{ steps.version.outputs.version }}.tar.gz
             dist/giq_*-${{ steps.version.outputs.version }}-*.whl
             dist/giq_*-${{ steps.version.outputs.version }}.tar.gz
+            dist/giq-${{ steps.version.outputs.version }}.spdx
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -153,10 +167,11 @@ jobs:
         working-directory: dist
         run: |
           for f in "giq-$VERSION-py3-none-any.whl" "giq-$VERSION.tar.gz" "giq-ui-$VERSION.tar.gz" \
-                   giq_{vllm,sdcpp,speech,ocr,depth,defaults}-"$VERSION"-py3-none-any.whl; do
+                   "giq-$VERSION.spdx" \
+                   giq_{vllm,sdcpp,speech,ocr,depth,imajev,defaults}-"$VERSION"-py3-none-any.whl; do
             [ -f "$f" ] || { echo "::error::$f is missing from the build's artifacts"; exit 1; }
           done
-          sha256sum -- *.whl *.tar.gz >SHA256SUMS
+          sha256sum -- *.whl *.tar.gz *.spdx >SHA256SUMS
           cat SHA256SUMS
       # Creates the release for the tag, or adds to (and replaces same-named
       # files on) one that exists, so re-running the job is harmless.
@@ -165,5 +180,6 @@ jobs:
           files: |
             dist/*.whl
             dist/*.tar.gz
+            dist/*.spdx
             dist/SHA256SUMS
           fail_on_unmatched_files: true

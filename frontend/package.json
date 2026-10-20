@@ -9,11 +9,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview",
-    "build:plugins": "vite build -c plugins/giq-sdcpp/vite.config.ts && vite build -c plugins/giq-speech/vite.config.ts"
+    "build:plugins": "vite build -c plugins/giq-sdcpp/vite.config.ts && vite build -c plugins/giq-speech/vite.config.ts && vite build -c plugins/giq-imajev/vite.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@phosphor-icons/react": "^2.1.10",
+    "prism-react-renderer": "^2.4.1",
     "i18next": "^26.4.2",
     "i18next-browser-languagedetector": "^8.2.1",
     "react": "^19.3.0",

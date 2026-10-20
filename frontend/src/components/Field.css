@@ -11,3 +11,5 @@
 .form-field .seg { min-height: 36px; }
 /* A visual label for controls that name themselves (radio groups). */
 .form-label { display: block; font-size: 12px; margin-bottom: 5px; color: color-mix(in srgb, var(--color-text) 70%, transparent); }
+/* An explanation between label and control reads as part of the label. */
+.hint-top { margin: 0 0 var(--space-2); }

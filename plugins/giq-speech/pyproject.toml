@@ -7,6 +7,7 @@ name = "giq-speech"
 version = "0.6.1"
 description = "Speech for giq: speech to text with diarization, text to speech, voiceprints"
 license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 # torchaudio's newest release is 2.11, and pyannote and speechbrain need it;

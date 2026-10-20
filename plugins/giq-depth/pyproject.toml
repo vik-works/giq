@@ -7,6 +7,7 @@ name = "giq-depth"
 version = "0.6.1"
 description = "Monocular depth maps for giq with Depth Anything V2"
 license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [

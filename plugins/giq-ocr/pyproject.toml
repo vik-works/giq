@@ -7,6 +7,7 @@ name = "giq-ocr"
 version = "0.6.1"
 description = "Document OCR for giq: GLM-OCR with its layout model, and Unlimited-OCR"
 license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 # transformers 5 is what GLM-OCR (5.1+) and PP-DocLayoutV3 (5.3+) need;

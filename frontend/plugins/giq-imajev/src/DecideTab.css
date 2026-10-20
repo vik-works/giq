@@ -1,0 +1,10 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The answers render as a ruled list inside the result card, like the trace
+   renders as a list inside its card — not as cards in a card. Spacing comes
+   from each answer's own padding, so there is no extra gap doubling it. */
+.pl-giq-imajev-answers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

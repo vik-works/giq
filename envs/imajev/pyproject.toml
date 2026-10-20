@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-imajev"
+version = "0.1.0"
+description = "Interpreter for giq's decide child: imajev typed decisions (torch + PEFT LoRA + readout)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # imajev's vision_decision (request compiler, scoring, calibration).
+    # Not on PyPI, so pinned to a commit: the child's vendored TorchDecision
+    # (giq_imajev_child._torch_decision) is the same commit's, and the two
+    # must move together.
+    "imajev[torch] @ git+https://github.com/mohit67890/imajev@318e8dad55c12a1c6faddbec5f30489d2ee529ff",
+    # Same torch line as giq's own venv (PyPI's 2.11 wheels are cu130), so the
+    # same CUDA 13 driver and comparable VRAM figures. transformers 4.55+ is
+    # what Qwen3.5 needs; peft/accelerate/safetensors load the rank-16 LoRA
+    # and the 255-code readout the recipe names.
+    "torch>=2.11.0,<2.12.0",
+    "torchvision>=0.26.0,<0.27.0",
+    "transformers>=4.55",
+    "peft>=0.15",
+    "safetensors>=0.5",
+    "accelerate>=1.0",
+    "pillow>=11",
+]
+
+[tool.uv]
+# xformers ships wheels built against one torch minor at a time and is not
+# needed here (single-pass scoring, no attention override).
+override-dependencies = [
+    "xformers ; sys_platform == 'never'",
+]

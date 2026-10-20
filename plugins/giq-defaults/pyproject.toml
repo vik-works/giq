@@ -7,6 +7,7 @@ name = "giq-defaults"
 version = "0.6.1"
 description = "giq with its curated plugins: what the documented install serves"
 license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 # The torch line, held here for every curated plugin at once: upgrade the
@@ -28,6 +29,7 @@ dependencies = [
     "giq-speech==0.6.1",
     "giq-ocr==0.6.1",
     "giq-depth==0.6.1",
+    "giq-imajev==0.6.1",
 ]
 
 [build-system]

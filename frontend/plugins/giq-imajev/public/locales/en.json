@@ -1,0 +1,46 @@
+{
+  "tab": {
+    "decide": "Decide"
+  },
+  "field": {
+    "model": "Model"
+  },
+  "run": {
+    "decide": "Decide",
+    "deciding": "Deciding…"
+  },
+  "out": {
+    "latency": "latency {{value}}"
+  },
+  "decide": {
+    "defaultState": "Ticket: charged twice for one order.",
+    "defaultQuestions": "{\n  \"queue\": {\n    \"type\": \"choice\",\n    \"instructions\": \"Route the ticket.\",\n    \"criteria\": {\"billing\": null, \"shipping\": null}\n  }\n}",
+    "state": "State",
+    "stateHint": "The record the questions read: a string, or JSON for a structured record.",
+    "questions": "Questions",
+    "questionsHint": "Typed questions as JSON: choice, yes / no, score, multi.",
+    "imageRef": "Reference image (optional)",
+    "imageTarget": "Target image (optional)",
+    "badJson": "Questions must be a JSON object; state must be valid JSON when it starts with { or [.",
+    "jsonError": "Invalid JSON: {{error}}",
+    "none": "No decide model is registered — the panel has nothing to ask.",
+    "noWeights": "{{model}} is registered but its weights are not on disk.",
+    "loadsFirst": "Deciding loads the model first — the first answer takes a while.",
+    "abstained": "Abstained — insufficient evidence.",
+    "confidence": "Confidence: {{value}}",
+    "unknown": "Can't tell: {{value}}",
+    "yes": "Yes",
+    "no": "No",
+    "noneSelected": "None above threshold",
+    "noulMeter": "{{yes}} yes, {{no}} no",
+    "threshold": "Selected above {{value}}",
+    "tokens": "{{n}} input tokens",
+    "job": "job {{id}}",
+    "type": {
+      "choice": "Choice",
+      "noul": "Yes / no",
+      "score": "Score",
+      "multi": "Multi"
+    }
+  }
+}

@@ -7,6 +7,7 @@ name = "giq-vllm"
 version = "0.6.1"
 description = "vllm for giq: Hugging Face checkpoints, continuous batching, MTP speculation"
 license = "Apache-2.0"
+license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [

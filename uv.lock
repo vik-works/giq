@@ -12,6 +12,7 @@ members = [
     "giq",
     "giq-defaults",
     "giq-depth",
+    "giq-imajev",
     "giq-ocr",
     "giq-sdcpp",
     "giq-speech",
@@ -825,6 +826,7 @@ source = { editable = "plugins/giq-defaults" }
 dependencies = [
     { name = "giq" },
     { name = "giq-depth" },
+    { name = "giq-imajev" },
     { name = "giq-ocr" },
     { name = "giq-sdcpp" },
     { name = "giq-speech" },
@@ -838,6 +840,7 @@ dependencies = [
 requires-dist = [
     { name = "giq", editable = "." },
     { name = "giq-depth", editable = "plugins/giq-depth" },
+    { name = "giq-imajev", editable = "plugins/giq-imajev" },
     { name = "giq-ocr", editable = "plugins/giq-ocr" },
     { name = "giq-sdcpp", editable = "plugins/giq-sdcpp" },
     { name = "giq-speech", editable = "plugins/giq-speech" },
@@ -869,6 +872,17 @@ requires-dist = [
     { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
     { name = "transformers", specifier = ">=5.16.1" },
 ]
+
+[[package]]
+name = "giq-imajev"
+version = "0.6.1"
+source = { editable = "plugins/giq-imajev" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
 
 [[package]]
 name = "giq-ocr"

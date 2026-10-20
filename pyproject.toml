@@ -64,7 +64,7 @@ select = [
 ignore = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["giq", "giq_child", "giq_vllm", "giq_sdcpp", "giq_speech", "giq_ocr", "giq_depth"]
+known-first-party = ["giq", "giq_child", "giq_vllm", "giq_sdcpp", "giq_speech", "giq_ocr", "giq_depth", "giq_imajev", "giq_imajev_child"]
 
 [tool.ruff.lint.per-file-ignores]
 # FastAPI's `Depends()` / `File(...)` / `Form(...)` defaults look like B008
@@ -76,6 +76,10 @@ known-first-party = ["giq", "giq_child", "giq_vllm", "giq_sdcpp", "giq_speech", 
 # ty moved this under [tool.ty.environment]; at the top level it now hard-fails
 # the whole `make check` target rather than warning.
 python-version = "3.11"
+
+[tool.ty.analysis]
+# The decide child runs on envs/imajev, which has these and giq's venv does not.
+allowed-unresolved-imports = ["vision_decision.**", "peft"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -99,6 +103,7 @@ giq-sdcpp = { workspace = true }
 giq-speech = { workspace = true }
 giq-ocr = { workspace = true }
 giq-depth = { workspace = true }
+giq-imajev = { workspace = true }
 giq-defaults = { workspace = true }
 
 # uv installs this group by default, so `uv sync` gives a dev-ready checkout:

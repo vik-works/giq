@@ -44,6 +44,30 @@ READY_TIMEOUT_SECONDS = 300.0
 RENDER_TIMEOUT_SECONDS = 600.0
 
 
+# Per-request render size (opt-in): a task (or the job's params) may ask for
+# width/height; otherwise the configured image_generation size is used.
+# Capped so one request can't push the card out of memory, and snapped to the
+# multiple of 16 the latent space needs.
+MAX_RENDER_PIXELS = 2_400_000  # e.g. 2048x1152; ~2 MP is where klein still looks native
+
+
+def _render_size(
+    task: dict, params: dict | None, default_w: int, default_h: int
+) -> tuple[int, int]:
+    p = params or {}
+    try:
+        w = int(task.get("width") or p.get("width") or default_w)
+        h = int(task.get("height") or p.get("height") or default_h)
+    except (TypeError, ValueError):
+        return default_w, default_h
+    if w <= 0 or h <= 0:
+        return default_w, default_h
+    if w * h > MAX_RENDER_PIXELS:
+        k = (MAX_RENDER_PIXELS / (w * h)) ** 0.5
+        w, h = int(w * k), int(h * k)
+    return max(256, w // 16 * 16), max(256, h // 16 * 16)
+
+
 @dataclass
 class SdCppConfig:
     """Paths come from the model's recipe file (``giq_sdcpp.files.image_files``)."""
@@ -148,6 +172,9 @@ class SdCppAdapter:
             # Weights stage through RAM per pipeline phase: peak VRAM drops
             # from ~15.4GB to ~8.5GB, and the 800x480 render cost is seconds.
             "--offload-to-cpu",
+            # Decode the VAE in tiles: per-request sizes up to ~2 MP need a
+            # 14 GB decode buffer untiled, which doesn't fit beside the model.
+            "--vae-tiling",
         ]
         logger.info(f"Starting sd-server: {self.config.model}")
         logger.debug(f"Command: {' '.join(cmd)}")
@@ -252,11 +279,12 @@ class SdCppAdapter:
                 prompt = task.get("prompt") or task.get("instruction")
                 if not prompt:
                     raise ValueError("task has neither prompt nor instruction")
+                width, height = _render_size(task, params, self.config.width, self.config.height)
                 payload = {
                     "prompt": prompt,
                     "negative_prompt": task.get("negative_prompt") or "",
-                    "width": self.config.width,
-                    "height": self.config.height,
+                    "width": width,
+                    "height": height,
                     "steps": self.config.steps,
                     "cfg_scale": self.config.cfg_scale,
                     "sampler_name": self.config.sampler_name,

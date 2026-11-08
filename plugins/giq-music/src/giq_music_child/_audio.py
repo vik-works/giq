@@ -3,9 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """What every giq-music child shares: checking a task's numbers and formats,
-and encoding a track. Stdlib at import; numpy and soundfile only in
-``encode``, which runs on the engine's interpreter."""
+reading the audio a task brings, and encoding a track. Stdlib at import;
+numpy and soundfile only in ``encode``, which runs on the engine's
+interpreter."""
 
+import base64
+import binascii
 import math
 
 # Container and sample format per requested format; mp3 picks its own.
@@ -39,9 +42,30 @@ def format_of(task: dict) -> str:
     return fmt
 
 
+def audio_bytes(value, field: str) -> tuple[bytes, str]:
+    """A task's base64 audio → (its bytes, the file suffix its container has).
+
+    The engines read audio from a file and pick the decoder by its suffix,
+    so the container is told from the bytes, not trusted from a name."""
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"'{field}' must be base64 audio")
+    try:
+        data = base64.b64decode(value, validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError(f"'{field}' is not valid base64") from None
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return data, ".wav"
+    if data[:4] == b"fLaC":
+        return data, ".flac"
+    if data[:4] == b"OggS":
+        return data, ".ogg"
+    if data[:3] == b"ID3" or (len(data) > 1 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0):
+        return data, ".mp3"
+    raise ValueError(f"'{field}' must be WAV, FLAC, Ogg or MP3 audio")
+
+
 def encode(tensor, sample_rate: int, fmt: str) -> tuple[str, float]:
     """A [channels, samples] tensor → (base64 of the encoded file, seconds)."""
-    import base64
     import io
 
     import soundfile

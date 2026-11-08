@@ -1,15 +1,31 @@
 {
+  "audio": {
+    "complete": "es zu vervollständigen",
+    "completeHint": "Das eigene Audio bleibt, das Modell ergänzt die fehlenden Instrumente. Braucht ein Basismodell (ACE-Step 1.5 XL base).",
+    "cover": "es zu covern",
+    "coverHint": "Der Track behält Aufbau, Melodie und Groove im beschriebenen Stil. Geringere Nähe entfernt sich weiter: 0,3–0,5 für einen Genrewechsel.",
+    "hint": "Ein eigener Clip — ein Beat, ein Riff, ein Song —, nach dem der Track klingen oder auf dem er aufbauen soll.",
+    "lego": "einen Track hinzuzufügen",
+    "legoHint": "Das eigene Audio bleibt, das Modell spielt den gewählten Track dazu. Braucht ein Basismodell (ACE-Step 1.5 XL base).",
+    "reference": "so zu klingen",
+    "referenceHint": "Der Track übernimmt seinen Klang — Timbre, Mix, Spielweise —, nicht aber Melodie oder Rhythmus. Der Planer läuft weiter."
+  },
   "field": {
+    "audioUse": "Verwenden, um",
+    "coverStrength": "Nähe (0–1)",
     "duration": "Dauer (s)",
+    "durationOfAudio": "seine Länge",
     "lyrics": "Liedtext (optional)",
     "lyricsNone": "[verse]\n…\n[chorus]\n…  — leer für ein Instrumental",
     "model": "Modell",
     "negative": "Vermeiden (optional)",
     "negativeHint": "z. B. Musik, Stimmen, schlechte Qualität",
+    "ownAudio": "Eigenes Audio (optional)",
     "plan": "Planer",
     "prompt": "Beschreibung",
     "seed": "Seed",
-    "seedRandom": "zufällig"
+    "seedRandom": "zufällig",
+    "track": "Hinzuzufügender Track"
   },
   "music": {
     "defaultPrompt": "Warmer Lo-Fi-Hip-Hop, sanftes Rhodes-Piano, Vinylknistern, entspannte Drums",
@@ -43,5 +59,19 @@
   "toggle": {
     "off": "aus",
     "on": "an"
+  },
+  "track": {
+    "backing_vocals": "Backgroundgesang",
+    "bass": "Bass",
+    "brass": "Blechbläser",
+    "drums": "Drums",
+    "fx": "Effekte",
+    "guitar": "Gitarre",
+    "keyboard": "Keys",
+    "percussion": "Percussion",
+    "strings": "Streicher",
+    "synth": "Synth",
+    "vocals": "Leadgesang",
+    "woodwinds": "Holzbläser"
   }
 }

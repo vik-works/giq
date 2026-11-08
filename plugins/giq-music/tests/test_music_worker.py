@@ -107,6 +107,30 @@ def test_the_child_loads_the_folders_the_recipe_names(tmp_path, monkeypatch):
     assert args[args.index("--weights") + 1].endswith("ACE-Step-Ace-Step1.5")
 
 
+def test_guidance_and_the_source_audio_modes_come_from_the_recipe(tmp_path, monkeypatch):
+    model = _recipe(tmp_path, monkeypatch, "params: {guidance: 5, tasks: [cover, lego]}\n")
+    args = MusicAdapter(MusicConfig(model=model)).child_args()
+    assert args[args.index("--guidance") + 1] == "5.0"
+    assert args[args.index("--tasks") + 1] == "cover,lego"
+    assert "--dit-path" not in args
+
+
+def test_a_dit_part_is_passed_as_its_folder(tmp_path, monkeypatch):
+    (tmp_path / "xl.yaml").write_text(
+        "name: xl-test\nmodalities: [text2music]\nengine: acestep\n"
+        "weights:\n  path: ACE-Step-Ace-Step1.5\n  format: safetensors\n  licence: mit\n"
+        "  parts: {dit: ACE-Step-acestep-v15-xl-sft}\n"
+        "params: {dit: acestep-v15-xl-sft, steps: 50}\nvram: {gb: 26.0}\n"
+    )
+    monkeypatch.setenv("GIQ_RECIPES_DIR", str(tmp_path))
+    from giq import recipes
+
+    recipes.reload()
+    args = MusicAdapter(MusicConfig(model="xl-test")).child_args()
+    assert args[args.index("--dit") + 1] == "acestep-v15-xl-sft"
+    assert args[args.index("--dit-path") + 1].endswith("ACE-Step-acestep-v15-xl-sft")
+
+
 def test_a_recipe_without_a_planner_passes_no_lm(tmp_path, monkeypatch):
     model = _recipe(tmp_path, monkeypatch, "params: {lm: null}\n")
     args = MusicAdapter(MusicConfig(model=model)).child_args()
@@ -140,6 +164,25 @@ def test_the_builtin_recipe():
     assert recipe.modalities == ("text2music",)
     assert recipe.params.dit == "acestep-v15-turbo"  # ty: ignore[unresolved-attribute]
     assert recipe.weights is not None and recipe.weights.source == "hf:ACE-Step/Ace-Step1.5"
+
+
+@pytest.mark.parametrize(
+    ("name", "tasks"),
+    [("ace-step-1.5-xl-sft", ("cover",)), ("ace-step-1.5-xl-base", ("cover", "lego", "complete"))],
+)
+def test_the_xl_recipes_share_the_turbo_root(name, tasks):
+    from giq.registry import get_recipe
+
+    recipe, turbo = get_recipe(name), get_recipe("ace-step-1.5-turbo")
+    assert recipe is not None and turbo is not None
+    assert recipe.weights is not None and turbo.weights is not None
+    assert recipe.weights.path == turbo.weights.path
+    assert (
+        recipe.weights.parts["dit"].source
+        == f"hf:ACE-Step/acestep-v15-{name.removeprefix('ace-step-1.5-')}"
+    )
+    assert recipe.params.tasks == tasks  # ty: ignore[unresolved-attribute]
+    assert recipe.params.steps == 50  # ty: ignore[unresolved-attribute]
 
 
 def test_stable_audio_flags_come_from_the_recipe(tmp_path, monkeypatch):

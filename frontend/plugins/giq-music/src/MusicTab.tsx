@@ -5,13 +5,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
+import { AudioGuide } from "./AudioGuide";
+import { audioFields, isSource, NO_AUDIO } from "./audioTask";
 import { runAudioJob, type MusicResult } from "./musicJob";
 import { useAudioUrl } from "./useAudioUrl";
 import { NS } from "./ns";
 import "./MusicTab.css";
 
 const { Field, SegmentedControl } = components;
-const { ModelSelect, OutputCard, RunButton } = sandbox;
+const { ModelSelect, OutputCard, RunButton, fileB64 } = sandbox;
 
 export function MusicTab({ options, model, onModel }: PanelProps) {
   const { t } = useTranslation(NS);
@@ -21,6 +23,7 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
   const [duration, setDuration] = useState("30");
   const [seed, setSeed] = useState("");
   const [plan, setPlan] = useState(true);
+  const [audio, setAudio] = useState(NO_AUDIO);
   const runner = useRunner<MusicResult>();
   const url = useAudioUrl(runner.result?.audio);
   const chosen = options.find((o) => o.model === model);
@@ -29,6 +32,9 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
      description alone, and shorter or longer. */
   const songs = chosen?.engine === "acestep";
   const [minS, maxS] = songs ? [10, 600] : [1, 380];
+  /* Built on the user's audio, the track is as long as it, and the planner
+     sits out (ACE-Step skips it). */
+  const sourced = songs && isSource(audio);
 
   const go = () => {
     const task: Record<string, unknown> = { id: "sbx-music", prompt };
@@ -36,9 +42,12 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
       task.plan = plan;
       if (lyrics.trim()) task.lyrics = lyrics;
     }
-    if (duration !== "") task.duration = Number(duration);
+    if (duration !== "" && !sourced) task.duration = Number(duration);
     if (seed !== "") task.seed = Number(seed);
-    void runner.run((signal) => runAudioJob("text2music", model, task, signal));
+    void runner.run(async (signal) => {
+      if (songs) Object.assign(task, await audioFields(audio, fileB64));
+      return runAudioJob("text2music", model, task, signal);
+    });
   };
 
   const res = runner.result;
@@ -68,13 +77,24 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
             )}
           </Field>
         )}
+        {songs && <AudioGuide value={audio} onChange={setAudio} />}
         <div className="sbx-row">
           <Field label={t("field.model")} className="sbx-grow">
             {(id) => <ModelSelect id={id} options={options} value={model} onChange={onModel} />}
           </Field>
           <Field label={t("field.duration")}>
             {(id) => (
-              <input id={id} className="input" type="number" min={minS} max={maxS} value={duration} onChange={(e) => setDuration(e.target.value)} />
+              <input
+                id={id}
+                className="input"
+                type="number"
+                min={minS}
+                max={maxS}
+                disabled={sourced}
+                value={sourced ? "" : duration}
+                placeholder={sourced ? t("field.durationOfAudio") : undefined}
+                onChange={(e) => setDuration(e.target.value)}
+              />
             )}
           </Field>
           <Field label={t("field.seed")}>
@@ -87,7 +107,8 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
               <span className="form-label" aria-hidden>{t("field.plan")}</span>
               <SegmentedControl
                 label={t("field.plan")}
-                value={plan ? "on" : "off"}
+                value={plan && !sourced ? "on" : "off"}
+                disabled={sourced}
                 options={[
                   { value: "on", label: t("toggle.on") },
                   { value: "off", label: t("toggle.off") },

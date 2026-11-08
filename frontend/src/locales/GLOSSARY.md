@@ -154,6 +154,9 @@ The six domain terms are ADR-003's; use them in no other sense.
 | voice | Stimme | |
 | track (music) | Track | |
 | lyrics | Liedtext | |
+| reference audio | Referenz-Audio | the clip a track should sound like |
+| cover (music) | Cover / covern | a track keeping another's structure in a new style |
+| backing vocals | Backgroundgesang | |
 | planner (text to music) | Planer | the LM that fills in tempo, key, length |
 | compose | komponieren | "Komponiere…" while running |
 | key (music) | Tonart | |

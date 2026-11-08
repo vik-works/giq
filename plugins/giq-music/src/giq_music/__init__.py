@@ -99,6 +99,10 @@ def _music_plugin() -> Plugin:
                 label="Text to music",
                 icon="music-notes",
                 job_timeout=900.0,
+                # An ACE-Step DiT that is a repository of its own (the XL ones).
+                parts=frozenset({"dit"}),
+                # A task's own audio: a reference to sound like, a source to build on.
+                payload_keys=("reference_audio_b64", "source_audio_b64"),
                 smoke_test=_music_smoke,
             ),
             # Sound effects: a few seconds of foley or ambience per task.

@@ -1,15 +1,31 @@
 {
+  "audio": {
+    "complete": "complete it",
+    "completeHint": "Your audio stays, and the model fills in the instruments it lacks. Needs a base model (ACE-Step 1.5 XL base).",
+    "cover": "cover it",
+    "coverHint": "The track keeps its structure, melody and groove in the described style. Lower closeness strays further: 0.3–0.5 for a change of genre.",
+    "hint": "A clip of your own — a beat, a riff, a song — for the track to sound like or to build on.",
+    "lego": "add a track",
+    "legoHint": "Your audio stays, and the model plays the chosen track over it. Needs a base model (ACE-Step 1.5 XL base).",
+    "reference": "sound like it",
+    "referenceHint": "The track takes on its sound — timbre, mix, playing style — but not its melody or rhythm. The planner still runs."
+  },
   "field": {
+    "audioUse": "Use it to",
+    "coverStrength": "Closeness (0–1)",
     "duration": "Duration (s)",
+    "durationOfAudio": "its length",
     "lyrics": "Lyrics (optional)",
     "lyricsNone": "[verse]\n…\n[chorus]\n…  — empty for an instrumental",
     "model": "Model",
     "negative": "Avoid (optional)",
     "negativeHint": "e.g. music, voices, low quality",
+    "ownAudio": "Your audio (optional)",
     "plan": "Planner",
     "prompt": "Description",
     "seed": "Seed",
-    "seedRandom": "random"
+    "seedRandom": "random",
+    "track": "Track to add"
   },
   "music": {
     "defaultPrompt": "Warm lo-fi hip hop, mellow Rhodes piano, vinyl crackle, laid-back drums",
@@ -43,5 +59,19 @@
   "toggle": {
     "off": "off",
     "on": "on"
+  },
+  "track": {
+    "backing_vocals": "backing vocals",
+    "bass": "bass",
+    "brass": "brass",
+    "drums": "drums",
+    "fx": "effects",
+    "guitar": "guitar",
+    "keyboard": "keys",
+    "percussion": "percussion",
+    "strings": "strings",
+    "synth": "synth",
+    "vocals": "lead vocals",
+    "woodwinds": "woodwinds"
   }
 }

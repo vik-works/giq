@@ -7,7 +7,8 @@ each in a child process on its own interpreter.
 
 The child (``giq_music_child._music_child``) loads the recipe's DiT, VAE and
 text encoder, and the 5Hz planner LM, from the recipe's weights.path, which
-is ACE-Step's own checkpoint layout (the folders AceStepParams names). The
+is ACE-Step's own checkpoint layout (the folders AceStepParams names), and
+a DiT that comes as a repository of its own from weights.parts.dit. The
 hub is disabled and the layout checked before loading, so nothing is ever
 fetched. Per task the planner (when the
 task asks for it) fills in what the request leaves open — tempo, key,
@@ -34,7 +35,7 @@ from pydantic import BaseModel
 
 from giq.adapters._subprocess import SubprocessAdapter
 from giq.registry import get_recipe, vram_for
-from giq.weights import require_path
+from giq.weights import path_of, require_path
 from giq_music.params import AceStepParams, StableAudioParams
 
 # Upper bound for an unregistered model; the registry has the measured ones.
@@ -135,7 +136,11 @@ class MusicAdapter(_AudioChildAdapter):
     def child_args(self) -> list[str]:
         p = self.params
         args = ["--model", self.config.model, "--weights", self.weights, "--dit", p.dit]
-        args += ["--steps", str(p.steps)]
+        # A DiT published as a repository of its own is weights.parts.dit.
+        if dit_path := path_of(self.config.model, "dit"):
+            args += ["--dit-path", dit_path]
+        args += ["--steps", str(p.steps), "--guidance", str(p.guidance)]
+        args += ["--tasks", ",".join(p.tasks)]
         return args + (["--lm", p.lm] if p.lm else [])
 
 

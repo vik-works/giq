@@ -5,11 +5,30 @@
 """The child's own logic, without ACE-Step: what a task asks for, what a
 track reports, and the scratch checkpoint root ACE-Step loads from."""
 
+import base64
 import os
 
 import pytest
 
-from giq_music_child._music_child import REQUIRED, _scratch_root, task_inputs, track_meta
+from giq_music_child._audio import audio_bytes
+from giq_music_child._music_child import (
+    REQUIRED,
+    _scratch_root,
+    instruction,
+    task_inputs,
+    track_meta,
+)
+
+WAV = base64.b64encode(b"RIFF\x00\x00\x00\x00WAVEfmt ").decode()
+BASE = frozenset({"cover", "lego", "complete"})
+# ACE-Step's own templates (acestep.constants.TASK_INSTRUCTIONS), the ones used.
+TEMPLATES = {
+    "text2music": "Fill the audio semantic mask based on the given conditions:",
+    "cover": "Generate audio semantic tokens based on the given conditions:",
+    "lego": "Generate the {TRACK_NAME} track based on the audio context:",
+    "complete": "Complete the input track with {TRACK_CLASSES}:",
+    "complete_default": "Complete the input track:",
+}
 
 
 def test_a_bare_prompt_lets_the_planner_choose():
@@ -74,6 +93,86 @@ def test_the_planners_rewrite_is_reported():
     assert (meta["caption"], meta["lyrics"]) == ("a long caption", "[verse]")
 
 
+def test_a_reference_steers_the_sound_and_leaves_the_planner_on():
+    got = task_inputs({"prompt": "x", "reference_audio_b64": WAV}, planner=True)
+    assert (got["mode"], got["reference"], got["source"]) == ("text2music", WAV, None)
+    assert got["plan"] and got["cover_strength"] is None
+
+
+def test_source_audio_is_covered_unplanned_at_its_own_length():
+    got = task_inputs(
+        {"prompt": "thrash metal", "source_audio_b64": WAV},
+        planner=True,
+        modes=frozenset({"cover"}),
+    )
+    assert (got["mode"], got["cover_strength"]) == ("cover", 0.5)
+    assert not got["plan"] and got["duration"] == -1.0
+    assert instruction(got, TEMPLATES) == TEMPLATES["cover"]
+
+
+def test_lego_adds_one_track_over_the_source():
+    task = {"prompt": "riffs", "source_audio_b64": WAV, "mode": "lego", "track": "guitar"}
+    got = task_inputs(task, planner=True, modes=BASE)
+    assert instruction(got, TEMPLATES) == "Generate the GUITAR track based on the audio context:"
+
+
+def test_complete_names_the_tracks_it_fills_in():
+    task = {"prompt": "x", "source_audio_b64": WAV, "mode": "complete"}
+    assert instruction(task_inputs(task, True, BASE), TEMPLATES) == TEMPLATES["complete_default"]
+    got = task_inputs({**task, "tracks": ["bass", "guitar"]}, True, BASE)
+    assert instruction(got, TEMPLATES) == "Complete the input track with BASS | GUITAR:"
+
+
+@pytest.mark.parametrize(
+    ("task", "modes", "match"),
+    [
+        ({"mode": "cover"}, BASE, "needs a 'source_audio_b64'"),
+        ({"source_audio_b64": WAV}, frozenset(), "does no cover"),
+        ({"source_audio_b64": WAV, "mode": "lego", "track": "bass"}, {"cover"}, "does no lego"),
+        ({"source_audio_b64": WAV, "mode": "remix"}, BASE, "mode must be"),
+        ({"source_audio_b64": WAV, "mode": "lego"}, BASE, "needs a 'track'"),
+        ({"source_audio_b64": WAV, "mode": "lego", "track": "kazoo"}, BASE, "needs a 'track'"),
+        ({"source_audio_b64": WAV, "cover_strength": 1.5}, BASE, "cover_strength"),
+        ({"source_audio_b64": WAV, "mode": "lego", "track": "bass", "cover_strength": 0.3},
+         BASE, "cover_strength"),
+        ({"source_audio_b64": WAV, "track": "bass"}, BASE, "'track' is for"),
+        ({"source_audio_b64": WAV, "mode": "complete", "tracks": "bass"}, BASE, "'tracks'"),
+        ({"reference_audio_b64": 7}, BASE, "reference_audio_b64"),
+    ],
+)  # fmt: skip
+def test_audio_fields_that_do_not_fit_are_named(task, modes, match):
+    with pytest.raises(ValueError, match=match):
+        task_inputs({"prompt": "x", **task}, planner=True, modes=frozenset(modes))
+
+
+@pytest.mark.parametrize(
+    ("head", "suffix"),
+    [
+        (b"RIFF\x00\x00\x00\x00WAVE", ".wav"),
+        (b"fLaC\x00", ".flac"),
+        (b"OggS\x00", ".ogg"),
+        (b"ID3\x04", ".mp3"),
+        (b"\xff\xfb\x90", ".mp3"),
+    ],
+)
+def test_task_audio_is_told_by_its_bytes(head, suffix):
+    data, got = audio_bytes(base64.b64encode(head).decode(), "source_audio_b64")
+    assert (data, got) == (head, suffix)
+
+
+@pytest.mark.parametrize(
+    ("value", "match"),
+    [
+        ("", "base64 audio"),
+        ("@@@", "not valid base64"),
+        (base64.b64encode(b"%PDF").decode(), "WAV"),
+    ],
+)
+def test_task_audio_that_is_not_audio_is_refused(value, match):
+    with pytest.raises(ValueError, match=match):
+        audio_bytes(value, "source_audio_b64")
+
+
 def _weights(tmp_path, dit="acestep-v15-turbo"):
     root = tmp_path / "weights"
     for name in {*REQUIRED, dit}:
@@ -114,3 +213,32 @@ def test_a_missing_folder_fails_instead_of_downloading(tmp_path, monkeypatch):
     (weights / "vae" / "diffusion_pytorch_model.safetensors").unlink()
     with pytest.raises(RuntimeError, match="vae holds no weights"):
         _scratch_root(str(weights), "acestep-v15-turbo")
+
+
+def test_a_dit_from_its_own_repository_joins_the_root(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    weights = _weights(tmp_path)
+    xl = tmp_path / "xl-sft"
+    xl.mkdir()
+    # The XL DiTs are sharded: the index stands for the weights.
+    (xl / "model.safetensors.index.json").write_text("{}")
+    (xl / "model-00001-of-00004.safetensors").write_bytes(b"w")
+    (xl / "configuration_acestep_v15.py").write_text("# code\n")
+    root = _scratch_root(str(weights), "acestep-v15-xl-sft", str(xl))
+
+    dit = os.path.join(root, "acestep-v15-xl-sft")
+    assert not os.path.islink(dit)
+    assert os.path.realpath(os.path.join(dit, "model-00001-of-00004.safetensors")) == str(
+        xl / "model-00001-of-00004.safetensors"
+    )
+    assert not os.path.islink(os.path.join(dit, "configuration_acestep_v15.py"))
+    # The turbo DiT ACE-Step checks for is still there, linked.
+    assert os.path.islink(os.path.join(root, "acestep-v15-turbo"))
+
+
+def test_a_dit_repository_without_weights_fails(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    weights = _weights(tmp_path)
+    (tmp_path / "empty").mkdir()
+    with pytest.raises(RuntimeError, match="empty holds no weights"):
+        _scratch_root(str(weights), "acestep-v15-xl-sft", str(tmp_path / "empty"))

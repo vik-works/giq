@@ -134,6 +134,8 @@
       ],
       "recipes": [
         "ace-step-1.5-turbo",
+        "ace-step-1.5-xl-base",
+        "ace-step-1.5-xl-sft",
         "stable-audio-3-medium",
         "stable-audio-3-small-music",
         "stable-audio-3-small-sfx"

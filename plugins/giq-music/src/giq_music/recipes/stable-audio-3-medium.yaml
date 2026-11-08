@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Stable Audio 3 Medium (Stability AI Community License;
+# https://huggingface.co/stabilityai/stable-audio-3-medium): a 1.4B DiT over
+# the SAME-L autoencoder, conditioned through T5Gemma (Gemma terms), that
+# renders up to 380 s of 44.1 kHz stereo instrumental music in 8 steps,
+# trained on licensed music. No lyrics, no planner: the prompt is the whole
+# request. The Community License allows commercial use below USD 1M annual
+# revenue; above that Stability sells an Enterprise License. The repository
+# is gated: accept its terms on Hugging Face before fetching. Sleepy model:
+# loads on demand, evictable.
+name: stable-audio-3-medium
+label: Stable Audio 3 Medium
+modalities: [text2music]
+engine: stable-audio
+detail: "text → instrumental music · up to 6:20 · 44.1 kHz stereo"
+weights:
+  path: stabilityai-stable-audio-3-medium
+  source: hf:stabilityai/stable-audio-3-medium
+  revision: d4d3579395a8ac0df4ab13b5b1d7138ce7290f81
+  format: safetensors
+  licence: stability-ai-community
+params:
+  steps: 8
+  max_seconds: 380
+  default_seconds: 30
+vram:
+  # Not measured here. Stability reports a 6.5 GB peak allocation on an H200
+  # for a 380 s track; this adds the CUDA context and allocator slack.
+  gb: 8.0
+  measured: false
+max_batch: 4

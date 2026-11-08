@@ -4,6 +4,8 @@
     "lyrics": "Lyrics (optional)",
     "lyricsNone": "[verse]\n…\n[chorus]\n…  — empty for an instrumental",
     "model": "Model",
+    "negative": "Avoid (optional)",
+    "negativeHint": "e.g. music, voices, low quality",
     "plan": "Planner",
     "prompt": "Description",
     "seed": "Seed",
@@ -12,6 +14,7 @@
   "music": {
     "defaultPrompt": "Warm lo-fi hip hop, mellow Rhodes piano, vinyl crackle, laid-back drums",
     "evicts": "Composing evicts resident instances — the first track takes a while, then they reload.",
+    "instrumentalHint": "This model renders instrumentals from the description alone: name the genre, instruments, mood and tempo.",
     "none": "No text-to-music model fits on these cards.",
     "planHint": "The planner fills in what is left open — tempo, key, duration, structure — before the track is rendered."
   },
@@ -24,10 +27,18 @@
   },
   "run": {
     "composing": "Composing…",
-    "music": "Compose"
+    "generating": "Generating…",
+    "music": "Compose",
+    "sound": "Generate"
+  },
+  "sound": {
+    "defaultPrompt": "Heavy wooden door creaking open, then slamming shut in a stone hall",
+    "evicts": "Generating evicts resident instances — the first clip takes a while, then they reload.",
+    "none": "No text-to-sound model fits on these cards."
   },
   "tab": {
-    "music": "Text → music"
+    "music": "Text → music",
+    "sound": "Text → sound"
   },
   "toggle": {
     "off": "off",

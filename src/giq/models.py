@@ -43,6 +43,10 @@ class Modality(StrEnum):
     # description, optional lyrics and musical constraints in, an encoded
     # 48 kHz stereo track out. See giq_music.adapter.MusicResult.
     text2music = "text2music"
+    # Text to sound effects (Stable Audio 3 in a child process on its own
+    # interpreter): a description and a length in, an encoded 44.1 kHz
+    # stereo clip out. Same result shape as text2music.
+    text2sfx = "text2sfx"
 
 
 class JobStatus(StrEnum):

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  BellIcon,
   ChatTextIcon,
   CubeIcon,
   EyeIcon,
@@ -52,6 +53,7 @@ const ICON_BY_NAME: Record<string, PhosphorIcon> = {
   "file-text": FileTextIcon,
   mountains: MountainsIcon,
   "music-notes": MusicNotesIcon,
+  bell: BellIcon,
   gpu: GraphicsCardIcon,
 };
 

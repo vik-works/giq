@@ -29,6 +29,7 @@ BUILTIN_MODALITIES = {
     "depth",
     "decide",
     "text2music",
+    "text2sfx",
 }
 
 
@@ -80,13 +81,20 @@ def installed(monkeypatch):
 
 def test_the_builtins_register_through_the_contract():
     assert set(plugins.modalities()) == BUILTIN_MODALITIES
-    assert {"llama.cpp", "vllm", "sd.cpp", "transformers", "imajev", "acestep"} <= set(
-        plugins.engines()
-    )
+    assert {
+        "llama.cpp",
+        "vllm",
+        "sd.cpp",
+        "transformers",
+        "imajev",
+        "acestep",
+        "stable-audio",
+    } <= set(plugins.engines())
     assert plugins.engines_for("llm") == {"llama.cpp", "vllm"}
     assert plugins.engines_for("ocr") == {"transformers"}
     assert plugins.engines_for("decide") == {"imajev"}
-    assert plugins.engines_for("text2music") == {"acestep"}
+    assert plugins.engines_for("text2music") == {"acestep", "stable-audio"}
+    assert plugins.engines_for("text2sfx") == {"stable-audio"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
     loaded = {s.name for s in plugins.status() if s.loaded}
     assert {

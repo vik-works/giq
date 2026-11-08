@@ -78,9 +78,11 @@ known-first-party = ["giq", "giq_child", "giq_vllm", "giq_sdcpp", "giq_speech", 
 python-version = "3.11"
 
 [tool.ty.analysis]
-# The decide child runs on envs/imajev and the text2music child on
-# envs/acestep, which have these and giq's venv does not.
-allowed-unresolved-imports = ["vision_decision.**", "peft", "acestep.**", "flash_attn"]
+# The decide child runs on envs/imajev and giq-music's children on
+# envs/acestep and envs/stable-audio, which have these and giq's venv does not.
+allowed-unresolved-imports = [
+    "vision_decision.**", "peft", "acestep.**", "flash_attn", "stable_audio_3.**",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

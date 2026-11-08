@@ -2,10 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
-import { runMusicJob, type MusicResult } from "./musicJob";
+import { runAudioJob, type MusicResult } from "./musicJob";
+import { useAudioUrl } from "./useAudioUrl";
 import { NS } from "./ns";
 import "./MusicTab.css";
 
@@ -21,23 +22,23 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
   const [seed, setSeed] = useState("");
   const [plan, setPlan] = useState(true);
   const runner = useRunner<MusicResult>();
-  const [url, setUrl] = useState<string | null>(null);
-  const fit = options.find((o) => o.model === model)?.fits;
-
-  // One object URL per track, released when the next replaces it.
-  useEffect(() => {
-    if (!runner.result) return;
-    const u = URL.createObjectURL(runner.result.audio);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
-  }, [runner.result]);
+  const url = useAudioUrl(runner.result?.audio);
+  const chosen = options.find((o) => o.model === model);
+  const fit = chosen?.fits;
+  /* Lyrics and the planner are ACE-Step's; Stable Audio renders the
+     description alone, and shorter or longer. */
+  const songs = chosen?.engine === "acestep";
+  const [minS, maxS] = songs ? [10, 600] : [1, 380];
 
   const go = () => {
-    const task: Record<string, unknown> = { id: "sbx-music", prompt, plan };
-    if (lyrics.trim()) task.lyrics = lyrics;
+    const task: Record<string, unknown> = { id: "sbx-music", prompt };
+    if (songs) {
+      task.plan = plan;
+      if (lyrics.trim()) task.lyrics = lyrics;
+    }
     if (duration !== "") task.duration = Number(duration);
     if (seed !== "") task.seed = Number(seed);
-    void runner.run((signal) => runMusicJob(model, task, signal));
+    void runner.run((signal) => runAudioJob("text2music", model, task, signal));
   };
 
   const res = runner.result;
@@ -54,24 +55,26 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
         <Field label={t("field.prompt")}>
           {(id) => <textarea id={id} className="input" value={prompt} onChange={(e) => setPrompt(e.target.value)} />}
         </Field>
-        <Field label={t("field.lyrics")}>
-          {(id) => (
-            <textarea
-              id={id}
-              className="input pl-giq-music-lyrics"
-              placeholder={t("field.lyricsNone")}
-              value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
-            />
-          )}
-        </Field>
+        {songs && (
+          <Field label={t("field.lyrics")}>
+            {(id) => (
+              <textarea
+                id={id}
+                className="input pl-giq-music-lyrics"
+                placeholder={t("field.lyricsNone")}
+                value={lyrics}
+                onChange={(e) => setLyrics(e.target.value)}
+              />
+            )}
+          </Field>
+        )}
         <div className="sbx-row">
           <Field label={t("field.model")} className="sbx-grow">
             {(id) => <ModelSelect id={id} options={options} value={model} onChange={onModel} />}
           </Field>
           <Field label={t("field.duration")}>
             {(id) => (
-              <input id={id} className="input" type="number" min={10} max={600} value={duration} onChange={(e) => setDuration(e.target.value)} />
+              <input id={id} className="input" type="number" min={minS} max={maxS} value={duration} onChange={(e) => setDuration(e.target.value)} />
             )}
           </Field>
           <Field label={t("field.seed")}>
@@ -79,20 +82,22 @@ export function MusicTab({ options, model, onModel }: PanelProps) {
               <input id={id} className="input" type="number" placeholder={t("field.seedRandom")} value={seed} onChange={(e) => setSeed(e.target.value)} />
             )}
           </Field>
-          <div className="field form-field">
-            <span className="form-label" aria-hidden>{t("field.plan")}</span>
-            <SegmentedControl
-              label={t("field.plan")}
-              value={plan ? "on" : "off"}
-              options={[
-                { value: "on", label: t("toggle.on") },
-                { value: "off", label: t("toggle.off") },
-              ]}
-              onChange={(v) => setPlan(v === "on")}
-            />
-          </div>
+          {songs && (
+            <div className="field form-field">
+              <span className="form-label" aria-hidden>{t("field.plan")}</span>
+              <SegmentedControl
+                label={t("field.plan")}
+                value={plan ? "on" : "off"}
+                options={[
+                  { value: "on", label: t("toggle.on") },
+                  { value: "off", label: t("toggle.off") },
+                ]}
+                onChange={(v) => setPlan(v === "on")}
+              />
+            </div>
+          )}
         </div>
-        <p className="hint">{t("music.planHint")}</p>
+        <p className="hint">{t(songs ? "music.planHint" : "music.instrumentalHint")}</p>
         {!options.length && <p className="warn">{t("music.none")}</p>}
         {fit === "fits_after_eviction" && <p className="warn">{t("music.evicts")}</p>}
         <div className="sbx-actions">

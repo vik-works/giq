@@ -35,7 +35,10 @@ The decide child (giq-imajev) runs on its own interpreter, `imajev`
 `GIQ_IMAJEV_PYTHON` points elsewhere). The text2music child (giq-music) runs
 on `acestep` (`envs/acestep`, ACE-Step 1.5 at a pinned commit with the torch
 and transformers it pins; set up once with `cd envs/acestep && uv sync`;
-`GIQ_ACESTEP_PYTHON` points elsewhere).
+`GIQ_ACESTEP_PYTHON` points elsewhere), and its Stable Audio 3 child on
+`stable-audio` (`envs/stable-audio`, Stable Audio 3 at a pinned commit with
+torch 2.7's CUDA 12.8 build; `cd envs/stable-audio && uv sync`;
+`GIQ_STABLE_AUDIO_PYTHON` points elsewhere).
 
 ## Engine names
 
@@ -50,6 +53,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
 | `acestep` | `ace-step-1.5-turbo` (text to music) | `envs/acestep` (giq-music) |
+| `stable-audio` | `stable-audio-3-medium`, `stable-audio-3-small-music` (text to music), `stable-audio-3-small-sfx` (text to sound) | `envs/stable-audio` (giq-music) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and
@@ -88,6 +92,25 @@ model code on load. The child keeps it from doing either to the model store:
 it loads from a scratch root of links over `weights.path`, with the DiT's
 code copied there, checks every folder before ACE-Step does, and runs with
 the Hugging Face hub offline.
+
+## stable-audio
+
+A stable-audio recipe's `weights.path` is one Stable Audio 3 repository as
+it is: `model.safetensors` (the DiT with its autoencoder),
+`model_config.json` and the `t5gemma-b-b-ul2/` text encoder. The child reads
+the config from there and points the text encoder at that folder, so
+nothing is fetched; the repositories are gated, so their terms are accepted
+on Hugging Face before `giq` fetches them.
+
+| Parameter | Meaning |
+|-----------|---------|
+| `steps` | Sampling steps (default 8; ~50 for the `-base` models). |
+| `cfg_scale` | Classifier-free guidance (default 1.0); the post-trained models ignore it. |
+| `max_seconds` | The longest clip a task may ask for: at most the model's own limit, 120 s for the small models and 380 s for medium. |
+| `default_seconds` | The length of a task that names none (default 30). |
+
+Without flash-attn, which the env leaves out, attention runs through
+PyTorch's SDPA.
 
 ## Chat templates
 

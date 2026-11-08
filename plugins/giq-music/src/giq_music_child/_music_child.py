@@ -43,6 +43,7 @@ from giq_child import (  # noqa: E402
     run_ipc_child_loop,
     write_startup_error,
 )
+from giq_music_child._audio import encode, format_of, number, seed_of  # noqa: E402
 
 # ACE-Step's documented range.
 MIN_SECONDS, MAX_SECONDS = 10.0, 600.0
@@ -52,7 +53,6 @@ UNPLANNED_SECONDS = 30.0
 MIN_BPM, MAX_BPM = 30, 300
 # ACE-Step's time signatures are the beats of a bar: 2, 3, 4 or 6 (6/8).
 TIME_SIGNATURES = {"2": "2/4", "3": "3/4", "4": "4/4", "6": "6/8"}
-FORMATS = {"flac": ("FLAC", "PCM_16"), "wav": ("WAV", "PCM_16"), "mp3": ("MP3", None)}
 # The folders ACE-Step checks for before it loads anything, whichever it loads.
 REQUIRED = ("acestep-v15-turbo", "vae", "Qwen3-Embedding-0.6B", "acestep-5Hz-lm-1.7B")
 WEIGHT_FILES = ("model.safetensors", "diffusion_pytorch_model.safetensors")
@@ -76,24 +76,18 @@ def task_inputs(task: dict, planner: bool) -> dict:
     if duration is None:
         seconds = -1.0 if plan else UNPLANNED_SECONDS  # -1: the planner picks
     else:
-        seconds = _number(duration, "duration")
+        seconds = number(duration, "duration")
         if not MIN_SECONDS <= seconds <= MAX_SECONDS:
             raise ValueError(f"duration must be {MIN_SECONDS:g}-{MAX_SECONDS:g} s, got {seconds:g}")
 
     bpm = task.get("bpm")
     if bpm is not None:
-        bpm = int(_number(bpm, "bpm"))
+        bpm = int(number(bpm, "bpm"))
         if not MIN_BPM <= bpm <= MAX_BPM:
             raise ValueError(f"bpm must be {MIN_BPM}-{MAX_BPM}, got {bpm}")
 
-    seed = task.get("seed")
-    if seed is not None:
-        if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
-            raise ValueError("'seed' must be a non-negative integer")
-
-    fmt = str(task.get("format") or "flac").lower()
-    if fmt not in FORMATS:
-        raise ValueError(f"format must be one of {', '.join(FORMATS)}, got {fmt!r}")
+    seed = seed_of(task)
+    fmt = format_of(task)
 
     return {
         "caption": caption.strip(),
@@ -109,18 +103,6 @@ def task_inputs(task: dict, planner: bool) -> dict:
         "plan": plan,
         "format": fmt,
     }
-
-
-def _number(value, field: str) -> float:
-    if isinstance(value, bool):
-        raise ValueError(f"'{field}' must be a number")
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"'{field}' must be a number") from None
-    if number != number or number in (float("inf"), float("-inf")):
-        raise ValueError(f"'{field}' must be a finite number")
-    return number
 
 
 def _beats(value) -> str:
@@ -239,19 +221,6 @@ def _load(weights: str, dit: str, lm: str | None):
     return handler, planner
 
 
-def _encode(tensor, sample_rate: int, fmt: str) -> tuple[str, float]:
-    import base64
-    import io
-
-    import soundfile
-
-    audio = tensor.detach().float().cpu().numpy().T  # [samples, channels]
-    container, subtype = FORMATS[fmt]
-    buf = io.BytesIO()
-    soundfile.write(buf, audio, sample_rate, format=container, subtype=subtype)
-    return base64.b64encode(buf.getvalue()).decode(), audio.shape[0] / sample_rate
-
-
 def _run(models, steps: int, task: dict) -> dict:
     from acestep.inference import GenerationConfig, GenerationParams, generate_music
 
@@ -284,7 +253,7 @@ def _run(models, steps: int, task: dict) -> dict:
     if not result.success or not result.audios:
         raise RuntimeError(result.error or result.status_message or "ACE-Step returned no audio")
     track = result.audios[0]
-    audio_b64, seconds = _encode(track["tensor"], int(track["sample_rate"]), inputs["format"])
+    audio_b64, seconds = encode(track["tensor"], int(track["sample_rate"]), inputs["format"])
     return {
         "id": task.get("id", "unknown"),
         "audio_b64": audio_b64,

@@ -4,6 +4,8 @@
     "lyrics": "Liedtext (optional)",
     "lyricsNone": "[verse]\n…\n[chorus]\n…  — leer für ein Instrumental",
     "model": "Modell",
+    "negative": "Vermeiden (optional)",
+    "negativeHint": "z. B. Musik, Stimmen, schlechte Qualität",
     "plan": "Planer",
     "prompt": "Beschreibung",
     "seed": "Seed",
@@ -12,6 +14,7 @@
   "music": {
     "defaultPrompt": "Warmer Lo-Fi-Hip-Hop, sanftes Rhodes-Piano, Vinylknistern, entspannte Drums",
     "evicts": "Komponieren verdrängt vorgehaltene Instanzen — der erste Track dauert, danach laden sie neu.",
+    "instrumentalHint": "Dieses Modell rendert Instrumentals allein aus der Beschreibung: Genre, Instrumente, Stimmung und Tempo nennen.",
     "none": "Kein Text-zu-Musik-Modell passt auf diese Karten.",
     "planHint": "Der Planer ergänzt, was offen bleibt — Tempo, Tonart, Dauer, Aufbau —, bevor der Track gerendert wird."
   },
@@ -24,10 +27,18 @@
   },
   "run": {
     "composing": "Komponiere…",
-    "music": "Komponieren"
+    "generating": "Generiere…",
+    "music": "Komponieren",
+    "sound": "Generieren"
+  },
+  "sound": {
+    "defaultPrompt": "Schwere Holztür, die knarrend aufgeht und in einer Steinhalle zuschlägt",
+    "evicts": "Generieren verdrängt vorgehaltene Instanzen — der erste Clip dauert, danach laden sie neu.",
+    "none": "Kein Text-zu-Klang-Modell passt auf diese Karten."
   },
   "tab": {
-    "music": "Text → Musik"
+    "music": "Text → Musik",
+    "sound": "Text → Klang"
   },
   "toggle": {
     "off": "aus",

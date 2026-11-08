@@ -16,7 +16,13 @@ import sys
 
 import pytest
 
-from giq_music.adapter import MusicAdapter, MusicConfig, MusicResult, hydrate
+from giq_music.adapter import (
+    MusicAdapter,
+    MusicConfig,
+    MusicResult,
+    StableAudioAdapter,
+    hydrate,
+)
 
 CHILD_SCRIPT = """
 import sys, json
@@ -46,11 +52,11 @@ class _StubMusicWorker(MusicAdapter):
         return dict(os.environ)
 
 
-def _recipe(tmp_path, monkeypatch, params: str):
+def _recipe(tmp_path, monkeypatch, params: str, engine: str = "acestep"):
     (tmp_path / "ace.yaml").write_text(
         "name: ace-test\n"
         "modalities: [text2music]\n"
-        "engine: acestep\n"
+        f"engine: {engine}\n"
         "weights: {path: ACE-Step-Ace-Step1.5, format: safetensors, licence: mit}\n"
         f"{params}"
         "vram: {gb: 12.0}\n"
@@ -134,3 +140,54 @@ def test_the_builtin_recipe():
     assert recipe.modalities == ("text2music",)
     assert recipe.params.dit == "acestep-v15-turbo"  # ty: ignore[unresolved-attribute]
     assert recipe.weights is not None and recipe.weights.source == "hf:ACE-Step/Ace-Step1.5"
+
+
+def test_stable_audio_flags_come_from_the_recipe(tmp_path, monkeypatch):
+    model = _recipe(
+        tmp_path,
+        monkeypatch,
+        "params: {steps: 50, cfg_scale: 7, max_seconds: 60, default_seconds: 90}\n",
+        engine="stable-audio",
+    )
+    adapter = StableAudioAdapter(MusicConfig(model=model))
+    args = adapter.child_args()
+    assert adapter.child_module == "giq_music_child._sa3_child"
+    assert args[args.index("--steps") + 1] == "50"
+    assert args[args.index("--cfg-scale") + 1] == "7.0"
+    assert args[args.index("--max-seconds") + 1] == "60.0"
+    # A default longer than the cap is the cap.
+    assert args[args.index("--default-seconds") + 1] == "60.0"
+
+
+async def test_stable_audio_results_hydrate(tmp_path, monkeypatch):
+    model = _recipe(tmp_path, monkeypatch, "", engine="stable-audio")
+
+    class Stub(StableAudioAdapter):
+        _command = _StubMusicWorker._command
+        _spawn_env = _StubMusicWorker._spawn_env
+
+    worker = Stub(MusicConfig(model=model))
+    await worker.start()
+    try:
+        (result,) = await worker.run_batch([{"id": "a", "prompt": "door slam"}])
+    finally:
+        await worker.stop()
+    assert isinstance(result, MusicResult) and result.caption == "door slam"
+
+
+@pytest.mark.parametrize(
+    ("name", "modality", "seconds"),
+    [
+        ("stable-audio-3-medium", "text2music", 380),
+        ("stable-audio-3-small-music", "text2music", 120),
+        ("stable-audio-3-small-sfx", "text2sfx", 120),
+    ],
+)
+def test_the_stable_audio_recipes(name, modality, seconds):
+    from giq.registry import get_recipe
+
+    recipe = get_recipe(name)
+    assert recipe is not None and recipe.engine == "stable-audio"
+    assert recipe.modalities == (modality,)
+    assert recipe.params.max_seconds == seconds  # ty: ignore[unresolved-attribute]
+    assert recipe.weights is not None and recipe.weights.source == f"hf:stabilityai/{name}"

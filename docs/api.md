@@ -210,7 +210,10 @@ generation ends as `response.failed` with `giq_job_failed`.
 
 ### Text2Music (`text2music`)
 - Recipes: `ace-step-1.5-turbo` (ACE-Step 1.5, MIT: a 2B DiT planned by a
-  1.7B LM; 48 kHz stereo, 10 s to 10 min, lyrics in 50+ languages)
+  1.7B LM; 48 kHz stereo, 10 s to 10 min, lyrics in 50+ languages);
+  `stable-audio-3-medium` and `stable-audio-3-small-music` (Stable Audio 3,
+  Stability AI Community License: instrumentals at 44.1 kHz stereo, up to
+  380 s and 120 s; see below)
 - Task: `{id, prompt, lyrics?, instrumental?, duration?, bpm?, key_scale?,
   time_signature?, language?, seed?, plan?, format?}`
 - Result: `{id, audio_b64, format, sample_rate, duration, seed, bpm,
@@ -232,6 +235,21 @@ curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/jso
        "tasks":[{"id":"1","prompt":"warm lo-fi hip hop, mellow Rhodes piano","duration":60}]}' \
   | jq -r '.results[0].audio_b64' | base64 -d > track.flac
 ```
+
+A Stable Audio 3 recipe takes `{id, prompt, negative_prompt?, duration?,
+seed?, format?}`: no lyrics, no planner, and `duration` from 1 s to the
+recipe's `max_seconds` (its `default_seconds` when unset). The result has the
+same shape, with `bpm`, `key_scale`, `time_signature` and `lyrics` null.
+
+### Text2Sfx (`text2sfx`)
+- Recipes: `stable-audio-3-small-sfx` (Stable Audio 3 Small SFX, Stability
+  AI Community License: sound effects and ambience, 44.1 kHz stereo, up to
+  120 s)
+- Task: `{id, prompt, negative_prompt?, duration?, seed?, format?}`
+- Result: `{id, audio_b64, format, sample_rate, duration, seed, caption}`
+- `duration` defaults to 10 s; `seed` makes a clip reproducible, and without
+  one the result carries the seed it got. `format`: `flac` (default), `wav`,
+  `mp3`.
 
 ### Audio, voiceprints, speech
 

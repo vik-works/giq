@@ -123,17 +123,22 @@
     {
       "name": "giq-music",
       "package": "giq-music",
-      "summary": "Text to music with ACE-Step 1.5",
+      "summary": "Text to music and sound with ACE-Step 1.5 and Stable Audio 3",
       "engines": [
-        "acestep"
+        "acestep",
+        "stable-audio"
       ],
       "modalities": [
-        "text2music"
+        "text2music",
+        "text2sfx"
       ],
       "recipes": [
-        "ace-step-1.5-turbo"
+        "ace-step-1.5-turbo",
+        "stable-audio-3-medium",
+        "stable-audio-3-small-music",
+        "stable-audio-3-small-sfx"
       ],
-      "needs": "its own interpreter, set up once: cd envs/acestep && uv sync"
+      "needs": "their own interpreters, set up once: cd envs/acestep && uv sync; cd envs/stable-audio && uv sync"
     }
   ]
 }

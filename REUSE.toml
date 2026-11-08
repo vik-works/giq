@@ -18,7 +18,8 @@ SPDX-FileCopyrightText = "2026 vikworks UG (haftungsbeschränkt)"
 SPDX-License-Identifier = "Apache-2.0"
 
 # JSON has no comment syntax. The dashboard's manifests (package-lock.json is
-# rewritten by npm on every install) and its translation files.
+# rewritten by npm on every install), its translation files, and the shared
+# agent settings (no AI attribution in commits or PRs, per AGENTS.md).
 [[annotations]]
 path = [
   "frontend/package.json",
@@ -26,6 +27,7 @@ path = [
   "frontend/tsconfig.json",
   "frontend/src/locales/**/*.json",
   "frontend/plugins/*/public/**/*.json",
+  ".claude/settings.json",
 ]
 SPDX-FileCopyrightText = "2026 vikworks UG (haftungsbeschränkt)"
 SPDX-License-Identifier = "Apache-2.0"

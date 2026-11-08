@@ -178,12 +178,20 @@ generation ends as `response.failed` with `giq_job_failed`.
 ### Text2Image (`text2image`)
 - Recipes: `flux_klein` (FLUX.2 klein 4B, sd.cpp), `zimage` (Z-Image-Turbo,
   sd.cpp)
-- Task: `{id, prompt, negative_prompt?, seed?}`
+- Task: `{id, prompt, negative_prompt?, seed?, width?, height?}`
 - Result: `{id, image_b64, seed}`
+- Size: `width` and `height` go together, on the task or in the job's
+  `params`. A task's pair wins over the params' pair, and the two are never
+  mixed. Without a pair the configured `image_generation` size is used as is.
+  A requested size is held to at least 256 px a side and at most 2.4 MP
+  (2048x1152, say), keeping the aspect ratio, then snapped down to multiples
+  of 16: 1000x750 renders at 992x736. A lone side or a non-numeric size falls
+  back to the default. Renders larger than the default decode the VAE in tiles.
 
 ### Image Edit (`image_edit`)
 - Recipes: `flux_klein` (reference edits via sd.cpp)
-- Task: `{id, reference_image_b64, instruction, negative_prompt?}`
+- Task: `{id, reference_image_b64, instruction, negative_prompt?, width?, height?}`
+  (size as for text2image)
 - Result: `{id, image_b64, seed}`
 
 ### OCR (`ocr`)

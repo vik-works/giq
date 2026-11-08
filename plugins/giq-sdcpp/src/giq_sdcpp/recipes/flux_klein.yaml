@@ -46,7 +46,8 @@ vram:
   # through to evicting the audio residents too whenever free VRAM dips under
   # ~2 GB. The figure is engine-specific: without CPU offload the same weights
   # need about 13 GB (7.75 diffusion bf16 + 3.85 Qwen3-4B TE + 0.3 VAE +
-  # activations).
+  # activations). Measured at the default 800x480; renders a request sizes
+  # larger (up to the adapter's 2.4 MP budget, VAE tiled) are not measured.
   gb: 8.0
   measured: true
 # An edit carries a reference image a render does not; half the batch keeps

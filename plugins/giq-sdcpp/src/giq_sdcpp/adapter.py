@@ -10,8 +10,9 @@ dependency is one MIT binary that loads in seconds, and with --offload-to-cpu
 it peaks at ~8.5GB VRAM for flux_klein — image jobs only need the resident LLM
 evicted; the audio residents keep serving through renders.
 
-Uses the A1111-compatible /sdapi/v1/txt2img surface (structured fields, no
-prompt-embedded extras).
+Uses the A1111-compatible /sdapi/v1/txt2img surface: structured fields, plus
+one prompt-embedded extra the adapter itself adds (VAE tiling for renders
+above the default size); clients can't embed their own.
 """
 
 from __future__ import annotations
@@ -19,8 +20,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from collections import deque
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -44,28 +47,89 @@ READY_TIMEOUT_SECONDS = 300.0
 RENDER_TIMEOUT_SECONDS = 600.0
 
 
-# Per-request render size (opt-in): a task (or the job's params) may ask for
-# width/height; otherwise the configured image_generation size is used.
-# Capped so one request can't push the card out of memory, and snapped to the
-# multiple of 16 the latent space needs.
+# Per-request render size (opt-in): a task, or else the job's params, may ask
+# for a width/height pair; otherwise the configured image_generation size is
+# used exactly as configured. The pixel budget keeps one request from pushing
+# the card out of memory. The recipes' VRAM figures were measured at the
+# default size; peaks at the top of this budget are not measured yet.
 MAX_RENDER_PIXELS = 2_400_000  # e.g. 2048x1152; ~2 MP is where klein still looks native
+# The latent space needs multiples of 16; below 256 a side carries too few
+# latent cells for the models to draw anything coherent.
+_SNAP = 16
+_MIN_SIDE = 256
+
+# sd-server's sdapi route reads a JSON block of its own parameters out of the
+# prompt and lets it override the structured fields, size and steps included.
+# Client prompts lose any such block, so the budget above holds; the adapter
+# adds its own only to switch VAE tiling on for a render that needs it.
+# A lone tag goes too: a stray opening tag would pair with the adapter's own.
+_EXTRA_ARGS_RE = re.compile(
+    r"<sd_cpp_extra_args>.*?</sd_cpp_extra_args>|</?sd_cpp_extra_args>", re.DOTALL
+)
+_VAE_TILING_ARGS = '<sd_cpp_extra_args>{"vae_tiling_params":{"enabled":true}}</sd_cpp_extra_args>'
+
+
+def _strip_extra_args(prompt: str) -> str:
+    """The prompt without any extra-args block, repeated until none is left:
+    one pass could splice a new block together out of a nested one."""
+    while True:
+        stripped = _EXTRA_ARGS_RE.sub("", prompt)
+        if stripped == prompt:
+            return prompt
+        prompt = stripped
+
+
+def _side(value: Any) -> int | None:
+    """A requested side as a positive int, or None when it isn't one."""
+    if isinstance(value, bool):
+        return None
+    try:
+        side = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return side if side > 0 else None
 
 
 def _render_size(
     task: dict, params: dict | None, default_w: int, default_h: int
 ) -> tuple[int, int]:
-    p = params or {}
-    try:
-        w = int(task.get("width") or p.get("width") or default_w)
-        h = int(task.get("height") or p.get("height") or default_h)
-    except (TypeError, ValueError):
+    """The size to render at. A size is a pair, taken from one source: the
+    task when it names either side, else the params. A missing, partial or
+    unusable pair falls back to the default rather than mixing sources."""
+    source = next(
+        (
+            s
+            for s in (task, params or {})
+            if s.get("width") is not None or s.get("height") is not None
+        ),
+        None,
+    )
+    if source is None:
         return default_w, default_h
-    if w <= 0 or h <= 0:
+    w, h = _side(source.get("width")), _side(source.get("height"))
+    if w is None or h is None:
         return default_w, default_h
+    # Floor first, then the budget: scaling an extreme aspect ratio down to
+    # the budget can drop the short side under the floor, so the short side
+    # is pinned there and the long side gets what the budget leaves.
+    w, h = max(w, _MIN_SIDE), max(h, _MIN_SIDE)
     if w * h > MAX_RENDER_PIXELS:
         k = (MAX_RENDER_PIXELS / (w * h)) ** 0.5
         w, h = int(w * k), int(h * k)
-    return max(256, w // 16 * 16), max(256, h // 16 * 16)
+        if min(w, h) < _MIN_SIDE:
+            long_side = MAX_RENDER_PIXELS // _MIN_SIDE
+            w, h = (long_side, _MIN_SIDE) if w > h else (_MIN_SIDE, long_side)
+    # Snapping down keeps the area inside the budget and, 256 being a
+    # multiple of 16, the sides at or above the floor.
+    return w // _SNAP * _SNAP, h // _SNAP * _SNAP
+
+
+def _needs_vae_tiling(width: int, height: int, default_w: int, default_h: int) -> bool:
+    """Tile the VAE decode only above the default area, the size the recipes
+    were measured at untiled: an untiled ~2 MP decode asks for a 13.9 GB
+    buffer, which doesn't fit beside the model, while default-size renders
+    stay byte-identical to what they were."""
+    return width * height > default_w * default_h
 
 
 @dataclass
@@ -172,9 +236,6 @@ class SdCppAdapter:
             # Weights stage through RAM per pipeline phase: peak VRAM drops
             # from ~15.4GB to ~8.5GB, and the 800x480 render cost is seconds.
             "--offload-to-cpu",
-            # Decode the VAE in tiles: per-request sizes up to ~2 MP need a
-            # 14 GB decode buffer untiled, which doesn't fit beside the model.
-            "--vae-tiling",
         ]
         logger.info(f"Starting sd-server: {self.config.model}")
         logger.debug(f"Command: {' '.join(cmd)}")
@@ -279,7 +340,11 @@ class SdCppAdapter:
                 prompt = task.get("prompt") or task.get("instruction")
                 if not prompt:
                     raise ValueError("task has neither prompt nor instruction")
-                width, height = _render_size(task, params, self.config.width, self.config.height)
+                prompt = _strip_extra_args(prompt)
+                dw, dh = self.config.width, self.config.height
+                width, height = _render_size(task, params, dw, dh)
+                if _needs_vae_tiling(width, height, dw, dh):
+                    prompt += _VAE_TILING_ARGS
                 payload = {
                     "prompt": prompt,
                     "negative_prompt": task.get("negative_prompt") or "",

@@ -10,6 +10,7 @@ import {
   GraphicsCardIcon,
   ImageIcon,
   MountainsIcon,
+  MusicNotesIcon,
   PaintBrushIcon,
   SpeakerHighIcon,
   VectorThreeIcon,
@@ -50,6 +51,7 @@ const ICON_BY_NAME: Record<string, PhosphorIcon> = {
   vector: VectorThreeIcon,
   "file-text": FileTextIcon,
   mountains: MountainsIcon,
+  "music-notes": MusicNotesIcon,
   gpu: GraphicsCardIcon,
 };
 

@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-acestep"
+version = "0.1.0"
+description = "Interpreter for giq's text2music child: ACE-Step 1.5 (DiT + 5Hz LM planner)"
+# 3.11 because nano-vllm's prebuilt flash-attn wheel (cu128, torch 2.10) is
+# cp311 only; without flash-attn the planner LM runs eager, without CUDA graphs.
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # Not on PyPI, so pinned to a commit. ace-step pins its own torch (2.10,
+    # cu128) and transformers (<4.58), which is why it gets an interpreter of
+    # its own rather than giq's venv.
+    "ace-step @ git+https://github.com/ace-step/ACE-Step-1.5@ca1e85fe9430179831e6bc6be790c332190a3866",
+    # ace-step names nano-vllm as a path inside its own repo, which a git
+    # install of ace-step can't resolve: the same commit's subdirectory.
+    "nano-vllm @ git+https://github.com/ace-step/ACE-Step-1.5@ca1e85fe9430179831e6bc6be790c332190a3866#subdirectory=acestep/third_parts/nano-vllm",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }

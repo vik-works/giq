@@ -30,6 +30,7 @@ dependencies = [
     "giq-ocr==0.7.0",
     "giq-depth==0.7.0",
     "giq-imajev==0.7.0",
+    "giq-music==0.7.0",
 ]
 
 [build-system]

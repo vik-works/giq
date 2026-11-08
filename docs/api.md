@@ -208,6 +208,31 @@ generation ends as `response.failed` with `giq_job_failed`.
 - Task: `{id, image_b64, visualize?}`
 - Result: `{id, depth_b64, width, height, depth_min, depth_max, metric, visualization_b64?}`
 
+### Text2Music (`text2music`)
+- Recipes: `ace-step-1.5-turbo` (ACE-Step 1.5, MIT: a 2B DiT planned by a
+  1.7B LM; 48 kHz stereo, 10 s to 10 min, lyrics in 50+ languages)
+- Task: `{id, prompt, lyrics?, instrumental?, duration?, bpm?, key_scale?,
+  time_signature?, language?, seed?, plan?, format?}`
+- Result: `{id, audio_b64, format, sample_rate, duration, seed, bpm,
+  key_scale, time_signature, caption, lyrics}`
+- `prompt` describes the music (genre, instruments, mood). `lyrics` uses
+  section tags (`[verse]`, `[chorus]` …); without lyrics the track is an
+  instrumental unless `instrumental` says otherwise. `plan` (default on)
+  lets the planner fill in what the task leaves open — `duration` (10-600 s),
+  `bpm` (30-300), `key_scale` (`"A minor"`), `time_signature` (`2/4`, `3/4`,
+  `4/4`, `6/8`) — and enrich a short prompt; the result reports what the
+  track got, the task's values where it gave them. Unplanned, a task without
+  a `duration` renders 30 s. `seed` makes a track reproducible; without one
+  the result carries the seed it got. `format`: `flac` (default), `wav`,
+  `mp3`.
+
+```bash
+curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' \
+  -d '{"modality":"text2music","model":"ace-step-1.5-turbo",
+       "tasks":[{"id":"1","prompt":"warm lo-fi hip hop, mellow Rhodes piano","duration":60}]}' \
+  | jq -r '.results[0].audio_b64' | base64 -d > track.flac
+```
+
 ### Audio, voiceprints, speech
 
 The resident audio stack (`whisper-large-v3`: faster-whisper plus pyannote

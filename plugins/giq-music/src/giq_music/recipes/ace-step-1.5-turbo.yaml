@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# ACE-Step 1.5 turbo (MIT; https://huggingface.co/ACE-Step/Ace-Step1.5): a
+# 2B DiT that renders 10 s to 10 min of 48 kHz stereo music in 8 steps,
+# planned by a 5Hz LM (fine-tuned Qwen3-1.7B) that fills in what a request
+# leaves open — tempo, key, time signature, duration, the song's structure —
+# and conditioned through Qwen3-Embedding-0.6B (Apache-2.0). Lyrics in 50+
+# languages; the card allows commercial use of the output. Sleepy model:
+# loads on demand, evictable.
+#
+# The repository is ACE-Step's own checkpoint layout (acestep-v15-turbo/,
+# acestep-5Hz-lm-1.7B/, Qwen3-Embedding-0.6B/, vae/), 10.1 GB; params name
+# the folders the child loads.
+name: ace-step-1.5-turbo
+label: ACE-Step 1.5 Turbo
+modalities: [text2music]
+engine: acestep
+detail: "text → music · lyrics · 10 s–10 min · 48 kHz stereo"
+weights:
+  path: ACE-Step-Ace-Step1.5
+  source: hf:ACE-Step/Ace-Step1.5
+  revision: 19671f406d603126926c1b7e2adc169acbcade22
+  format: safetensors
+  licence: mit
+params:
+  dit: acestep-v15-turbo
+  lm: acestep-5Hz-lm-1.7B
+  steps: 8
+vram:
+  # Not measured yet. ACE-Step's own budget: ~4.7 GB of DiT weights, and the
+  # planner reserves its 3.4 GB weights + 1.0 GB KV cache + 0.3 GB through
+  # nano-vllm; activations grow with the track's length.
+  gb: 12.0
+  measured: false
+# One track per task; a batch renders them one after another.
+max_batch: 4

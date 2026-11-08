@@ -1,0 +1,36 @@
+{
+  "field": {
+    "duration": "Duration (s)",
+    "lyrics": "Lyrics (optional)",
+    "lyricsNone": "[verse]\n…\n[chorus]\n…  — empty for an instrumental",
+    "model": "Model",
+    "plan": "Planner",
+    "prompt": "Description",
+    "seed": "Seed",
+    "seedRandom": "random"
+  },
+  "music": {
+    "defaultPrompt": "Warm lo-fi hip hop, mellow Rhodes piano, vinyl crackle, laid-back drums",
+    "evicts": "Composing evicts resident instances — the first track takes a while, then they reload.",
+    "none": "No text-to-music model fits on these cards.",
+    "planHint": "The planner fills in what is left open — tempo, key, duration, structure — before the track is rendered."
+  },
+  "out": {
+    "bpm": "{{bpm}} BPM",
+    "duration": "length {{value}}",
+    "latency": "latency {{value}}",
+    "seed": "seed {{seed}}",
+    "timeSignature": "{{value}} time"
+  },
+  "run": {
+    "composing": "Composing…",
+    "music": "Compose"
+  },
+  "tab": {
+    "music": "Text → music"
+  },
+  "toggle": {
+    "off": "off",
+    "on": "on"
+  }
+}

@@ -119,6 +119,21 @@
         "imajev-2b"
       ],
       "needs": "its own interpreter, set up once: cd envs/imajev && uv sync"
+    },
+    {
+      "name": "giq-music",
+      "package": "giq-music",
+      "summary": "Text to music with ACE-Step 1.5",
+      "engines": [
+        "acestep"
+      ],
+      "modalities": [
+        "text2music"
+      ],
+      "recipes": [
+        "ace-step-1.5-turbo"
+      ],
+      "needs": "its own interpreter, set up once: cd envs/acestep && uv sync"
     }
   ]
 }

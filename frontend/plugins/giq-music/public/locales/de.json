@@ -1,0 +1,36 @@
+{
+  "field": {
+    "duration": "Dauer (s)",
+    "lyrics": "Liedtext (optional)",
+    "lyricsNone": "[verse]\n…\n[chorus]\n…  — leer für ein Instrumental",
+    "model": "Modell",
+    "plan": "Planer",
+    "prompt": "Beschreibung",
+    "seed": "Seed",
+    "seedRandom": "zufällig"
+  },
+  "music": {
+    "defaultPrompt": "Warmer Lo-Fi-Hip-Hop, sanftes Rhodes-Piano, Vinylknistern, entspannte Drums",
+    "evicts": "Komponieren verdrängt vorgehaltene Instanzen — der erste Track dauert, danach laden sie neu.",
+    "none": "Kein Text-zu-Musik-Modell passt auf diese Karten.",
+    "planHint": "Der Planer ergänzt, was offen bleibt — Tempo, Tonart, Dauer, Aufbau —, bevor der Track gerendert wird."
+  },
+  "out": {
+    "bpm": "{{bpm}} BPM",
+    "duration": "Länge {{value}}",
+    "latency": "Latenz {{value}}",
+    "seed": "Seed {{seed}}",
+    "timeSignature": "{{value}}-Takt"
+  },
+  "run": {
+    "composing": "Komponiere…",
+    "music": "Komponieren"
+  },
+  "tab": {
+    "music": "Text → Musik"
+  },
+  "toggle": {
+    "off": "aus",
+    "on": "an"
+  }
+}

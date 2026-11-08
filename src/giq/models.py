@@ -39,6 +39,10 @@ class Modality(StrEnum):
     # a record plus 0-2 images and 1-8 typed questions in, calibrated
     # probabilities with an explicit unknown out. See DecideResult.
     decide = "decide"
+    # Text to music (ACE-Step in a child process on its own interpreter): a
+    # description, optional lyrics and musical constraints in, an encoded
+    # 48 kHz stereo track out. See giq_music.adapter.MusicResult.
+    text2music = "text2music"
 
 
 class JobStatus(StrEnum):

@@ -54,6 +54,18 @@ read as `sd.cpp`, with a deprecation warning.
 A recipe's runtime is its `engine`. A recipe's VRAM figure is measured
 under its engine; switching engine means measuring again.
 
+## sd.cpp
+
+An sd.cpp recipe may set one parameter:
+
+| Parameter | Meaning |
+|-----------|---------|
+| `max_render_pixels` | The largest render a request may ask for, in pixels (at least 65536). Peak VRAM grows with the render's area, so it is measured with the recipe's VRAM figure. Unset = the configured `image_generation` area: requests may change the aspect, not grow. |
+
+Renders larger than the configured size decode the VAE in tiles; renders at
+it decode untiled, as measured. See [the API](api.md#text2image-text2image)
+for how a request names its size.
+
 ## Chat templates
 
 Both LLM engines render a conversation with the checkpoint's own chat

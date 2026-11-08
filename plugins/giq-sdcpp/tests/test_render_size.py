@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from giq_sdcpp.adapter import (
-    MAX_RENDER_PIXELS,
     SdCppAdapter,
     SdCppConfig,
     _needs_vae_tiling,
@@ -16,28 +15,30 @@ from giq_sdcpp.adapter import (
     _strip_extra_args,
 )
 
+BUDGET = 2_400_000
+
 
 def test_default_when_nothing_asked():
-    assert _render_size({}, None, 800, 480) == (800, 480)
+    assert _render_size({}, None, 800, 480, BUDGET) == (800, 480)
 
 
 def test_task_wins_over_params():
     assert _render_size(
-        {"width": 1024, "height": 768}, {"width": 512, "height": 512}, 800, 480
+        {"width": 1024, "height": 768}, {"width": 512, "height": 512}, 800, 480, BUDGET
     ) == (1024, 768)
 
 
 def test_params_used_when_task_is_silent():
-    assert _render_size({}, {"width": 512, "height": 640}, 800, 480) == (512, 640)
+    assert _render_size({}, {"width": 512, "height": 640}, 800, 480, BUDGET) == (512, 640)
 
 
 def test_snapped_to_multiples_of_16():
-    assert _render_size({"width": 1000, "height": 750}, None, 800, 480) == (992, 736)
+    assert _render_size({"width": 1000, "height": 750}, None, 800, 480, BUDGET) == (992, 736)
 
 
 def test_capped_to_the_pixel_budget_keeping_the_aspect():
-    w, h = _render_size({"width": 4096, "height": 2304}, None, 800, 480)
-    assert w * h <= MAX_RENDER_PIXELS
+    w, h = _render_size({"width": 4096, "height": 2304}, None, 800, 480, BUDGET)
+    assert w * h <= BUDGET
     assert w % 16 == 0 and h % 16 == 0
     assert w / h == pytest.approx(16 / 9, rel=0.02)
 
@@ -46,36 +47,39 @@ def test_capped_to_the_pixel_budget_keeping_the_aspect():
     "bad", [{"width": "wide", "height": 480}, {"width": -5, "height": 480}, {"width": 0}]
 )
 def test_unusable_sizes_fall_back_to_the_default(bad):
-    assert _render_size(bad, None, 800, 480) == (800, 480)
+    assert _render_size(bad, None, 800, 480, BUDGET) == (800, 480)
 
 
 def test_floor_of_256():
-    assert _render_size({"width": 64, "height": 64}, None, 800, 480) == (256, 256)
+    assert _render_size({"width": 64, "height": 64}, None, 800, 480, BUDGET) == (256, 256)
 
 
 @pytest.mark.parametrize("size", [(100_000, 1), (1, 100_000), (1_000_000_000, 1), (50_000, 300)])
 def test_extreme_aspect_stays_inside_the_budget_and_floor(size):
-    w, h = _render_size({"width": size[0], "height": size[1]}, None, 800, 480)
-    assert w * h <= MAX_RENDER_PIXELS
+    w, h = _render_size({"width": size[0], "height": size[1]}, None, 800, 480, BUDGET)
+    assert w * h <= BUDGET
     assert min(w, h) >= 256
     assert w % 16 == 0 and h % 16 == 0
 
 
 def test_a_lone_side_falls_back_to_the_default():
-    assert _render_size({"width": 2048}, None, 800, 480) == (800, 480)
+    assert _render_size({"width": 2048}, None, 800, 480, BUDGET) == (800, 480)
 
 
 def test_sides_never_mix_sources():
-    assert _render_size({"width": 1024}, {"width": 512, "height": 1024}, 800, 480) == (800, 480)
+    assert _render_size({"width": 1024}, {"width": 512, "height": 1024}, 800, 480, BUDGET) == (
+        800,
+        480,
+    )
 
 
 @pytest.mark.parametrize("value", [float("inf"), float("nan"), True, None, "1e9999"])
 def test_non_numbers_fall_back_to_the_default(value):
-    assert _render_size({"width": value, "height": 512}, None, 800, 480) == (800, 480)
+    assert _render_size({"width": value, "height": 512}, None, 800, 480, BUDGET) == (800, 480)
 
 
 def test_the_configured_default_passes_through_untouched():
-    assert _render_size({}, None, 1000, 200) == (1000, 200)
+    assert _render_size({}, None, 1000, 200, BUDGET) == (1000, 200)
 
 
 def test_tiling_only_above_the_default_area():
@@ -120,11 +124,11 @@ async def test_client_extra_args_are_stripped_and_default_renders_untiled():
 
 async def test_a_large_render_asks_for_vae_tiling():
     adapter = _adapter()
-    await adapter.run_batch([{"id": "t", "prompt": "a fox", "width": 2048, "height": 1152}])
+    await adapter.run_batch([{"id": "t", "prompt": "a fox", "width": 1024, "height": 1024}])
     sent = adapter._client.payloads[0]  # type: ignore[union-attr]
     assert sent["prompt"].startswith("a fox<sd_cpp_extra_args>")
     assert '"vae_tiling_params":{"enabled":true}' in sent["prompt"]
-    assert (sent["width"], sent["height"]) == (2048, 1152)
+    assert (sent["width"], sent["height"]) == (1024, 1024)
 
 
 def test_a_nested_extra_args_block_cannot_splice_itself_back_together():
@@ -134,3 +138,20 @@ def test_a_nested_extra_args_block_cannot_splice_itself_back_together():
 
 def test_a_lone_tag_is_stripped_too():
     assert _strip_extra_args('a fox<sd_cpp_extra_args>{"steps":200}') == 'a fox{"steps":200}'
+
+
+def test_each_recipe_brings_its_measured_budget():
+    klein = SdCppConfig(model="flux_klein", diffusion="d", device="gpu", port=1)
+    zimage = SdCppConfig(model="zimage", diffusion="d", device="gpu", port=1)
+    assert klein.max_pixels == 1024 * 1024
+    assert zimage.max_pixels == 2_400_000
+
+
+def test_a_recipe_without_a_budget_does_not_grow_past_the_default_area(monkeypatch):
+    import giq.registry
+
+    monkeypatch.setattr(giq.registry, "get_recipe", lambda name: None)
+    cfg = SdCppConfig(model="mystery", diffusion="d", device="gpu", port=1)
+    assert cfg.max_pixels == 800 * 480
+    w, h = _render_size({"width": 1024, "height": 1024}, None, 800, 480, cfg.max_pixels)
+    assert w * h <= 800 * 480 and w == h

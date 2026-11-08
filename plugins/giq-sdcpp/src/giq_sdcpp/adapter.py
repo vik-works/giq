@@ -49,10 +49,8 @@ RENDER_TIMEOUT_SECONDS = 600.0
 
 # Per-request render size (opt-in): a task, or else the job's params, may ask
 # for a width/height pair; otherwise the configured image_generation size is
-# used exactly as configured. The pixel budget keeps one request from pushing
-# the card out of memory. The recipes' VRAM figures were measured at the
-# default size; peaks at the top of this budget are not measured yet.
-MAX_RENDER_PIXELS = 2_400_000  # e.g. 2048x1152; ~2 MP is where klein still looks native
+# used exactly as configured. The recipe's `params.max_render_pixels` keeps
+# one request from pushing the card out of memory (giq_sdcpp.params).
 # The latent space needs multiples of 16; below 256 a side carries too few
 # latent cells for the models to draw anything coherent.
 _SNAP = 16
@@ -91,7 +89,7 @@ def _side(value: Any) -> int | None:
 
 
 def _render_size(
-    task: dict, params: dict | None, default_w: int, default_h: int
+    task: dict, params: dict | None, default_w: int, default_h: int, max_pixels: int
 ) -> tuple[int, int]:
     """The size to render at. A size is a pair, taken from one source: the
     task when it names either side, else the params. A missing, partial or
@@ -112,12 +110,13 @@ def _render_size(
     # Floor first, then the budget: scaling an extreme aspect ratio down to
     # the budget can drop the short side under the floor, so the short side
     # is pinned there and the long side gets what the budget leaves.
+    max_pixels = max(max_pixels, _MIN_SIDE * _MIN_SIDE)
     w, h = max(w, _MIN_SIDE), max(h, _MIN_SIDE)
-    if w * h > MAX_RENDER_PIXELS:
-        k = (MAX_RENDER_PIXELS / (w * h)) ** 0.5
+    if w * h > max_pixels:
+        k = (max_pixels / (w * h)) ** 0.5
         w, h = int(w * k), int(h * k)
         if min(w, h) < _MIN_SIDE:
-            long_side = MAX_RENDER_PIXELS // _MIN_SIDE
+            long_side = max_pixels // _MIN_SIDE
             w, h = (long_side, _MIN_SIDE) if w > h else (_MIN_SIDE, long_side)
     # Snapping down keeps the area inside the budget and, 256 being a
     # multiple of 16, the sides at or above the floor.
@@ -151,6 +150,9 @@ class SdCppConfig:
     device: str | None = None
     port: int | None = None
 
+    # The largest render a request may ask for; 0 = the recipe's budget.
+    max_pixels: int = 0
+
     def __post_init__(self):
         if self.device is None:
             from giq.vram import device_for_recipe
@@ -171,6 +173,12 @@ class SdCppConfig:
             self.height = gen.height
             self.steps = gen.steps
             self.cfg_scale = gen.cfg
+        if not self.max_pixels:
+            from giq.registry import get_recipe
+
+            recipe = get_recipe(self.model)
+            budget = getattr(recipe.params, "max_render_pixels", None) if recipe else None
+            self.max_pixels = budget or self.width * self.height
 
 
 @dataclass
@@ -342,7 +350,7 @@ class SdCppAdapter:
                     raise ValueError("task has neither prompt nor instruction")
                 prompt = _strip_extra_args(prompt)
                 dw, dh = self.config.width, self.config.height
-                width, height = _render_size(task, params, dw, dh)
+                width, height = _render_size(task, params, dw, dh, self.config.max_pixels)
                 if _needs_vae_tiling(width, height, dw, dh):
                     prompt += _VAE_TILING_ARGS
                 payload = {

@@ -46,10 +46,18 @@ vram:
   # through to evicting the audio residents too whenever free VRAM dips under
   # ~2 GB. The figure is engine-specific: without CPU offload the same weights
   # need about 13 GB (7.75 diffusion bf16 + 3.85 Qwen3-4B TE + 0.3 VAE +
-  # activations). Measured at the default 800x480; renders a request sizes
-  # larger (up to the adapter's 2.4 MP budget, VAE tiled) are not measured.
+  # activations).
   gb: 8.0
   measured: true
+# The largest render a request may ask for: 1 MP (1024x1024). Peak grows
+# with the render's area and, for an edit, with the reference image's; the
+# gate leaves the figure plus its 2 GB margin free. Measured on an RTX 5090,
+# sd-server's own peak with a 1 MP reference (the 5090 reads ~0.4 GB above
+# the 16 GB card): render 8.3 GB at 800x480, 9.2 at 1 MP, 9.9 at 1.6 MP,
+# 10.6 at 2.4 MP; edit 9.4 at 800x480, 10.4 at 1 MP, 11.8 at 2.4 MP. At 1 MP
+# the edit reaches the margin's edge; past it renders do too.
+params:
+  max_render_pixels: 1048576
 # An edit carries a reference image a render does not; half the batch keeps
 # the pair inside the same VRAM figure.
 max_batch:

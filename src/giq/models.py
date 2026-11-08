@@ -76,6 +76,9 @@ class Text2ImageTask(BaseModel):
     prompt: str
     negative_prompt: str | None = None
     seed: int | None = None  # Optional seed for reproducibility
+    # Optional render size, as a pair; see docs/api.md for the budget.
+    width: int | None = None
+    height: int | None = None
 
 
 class ImageEditTask(BaseModel):
@@ -85,6 +88,8 @@ class ImageEditTask(BaseModel):
     reference_image_b64: str  # Base64 encoded reference image
     instruction: str
     negative_prompt: str | None = None
+    width: int | None = None
+    height: int | None = None
 
 
 # --- Job Request (unified) ---

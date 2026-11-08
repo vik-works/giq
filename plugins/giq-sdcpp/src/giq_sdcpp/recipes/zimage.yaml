@@ -30,6 +30,8 @@ weights:
 vram:
   # bf16, 12 GB of weights; peaks 12.6 GB even offloaded, so it takes the full
   # eviction. Validated on a 16 GB card: 14.4 GB peak including the desktop.
+  # Measured at the default image_generation size; renders a request sizes
+  # larger (up to the adapter's 2.4 MP budget, VAE tiled) are not measured.
   gb: 13.0
   measured: true
 max_batch: 8

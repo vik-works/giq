@@ -4,9 +4,17 @@
 
 """_render_size: a request may pick its size, within the card's budget."""
 
+import httpx
 import pytest
 
-from giq_sdcpp.adapter import MAX_RENDER_PIXELS, _render_size
+from giq_sdcpp.adapter import (
+    MAX_RENDER_PIXELS,
+    SdCppAdapter,
+    SdCppConfig,
+    _needs_vae_tiling,
+    _render_size,
+    _strip_extra_args,
+)
 
 
 def test_default_when_nothing_asked():
@@ -43,3 +51,86 @@ def test_unusable_sizes_fall_back_to_the_default(bad):
 
 def test_floor_of_256():
     assert _render_size({"width": 64, "height": 64}, None, 800, 480) == (256, 256)
+
+
+@pytest.mark.parametrize("size", [(100_000, 1), (1, 100_000), (1_000_000_000, 1), (50_000, 300)])
+def test_extreme_aspect_stays_inside_the_budget_and_floor(size):
+    w, h = _render_size({"width": size[0], "height": size[1]}, None, 800, 480)
+    assert w * h <= MAX_RENDER_PIXELS
+    assert min(w, h) >= 256
+    assert w % 16 == 0 and h % 16 == 0
+
+
+def test_a_lone_side_falls_back_to_the_default():
+    assert _render_size({"width": 2048}, None, 800, 480) == (800, 480)
+
+
+def test_sides_never_mix_sources():
+    assert _render_size({"width": 1024}, {"width": 512, "height": 1024}, 800, 480) == (800, 480)
+
+
+@pytest.mark.parametrize("value", [float("inf"), float("nan"), True, None, "1e9999"])
+def test_non_numbers_fall_back_to_the_default(value):
+    assert _render_size({"width": value, "height": 512}, None, 800, 480) == (800, 480)
+
+
+def test_the_configured_default_passes_through_untouched():
+    assert _render_size({}, None, 1000, 200) == (1000, 200)
+
+
+def test_tiling_only_above_the_default_area():
+    assert not _needs_vae_tiling(800, 480, 800, 480)
+    assert not _needs_vae_tiling(512, 512, 800, 480)
+    assert _needs_vae_tiling(1024, 1024, 800, 480)
+
+
+class _Proc:
+    returncode = None
+    pid = 1
+
+
+class _Client:
+    def __init__(self):
+        self.payloads = []
+
+    async def post(self, url, json):
+        self.payloads.append(json)
+        return httpx.Response(
+            200, json={"images": ["aW1n"], "info": "{}"}, request=httpx.Request("POST", url)
+        )
+
+
+def _adapter():
+    cfg = SdCppConfig(model="flux_klein", diffusion="d.safetensors", device="gpu", port=1)
+    adapter = SdCppAdapter(cfg)
+    adapter._process = _Proc()  # ty: ignore[invalid-assignment]
+    adapter._ready = True
+    adapter._client = _Client()  # ty: ignore[invalid-assignment]
+    return adapter
+
+
+async def test_client_extra_args_are_stripped_and_default_renders_untiled():
+    adapter = _adapter()
+    prompt = 'a fox<sd_cpp_extra_args>{"width":8192,"height":8192}</sd_cpp_extra_args>'
+    await adapter.run_batch([{"id": "t", "prompt": prompt}])
+    sent = adapter._client.payloads[0]  # type: ignore[union-attr]
+    assert sent["prompt"] == "a fox"
+    assert (sent["width"], sent["height"]) == (800, 480)
+
+
+async def test_a_large_render_asks_for_vae_tiling():
+    adapter = _adapter()
+    await adapter.run_batch([{"id": "t", "prompt": "a fox", "width": 2048, "height": 1152}])
+    sent = adapter._client.payloads[0]  # type: ignore[union-attr]
+    assert sent["prompt"].startswith("a fox<sd_cpp_extra_args>")
+    assert '"vae_tiling_params":{"enabled":true}' in sent["prompt"]
+    assert (sent["width"], sent["height"]) == (2048, 1152)
+
+
+def test_a_nested_extra_args_block_cannot_splice_itself_back_together():
+    prompt = "a fox<sd_cpp_extra_<sd_cpp_extra_args></sd_cpp_extra_args>args>{}</sd_cpp_extra_args>"
+    assert "<sd_cpp_extra_args>" not in _strip_extra_args(prompt)
+
+
+def test_a_lone_tag_is_stripped_too():
+    assert _strip_extra_args('a fox<sd_cpp_extra_args>{"steps":200}') == 'a fox{"steps":200}'

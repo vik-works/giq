@@ -16,6 +16,7 @@ from typing import Any
 from giq.paths import engine_binary
 from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Plugin, SmokeTest
 from giq.plugins import curated_ui
+from giq_sdcpp.params import SdCppParams
 
 __version__ = "0.7.0"
 
@@ -60,6 +61,7 @@ def _sdcpp_plugin() -> Plugin:
                     detail="sd-server (stable-diffusion.cpp)",
                 ),
                 aliases=("sdcpp",),
+                params=SdCppParams,
                 start_budget=_sdcpp_start_budget,
                 stale_pattern=r"sd-server .*--listen-port {port}\b",
             ),

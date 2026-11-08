@@ -76,7 +76,7 @@ class Text2ImageTask(BaseModel):
     prompt: str
     negative_prompt: str | None = None
     seed: int | None = None  # Optional seed for reproducibility
-    # Optional render size, as a pair; see docs/api.md for the budget.
+    # Optional render size, as a pair, within the recipe's budget (docs/api.md).
     width: int | None = None
     height: int | None = None
 

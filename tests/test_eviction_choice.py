@@ -108,25 +108,29 @@ def test_no_residents_is_no_victims():
     assert _choose_victims([], deficit=5.0) == []
 
 
-def test_a_flux_render_never_costs_whisper():
+def test_a_flux_render_costs_whisper_only_on_a_nearly_full_card():
     """The user-visible property, at every realistic free-VRAM level.
 
-    flux_klein's declared footprint decides this. At 9.0 (it is 7.91 measured)
-    the deficit exceeded gemma's size once free VRAM dipped under ~1.5GB and
-    the audio residents went down with it.
+    flux_klein's declared footprint decides this. Declared to cover a 2.4 MP
+    edit (10.0 plus margin against an 11.8 peak), gemma, with ecapa at worst,
+    covers the deficit from 2GB free; below that whisper goes down with them,
+    the price of full-size renders.
     """
     base = get_vram_requirement("flux_klein")
     required = base + margin_for(base)
-    for free in (0.0, 0.3, 0.5, 1.0, 1.5, 2.0, 3.0):
+    for free in (2.0, 2.5, 3.0, 4.0):
         victims = _keys(_choose_victims(standard_set(), deficit=required - free))
         assert WHISPER not in victims, f"whisper evicted at {free}GB free"
+    for free in (0.0, 1.0, 1.5):
+        victims = _keys(_choose_victims(standard_set(), deficit=required - free))
+        assert WHISPER in victims, f"whisper spared at {free}GB free"
 
 
 def test_flux_klein_is_declared_at_its_measured_footprint():
     """Guards the number the property above depends on."""
     recipe = get_recipe("flux_klein")
     assert recipe is not None and recipe.modalities == ("text2image", "image_edit")
-    assert recipe.vram_gb == 8.0, "measured 7.91GB peak"
+    assert recipe.vram_gb == 10.0, "measured 11.8GB peak for a 2.4 MP edit, inside it plus margin"
     assert recipe.measured is True
 
 

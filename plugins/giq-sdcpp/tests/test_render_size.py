@@ -149,7 +149,7 @@ def test_a_lone_tag_is_stripped_too():
 def test_each_recipe_brings_its_measured_budget():
     klein = SdCppConfig(model="flux_klein", diffusion="d", device="gpu", port=1)
     zimage = SdCppConfig(model="zimage", diffusion="d", device="gpu", port=1)
-    assert klein.max_pixels == 1024 * 1024
+    assert klein.max_pixels == 2_400_000
     assert zimage.max_pixels == 2_400_000
 
 

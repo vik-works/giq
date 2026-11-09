@@ -39,25 +39,23 @@ weights:
       revision: 5f526678002e43af5551dadb73ce2e8c91b43afe
       licence: apache-2.0
 vram:
-  # sd.cpp with --offload-to-cpu: sd-server's own peak is 7.91 GB, sampled
-  # per process through a live render (a whole-card reading says ~8.5, which
-  # counts more than the process's own). Declared 8.0 so the eviction planner
-  # sees a deficit the resident LLM alone can cover — at 9.0 it falls
-  # through to evicting the audio residents too whenever free VRAM dips under
-  # ~2 GB. The figure is engine-specific: without CPU offload the same weights
-  # need about 13 GB (7.75 diffusion bf16 + 3.85 Qwen3-4B TE + 0.3 VAE +
+  # sd.cpp with --offload-to-cpu: sd-server's own peak is 7.91 GB at the
+  # default 800x480, sampled per process through a live render (a whole-card
+  # reading says ~8.5, which counts more than the process's own). The figure
+  # covers the largest render a request may ask for, 2.4 MP (2048x1152):
+  # measured on an RTX 5090, sd-server's own peak (the 5090 reads ~0.4 GB
+  # above the 16 GB card) is render 8.3 GB at 800x480, 9.2 at 1 MP, 9.9 at
+  # 1.6 MP, 10.6 at 2.4 MP; edit 9.4 at 800x480, 10.4 at 1 MP, 11.8 at
+  # 2.4 MP. 10.0 plus the gate's 2 GB margin covers the 2.4 MP edit. Above
+  # 9.0 the eviction planner can no longer cover the deficit with the
+  # resident LLM alone and evicts the audio residents on the card too: the
+  # price of full-size renders. Without CPU offload the same weights need
+  # about 13 GB (7.75 diffusion bf16 + 3.85 Qwen3-4B TE + 0.3 VAE +
   # activations).
-  gb: 8.0
+  gb: 10.0
   measured: true
-# The largest render a request may ask for: 1 MP (1024x1024). Peak grows
-# with the render's area and, for an edit, with the reference image's; the
-# gate leaves the figure plus its 2 GB margin free. Measured on an RTX 5090,
-# sd-server's own peak with a 1 MP reference (the 5090 reads ~0.4 GB above
-# the 16 GB card): render 8.3 GB at 800x480, 9.2 at 1 MP, 9.9 at 1.6 MP,
-# 10.6 at 2.4 MP; edit 9.4 at 800x480, 10.4 at 1 MP, 11.8 at 2.4 MP. At 1 MP
-# the edit reaches the margin's edge; past it renders do too.
 params:
-  max_render_pixels: 1048576
+  max_render_pixels: 2400000
 # An edit carries a reference image a render does not; half the batch keeps
 # the pair inside the same VRAM figure.
 max_batch:

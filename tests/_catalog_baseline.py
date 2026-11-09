@@ -96,7 +96,7 @@ BUILTIN_SPECS = [
         "resident_priority": None,
         "vision": False,
         "voices": (),
-        "vram_gb": 8.0,
+        "vram_gb": 10.0,
         "worker": "image_edit",
     },
     {
@@ -113,7 +113,7 @@ BUILTIN_SPECS = [
         "resident_priority": None,
         "vision": False,
         "voices": (),
-        "vram_gb": 20.0,
+        "vram_gb": 21.0,
         "worker": "image_edit",
     },
     {
@@ -351,7 +351,7 @@ BUILTIN_SPECS = [
         "resident_priority": None,
         "vision": False,
         "voices": (),
-        "vram_gb": 8.0,
+        "vram_gb": 10.0,
         "worker": "text2image",
     },
     {

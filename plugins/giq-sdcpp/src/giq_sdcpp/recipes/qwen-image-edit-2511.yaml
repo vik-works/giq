@@ -50,10 +50,11 @@ weights:
       revision: 107d238d68b8387e32843d0b4a2e24ceb0d3ad86
       licence: apache-2.0
 vram:
-  # An estimate, not measured: the Q6_K DiT staged on the card (17.9 GB)
-  # plus the LoRA and 1 MP activations. It leaves a 16 GB card out.
-  gb: 22.0
-  measured: false
+  # Measured on an RTX 5090, sd-server's own peak: 19,992 MiB for a 1 MP
+  # edit, with a 512x512 reference and with a 1 MP one alike. The Q6_K DiT
+  # staged on the card dominates, so a 16 GB card never fits it.
+  gb: 20.0
+  measured: true
 params:
   # Lightning is distilled for 4 steps without CFG.
   steps: 4

@@ -43,7 +43,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 |--------|------|-------------------------|
 | `llama.cpp` | LLMs | `llama-server` |
 | `vllm` | LLMs from vendor checkpoints (NVFP4, FP8), many users at once | `envs/vllm` |
-| `sd.cpp` | `flux_klein`, `zimage` | `sd-server` |
+| `sd.cpp` | `flux_klein`, `zimage`, `qwen-image-edit-2511` | `sd-server` |
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
@@ -56,11 +56,19 @@ under its engine; switching engine means measuring again.
 
 ## sd.cpp
 
-An sd.cpp recipe may set one parameter:
+An sd.cpp recipe's files are its `weights.parts`: `diffusion`,
+`text_encoder` and `vae`, and optionally `llm_vision` (the vision tower of
+a GGUF text encoder, its mmproj file, which the edit models read the
+reference image with) and `lora` (a LoRA every render applies, such as a
+Lightning distillation). An sd.cpp recipe may set:
 
 | Parameter | Meaning |
 |-----------|---------|
 | `max_render_pixels` | The largest render a request may ask for, in pixels (at least 65536). Peak VRAM grows with the render's area, so it is measured with the recipe's VRAM figure. Unset = the configured `image_generation` area: requests may change the aspect, not grow. |
+| `steps`, `cfg_scale` | Sampling steps (1-100) and CFG (1-20), where the configured `image_generation` defaults don't suit the model. |
+| `flow_shift` | The flow models' timestep shift; unset = sd.cpp's default for the model. |
+| `model_args` | sd-server's `--model-args`, one `key=value` each, e.g. `qwen_image_zero_cond_t=true`, which Qwen-Image-Edit-2511 needs. |
+| `lora_strength` | How strongly `weights.parts.lora` applies (default 1.0). |
 
 Renders larger than the configured size decode the VAE in tiles; renders at
 it decode untiled, as measured. See [the API](api.md#text2image-text2image)

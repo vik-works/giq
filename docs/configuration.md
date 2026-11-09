@@ -194,7 +194,7 @@ Without a `path`, a whole repository is loaded from the Hugging Face cache.
 | Modality | Main weights | Parts |
 |--------|--------------|-------|
 | `llm` | the GGUF | `mmproj` (llama.cpp's vision projector; `params.mmproj` in an older file is read as this part, with a warning) |
-| `text2image`, `image_edit` | — | `diffusion`, `text_encoder`, `vae` (required), `lora` |
+| `text2image`, `image_edit` | — | `diffusion`, `text_encoder`, `vae` (required), `lora`, `llm_vision` |
 | `ocr` | the snapshot directory | `layout` (engine `transformers`: GLM-OCR's layout model) |
 | `depth` | the snapshot directory | — |
 | `stt` | a CTranslate2 directory, else the `hf:` source | — |

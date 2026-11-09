@@ -11,7 +11,9 @@ from dataclasses import dataclass
 
 from giq.weights import path_of, recipe_of
 
-IMAGE_PARTS = ("diffusion", "text_encoder", "vae", "lora")
+# llm_vision: the vision tower a GGUF text encoder leaves in a file of its
+# own (an mmproj), which the edit models read the reference image with.
+IMAGE_PARTS = ("diffusion", "text_encoder", "vae", "lora", "llm_vision")
 _REQUIRED_IMAGE_PARTS = ("diffusion", "text_encoder", "vae")
 
 
@@ -23,6 +25,7 @@ class ImageFiles:
     text_encoder: str
     vae: str
     lora: str | None = None
+    llm_vision: str | None = None
 
 
 def image_files(name: str) -> ImageFiles:
@@ -40,5 +43,10 @@ def image_files(name: str) -> ImageFiles:
         diffusion=str(files["diffusion"]),
         text_encoder=str(files["text_encoder"]),
         vae=str(files["vae"]),
-        lora=files["lora"],
+        lora=_str(files["lora"]),
+        llm_vision=_str(files["llm_vision"]),
     )
+
+
+def _str(path) -> str | None:
+    return None if path is None else str(path)

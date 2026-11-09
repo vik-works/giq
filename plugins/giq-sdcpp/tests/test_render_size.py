@@ -94,8 +94,14 @@ class _Proc:
 
 
 class _Client:
-    def __init__(self):
+    def __init__(self, loras=()):
         self.payloads = []
+        self.loras = [{"name": n.rsplit(".", 1)[0], "path": n} for n in loras]
+        self.gets = []
+
+    async def get(self, url, timeout=None):
+        self.gets.append(url)
+        return httpx.Response(200, json=self.loras, request=httpx.Request("GET", url))
 
     async def post(self, url, json):
         self.payloads.append(json)
@@ -204,3 +210,21 @@ def test_model_args_are_one_key_value_each(arg, tmp_path):
     )
     with pytest.raises(ValueError, match="model_args"):
         load_file(bad)
+
+
+async def test_start_has_sd_server_list_the_lora_before_any_render():
+    adapter = _adapter()
+    adapter.config.lora = "/m/loras/lightning.safetensors"
+    adapter._client = _Client(loras=["other.safetensors", "lightning.safetensors"])  # ty: ignore[invalid-assignment]
+    await adapter._index_lora()
+    assert adapter._client.gets == ["/sdapi/v1/loras"]  # type: ignore[union-attr]
+
+
+async def test_a_lora_sd_server_cannot_see_fails_the_start():
+    from giq.adapters.engine import StartError
+
+    adapter = _adapter()
+    adapter.config.lora = "/m/loras/lightning.safetensors"
+    adapter._client = _Client(loras=["other.safetensors"])  # ty: ignore[invalid-assignment]
+    with pytest.raises(StartError, match="lightning.safetensors"):
+        await adapter._index_lora()

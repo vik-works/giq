@@ -6,7 +6,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { components, sandbox, useFormat, useRunner, type PanelProps } from "@giq/plugin-ui";
 import { GeneratedImage } from "./GeneratedImage";
+import { ImageOptions } from "./ImageOptions";
 import { runImageJob, type ImageResult } from "./imageJob";
+import { NO_OPTIONS, optionFields } from "./imageTask";
 import { NS } from "./ns";
 
 const { Field } = components;
@@ -16,15 +18,12 @@ export function T2iTab({ options, model, onModel }: PanelProps) {
   const { t } = useTranslation(NS);
   const f = useFormat();
   const [prompt, setPrompt] = useState(() => t("t2i.defaultPrompt"));
-  const [seed, setSeed] = useState("");
-  const [negative, setNegative] = useState("");
+  const [opts, setOpts] = useState(NO_OPTIONS);
   const runner = useRunner<ImageResult>();
   const fit = options.find((o) => o.model === model)?.fits;
 
   const go = () => {
-    const task: Record<string, unknown> = { id: "sbx-t2i", prompt };
-    if (negative) task.negative_prompt = negative;
-    if (seed !== "") task.seed = Number(seed);
+    const task = { id: "sbx-t2i", prompt, ...optionFields(opts) };
     void runner.run((signal) => runImageJob({ modality: "text2image", model, tasks: [task] }, signal));
   };
 
@@ -35,19 +34,10 @@ export function T2iTab({ options, model, onModel }: PanelProps) {
         <Field label={t("field.prompt")}>
           {(id) => <textarea id={id} className="input" value={prompt} onChange={(e) => setPrompt(e.target.value)} />}
         </Field>
-        <div className="sbx-row">
-          <Field label={t("field.model")} className="sbx-grow">
-            {(id) => <ModelSelect id={id} options={options} value={model} onChange={onModel} />}
-          </Field>
-          <Field label={t("field.seed")}>
-            {(id) => (
-              <input id={id} className="input" type="number" placeholder={t("field.seedRandom")} value={seed} onChange={(e) => setSeed(e.target.value)} />
-            )}
-          </Field>
-        </div>
-        <Field label={t("field.negative")}>
-          {(id) => <input id={id} className="input" type="text" value={negative} onChange={(e) => setNegative(e.target.value)} />}
+        <Field label={t("field.model")}>
+          {(id) => <ModelSelect id={id} options={options} value={model} onChange={onModel} />}
         </Field>
+        <ImageOptions value={opts} onChange={setOpts} sizeHint={t("t2i.sizeHint")} />
         {!options.length && <p className="warn">{t("t2i.none")}</p>}
         {fit === "fits_after_eviction" && <p className="warn">{t("t2i.evicts")}</p>}
         <div className="sbx-actions">

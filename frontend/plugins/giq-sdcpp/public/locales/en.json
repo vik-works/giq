@@ -3,16 +3,20 @@
     "defaultPrompt": "Transform this photo into a watercolor illustration",
     "evicts": "Editing may evict resident instances — it can take a couple of minutes.",
     "needImage": "Pick a reference image first.",
-    "none": "No image-edit model fits on these cards — panel disabled."
+    "none": "No image-edit model fits on these cards — panel disabled.",
+    "sizeHint": "Filled in from the reference image, so the edit keeps its shape. The server scales a larger size down to the model's limit."
   },
   "field": {
+    "height": "Height",
     "instruction": "Instruction",
     "model": "Model",
     "negative": "Negative prompt (optional)",
     "prompt": "Prompt",
     "referenceImage": "Reference image",
     "seed": "Seed",
-    "seedRandom": "random"
+    "seedRandom": "random",
+    "sizeDefault": "default",
+    "width": "Width"
   },
   "out": {
     "latency": "latency {{value}}",
@@ -27,7 +31,8 @@
   "t2i": {
     "defaultPrompt": "A cozy riverside town at dusk, warm windows glowing, graphic novel style",
     "evicts": "Generating evicts the resident instances — the first image takes minutes, then they reload.",
-    "none": "No text-to-image model fits on these cards."
+    "none": "No text-to-image model fits on these cards.",
+    "sizeHint": "Empty uses the configured size. The server scales a larger size down to the model's limit, keeping its shape."
   },
   "tab": {
     "t2i": "Text → image",

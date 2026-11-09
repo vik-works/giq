@@ -186,12 +186,13 @@ generation ends as `response.failed` with `giq_job_failed`.
   A requested size is held to at least 256 px a side and at most the
   recipe's `params.max_render_pixels`, keeping the aspect ratio, then
   snapped down to multiples of 16: 1000x750 renders at 992x736. The budgets
-  are measured: `flux_klein` 1 MP (1024x1024), `zimage` 2.4 MP (2048x1152). A lone side or a non-numeric size falls
+  are measured: 2.4 MP (2048x1152) for `flux_klein`, `zimage` and
+  `qwen-image-edit-2511`. A lone side or a non-numeric size falls
   back to the default. Renders larger than the default decode the VAE in tiles.
 
 ### Image Edit (`image_edit`)
 - Recipes: `flux_klein` (reference edits via sd.cpp), `qwen-image-edit-2511`
-  (Qwen-Image-Edit-2511 with the 4-step Lightning LoRA, sd.cpp; up to 1 MP)
+  (Qwen-Image-Edit-2511 with the 4-step Lightning LoRA, sd.cpp)
 - Task: `{id, reference_image_b64, instruction, negative_prompt?, width?, height?}`
   (size as for text2image)
 - Result: `{id, image_b64, seed}`

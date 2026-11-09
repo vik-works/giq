@@ -428,8 +428,8 @@ async def test_pinning_an_image_model_overcommits_a_small_card(client, store, mo
     )
     r = await client.put("/recipes/flux_klein/residency", json={"policy": "pinned"})
     assert r.status_code == 409
-    # gemma 9.5 + whisper 4.0 + ecapa 0.6 + klein 8.0 + 0.5 headroom = 22.6
-    assert "22.6GB of 16.0GB" in r.json()["detail"]
+    # gemma 9.5 + whisper 4.0 + ecapa 0.6 + klein 10.0 + 0.5 headroom = 24.6
+    assert "24.6GB of 16.0GB" in r.json()["detail"]
 
 
 @pytest.mark.asyncio

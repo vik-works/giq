@@ -51,9 +51,10 @@ weights:
       licence: apache-2.0
 vram:
   # Measured on an RTX 5090, sd-server's own peak: 19,992 MiB for a 1 MP
-  # edit, with a 512x512 reference and with a 1 MP one alike. The Q6_K DiT
-  # staged on the card dominates, so a 16 GB card never fits it.
-  gb: 20.0
+  # edit (512x512 and 1 MP references alike), 20,920 MiB at 2016x1152 and
+  # 1152x2016 with a 1 MP and a 2.3 MP reference. The Q6_K DiT staged on
+  # the card dominates, so a 16 GB card never fits it.
+  gb: 21.0
   measured: true
 params:
   # Lightning is distilled for 4 steps without CFG.
@@ -61,5 +62,6 @@ params:
   cfg_scale: 1.0
   flow_shift: 3.0
   model_args: [qwen_image_zero_cond_t=true]
-  max_render_pixels: 1048576
+  # 2.4 MP (2048x1152), inside the measured figure above.
+  max_render_pixels: 2400000
 max_batch: 2

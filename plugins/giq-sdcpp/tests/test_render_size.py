@@ -155,3 +155,52 @@ def test_a_recipe_without_a_budget_does_not_grow_past_the_default_area(monkeypat
     assert cfg.max_pixels == 800 * 480
     w, h = _render_size({"width": 1024, "height": 1024}, None, 800, 480, cfg.max_pixels)
     assert w * h <= 800 * 480 and w == h
+
+
+def test_a_recipe_brings_its_own_sampling_and_model_flags():
+    cfg = SdCppConfig(
+        model="qwen-image-edit-2511",
+        diffusion="d",
+        llm_vision="/m/text_encoders/mmproj.gguf",
+        lora="/m/loras/lightning.safetensors",
+        device="gpu",
+        port=1,
+    )
+    assert (cfg.steps, cfg.cfg_scale, cfg.flow_shift) == (4, 1.0, 3.0)
+    flags = SdCppAdapter(cfg)._model_flags()
+    assert flags[flags.index("--llm_vision") + 1] == "/m/text_encoders/mmproj.gguf"
+    assert flags[flags.index("--model-args") + 1] == "qwen_image_zero_cond_t=true"
+    assert flags[flags.index("--lora-model-dir") + 1] == "/m/loras"
+
+
+def test_a_recipe_without_them_adds_no_flags():
+    cfg = SdCppConfig(model="flux_klein", diffusion="d", device="gpu", port=1)
+    assert SdCppAdapter(cfg)._model_flags() == []
+    assert cfg.steps == 8  # the configured image_generation default
+
+
+async def test_every_render_names_the_recipes_lora():
+    adapter = _adapter()
+    adapter.config.lora = "/m/loras/lightning.safetensors"
+    adapter.config.lora_strength = 0.8
+    await adapter.run_batch(
+        [{"id": "t", "instruction": "make it night", "reference_image_b64": "aW1n"}]
+    )
+    sent = adapter._client.payloads[0]  # type: ignore[union-attr]
+    assert sent["lora"] == [{"path": "lightning.safetensors", "multiplier": 0.8}]
+    assert sent["extra_images"] == ["aW1n"]
+
+
+@pytest.mark.parametrize("arg", ["a=b,c=d", "a = b", "A=b", "a="])
+def test_model_args_are_one_key_value_each(arg, tmp_path):
+    from giq.recipes import load_file
+
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(
+        "name: bad\nmodalities: [image_edit]\nengine: sd.cpp\n"
+        "weights: {licence: mit, parts: {diffusion: {path: d}, text_encoder: {path: t},"
+        " vae: {path: v}}}\n"
+        f"params: {{model_args: ['{arg}']}}\nvram: {{gb: 8.0}}\n"
+    )
+    with pytest.raises(ValueError, match="model_args"):
+        load_file(bad)

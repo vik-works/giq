@@ -46,6 +46,7 @@
       ],
       "recipes": [
         "flux_klein",
+        "qwen-image-edit-2511",
         "zimage"
       ],
       "needs": "the sd-server binary from stable-diffusion.cpp, built with CUDA"

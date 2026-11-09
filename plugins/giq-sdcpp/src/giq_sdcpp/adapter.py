@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 from collections import deque
 from dataclasses import dataclass, field
@@ -139,6 +140,12 @@ class SdCppConfig:
     diffusion: str = ""
     text_encoder: str = ""
     vae: str = ""
+    llm_vision: str | None = None
+    # A LoRA every render applies (a Lightning distillation, say), by file.
+    lora: str | None = None
+    lora_strength: float = 1.0
+    flow_shift: float | None = None
+    model_args: tuple[str, ...] = ()
     width: int = 800
     height: int = 480
     steps: int = 8
@@ -168,17 +175,30 @@ class SdCppConfig:
             self.diffusion = cfg.diffusion
             self.text_encoder = cfg.text_encoder
             self.vae = cfg.vae
+            self.llm_vision = cfg.llm_vision
+            self.lora = cfg.lora
             gen = get_config().image_generation
             self.width = gen.width
             self.height = gen.height
             self.steps = gen.steps
             self.cfg_scale = gen.cfg
-        if not self.max_pixels:
-            from giq.registry import get_recipe
+        from giq.registry import get_recipe
 
-            recipe = get_recipe(self.model)
-            budget = getattr(recipe.params, "max_render_pixels", None) if recipe else None
+        recipe = get_recipe(self.model)
+        params = recipe.params if recipe else None
+        if not self.max_pixels:
+            budget = getattr(params, "max_render_pixels", None)
             self.max_pixels = budget or self.width * self.height
+        # A recipe's own sampling wins over the global image_generation one:
+        # it is what the model is distilled (or measured) for.
+        if (steps := getattr(params, "steps", None)) is not None:
+            self.steps = steps
+        if (cfg_scale := getattr(params, "cfg_scale", None)) is not None:
+            self.cfg_scale = cfg_scale
+        if (flow_shift := getattr(params, "flow_shift", None)) is not None:
+            self.flow_shift = flow_shift
+        self.model_args = tuple(getattr(params, "model_args", ()) or self.model_args)
+        self.lora_strength = getattr(params, "lora_strength", self.lora_strength)
 
 
 @dataclass
@@ -244,6 +264,7 @@ class SdCppAdapter:
             # Weights stage through RAM per pipeline phase: peak VRAM drops
             # from ~15.4GB to ~8.5GB, and the 800x480 render cost is seconds.
             "--offload-to-cpu",
+            *self._model_flags(),
         ]
         logger.info(f"Starting sd-server: {self.config.model}")
         logger.debug(f"Command: {' '.join(cmd)}")
@@ -264,6 +285,22 @@ class SdCppAdapter:
             await self.stop()
             raise
         logger.info(f"sd-server ready: {self.config.model}")
+
+    def _model_flags(self) -> list[str]:
+        """The flags only some recipes need: a separate vision tower, a
+        timestep shift, load-time model switches, a LoRA folder."""
+        cfg = self.config
+        flags: list[str] = []
+        if cfg.llm_vision:
+            flags += ["--llm_vision", cfg.llm_vision]
+        if cfg.flow_shift is not None:
+            flags += ["--flow-shift", str(cfg.flow_shift)]
+        if cfg.model_args:
+            flags += ["--model-args", ",".join(cfg.model_args)]
+        if cfg.lora:
+            # sd-server takes LoRAs per request, by name inside this folder.
+            flags += ["--lora-model-dir", os.path.dirname(cfg.lora)]
+        return flags
 
     async def _drain_stderr(self) -> None:
         """Keep a tail of sd-server stderr for error reporting (an early
@@ -364,6 +401,13 @@ class SdCppAdapter:
                     "seed": task.get("seed", -1) if task.get("seed") is not None else -1,
                     "batch_size": 1,
                 }
+                if self.config.lora:
+                    payload["lora"] = [
+                        {
+                            "path": os.path.basename(self.config.lora),
+                            "multiplier": self.config.lora_strength,
+                        }
+                    ]
                 if task.get("reference_image_b64"):
                     payload["extra_images"] = [task["reference_image_b64"]]
                 resp = await self._client.post("/sdapi/v1/txt2img", json=payload)

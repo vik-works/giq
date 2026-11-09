@@ -279,6 +279,7 @@ class SdCppAdapter:
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=RENDER_TIMEOUT_SECONDS)
         try:
             await self._wait_for_ready()
+            await self._index_lora()
             self._ready = True
         except BaseException:
             # CancelledError included — never orphan a loading sd-server.
@@ -334,6 +335,18 @@ class SdCppAdapter:
                 pass
             await asyncio.sleep(1.0)
         raise StartError(f"sd-server not ready after {READY_TIMEOUT_SECONDS:.0f}s")
+
+    async def _index_lora(self) -> None:
+        """Have sd-server list its LoRA folder, and check the recipe's LoRA
+        is in it. sd-server resolves a request's LoRA against a list only
+        that route fills: until then every render naming one is a 400."""
+        if not self.config.lora or not self._client:
+            return
+        resp = await self._client.get("/sdapi/v1/loras", timeout=10.0)
+        resp.raise_for_status()
+        name = os.path.basename(self.config.lora)
+        if name not in {entry.get("path") for entry in resp.json()}:
+            raise StartError(f"sd-server does not list the recipe's LoRA {name}")
 
     async def stop(self) -> None:
         try:

@@ -29,10 +29,12 @@ params:
   lm: acestep-5Hz-lm-1.7B
   steps: 8
 vram:
-  # Not measured yet. ACE-Step's own budget: ~4.7 GB of DiT weights, and the
-  # planner reserves its 3.4 GB weights + 1.0 GB KV cache + 0.3 GB through
-  # nano-vllm; activations grow with the track's length.
-  gb: 12.0
-  measured: false
+  # Measured on an RTX 5090, the child's own peak: 14,310 MiB for a 30 s
+  # track and 14,238 MiB for 10 min, both planned. The track's length hardly
+  # matters: the planner's nano-vllm claims a fixed 4.7 GB (weights + 4k KV
+  # cache) on top of the DiT, VAE and text encoder, less only on a card that
+  # lacks it. 2.7 s per 30 s track and 22 s per 10 min, warm; ~40 s to load.
+  gb: 14.5
+  measured: true
 # One track per task; a batch renders them one after another.
 max_batch: 4

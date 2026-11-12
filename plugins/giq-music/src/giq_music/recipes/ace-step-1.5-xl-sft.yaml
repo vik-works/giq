@@ -35,9 +35,9 @@ params:
   guidance: 7.0
   tasks: [cover]
 vram:
-  # Not measured yet. The card's own figure for the XL DiT without offload
-  # is 20 GB; the planner reserves 4.7 GB on top (see the turbo recipe), and
-  # guidance doubles each step's activations.
-  gb: 26.0
-  measured: false
+  # Measured on an RTX 5090, the child's own peak: 18,560 MiB for a 30 s
+  # track and 19,568 MiB for 10 min, both planned, with guidance. 5.7 s per
+  # 30 s track and 75 s per 10 min, warm; ~40 s to load.
+  gb: 20.0
+  measured: true
 max_batch: 4

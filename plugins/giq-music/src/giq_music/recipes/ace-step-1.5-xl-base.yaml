@@ -36,7 +36,9 @@ params:
   guidance: 7.0
   tasks: [cover, lego, complete]
 vram:
-  # Not measured yet; the XL SFT recipe's estimate, the same DiT size.
-  gb: 26.0
-  measured: false
+  # Measured on an RTX 5090, the child's own peak: 19,568 MiB for a planned
+  # 10 min track, the same as XL SFT, and no more for a guitar played over a
+  # 30 s source (4.3 s, warm).
+  gb: 20.0
+  measured: true
 max_batch: 4

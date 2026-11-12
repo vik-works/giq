@@ -97,8 +97,7 @@
     "embed": "Stimmabdruck",
     "ocr": "Dokument-OCR",
     "depth": "Tiefe",
-    "text2music": "Text zu Musik",
-    "text2sfx": "Text zu Klang"
+    "text2music": "Text zu Musik"
   },
   "policy": {
     "pinned": "warm halten",

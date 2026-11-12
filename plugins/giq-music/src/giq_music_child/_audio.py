@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""What every giq-music child shares: checking a task's numbers and formats,
+"""The audio side of the giq-music child: checking a task's numbers and formats,
 reading the audio a task brings, and encoding a track. Stdlib at import;
 numpy and soundfile only in ``encode``, which runs on the engine's
 interpreter."""

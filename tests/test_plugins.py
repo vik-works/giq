@@ -29,7 +29,6 @@ BUILTIN_MODALITIES = {
     "depth",
     "decide",
     "text2music",
-    "text2sfx",
 }
 
 
@@ -88,13 +87,11 @@ def test_the_builtins_register_through_the_contract():
         "transformers",
         "imajev",
         "acestep",
-        "stable-audio",
     } <= set(plugins.engines())
     assert plugins.engines_for("llm") == {"llama.cpp", "vllm"}
     assert plugins.engines_for("ocr") == {"transformers"}
     assert plugins.engines_for("decide") == {"imajev"}
-    assert plugins.engines_for("text2music") == {"acestep", "stable-audio"}
-    assert plugins.engines_for("text2sfx") == {"stable-audio"}
+    assert plugins.engines_for("text2music") == {"acestep"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
     loaded = {s.name for s in plugins.status() if s.loaded}
     assert {

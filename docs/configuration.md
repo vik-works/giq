@@ -60,7 +60,6 @@ Environment variables:
 | `GIQ_SDCPP_BINARY` | `sd-server` on PATH | stable-diffusion.cpp server binary |
 | `GIQ_IMAJEV_PYTHON` | `envs/imajev/.venv/bin/python` | The decide child's interpreter (giq-imajev) |
 | `GIQ_ACESTEP_PYTHON` | `envs/acestep/.venv/bin/python` | The ACE-Step child's interpreter (giq-music) |
-| `GIQ_STABLE_AUDIO_PYTHON` | `envs/stable-audio/.venv/bin/python` | The Stable Audio 3 child's interpreter (giq-music) |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |
 | `GIQ_DEPTH_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth recipes |

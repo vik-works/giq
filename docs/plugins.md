@@ -40,7 +40,7 @@ version.
 | `giq-ocr` | modality `ocr`; `POST /ocr` | torch, transformers |
 | `giq-depth` | modality `depth`; `POST /depth` | torch, transformers |
 | `giq-imajev` | engine `imajev`; modality `decide`; `POST /decide`; its sandbox panel | its own interpreter (`envs/imajev`) |
-| `giq-music` | engines `acestep`, `stable-audio`; modalities `text2music`, `text2sfx`; their sandbox panels | their own interpreters (`envs/acestep`, `envs/stable-audio`); Stable Audio 3's repositories are gated |
+| `giq-music` | engine `acestep`; modality `text2music`; its sandbox panel | its own interpreter (`envs/acestep`) |
 | `giq-defaults` | all of the above | |
 
 Each brings its own built-in recipes, so a recipe appears in the Add page

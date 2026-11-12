@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Text-to-music and text-to-sound workers: ACE-Step 1.5 and Stable Audio 3,
-each in a child process on its own interpreter.
+"""The text-to-music worker: ACE-Step 1.5 in a child process on its own
+interpreter.
 
 The child (``giq_music_child._music_child``) loads the recipe's DiT, VAE and
 text encoder, and the 5Hz planner LM, from the recipe's weights.path, which
@@ -17,11 +17,6 @@ duration, the song's structure — and the DiT renders the track.
 Sleepy model: loads on demand, evictable. Runs on the acestep interpreter,
 like the vllm engine's own: the child imports only the top-level
 ``giq_music_child`` package plus ``giq_child``, never giq.
-
-Stable Audio 3 (``giq_music_child._sa3_child``) loads one model folder —
-the DiT with its autoencoder, and the T5Gemma text encoder beside it — and
-renders a prompt to 44.1 kHz stereo; no planner, no lyrics. It serves both
-text2music and text2sfx: which one is the recipe's.
 """
 
 from __future__ import annotations
@@ -36,7 +31,7 @@ from pydantic import BaseModel
 from giq.adapters._subprocess import SubprocessAdapter
 from giq.registry import get_recipe, vram_for
 from giq.weights import path_of, require_path
-from giq_music.params import AceStepParams, StableAudioParams
+from giq_music.params import AceStepParams
 
 # Upper bound for an unregistered model; the registry has the measured ones.
 MUSIC_VRAM_GB = 16.0
@@ -69,8 +64,8 @@ class MusicConfig:
 
 
 class _AudioChildAdapter(SubprocessAdapter):
-    """What both engines' adapters share: the recipe's weights folder, the
-    child on the engine's own interpreter, MusicResults back."""
+    """A giq-music child on its engine's own interpreter: the recipe's
+    weights folder in, MusicResults back."""
 
     modality: ClassVar[str] = "text2music"
     # Which declared engine's interpreter runs the child.
@@ -142,31 +137,6 @@ class MusicAdapter(_AudioChildAdapter):
         args += ["--steps", str(p.steps), "--guidance", str(p.guidance)]
         args += ["--tasks", ",".join(p.tasks)]
         return args + (["--lm", p.lm] if p.lm else [])
-
-
-class StableAudioAdapter(_AudioChildAdapter):
-    """Stable Audio 3 in a child process on the ``stable-audio`` interpreter."""
-
-    child_module: ClassVar[str] = "giq_music_child._sa3_child"
-    engine: ClassVar[str] = "stable-audio"
-
-    def __init__(self, config: MusicConfig, device: str | None = None):
-        super().__init__(config, device)
-        recipe = get_recipe(config.model)
-        self.params = (
-            recipe.params
-            if recipe and isinstance(recipe.params, StableAudioParams)
-            else StableAudioParams()
-        )
-
-    def child_args(self) -> list[str]:
-        p = self.params
-        return [
-            "--model", self.config.model, "--weights", self.weights,
-            "--steps", str(p.steps), "--cfg-scale", str(p.cfg_scale),
-            "--max-seconds", str(p.max_seconds),
-            "--default-seconds", str(min(p.default_seconds, p.max_seconds)),
-        ]  # fmt: skip
 
 
 def hydrate(result: dict[str, Any]) -> MusicResult:

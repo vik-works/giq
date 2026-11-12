@@ -4,7 +4,6 @@
 
 import type { PluginModule } from "@giq/plugin-ui";
 import { MusicTab } from "./MusicTab";
-import { SoundTab } from "./SoundTab";
 
-/* giq-music's sandbox panels (ADR-004 D6), by the id its manifest declares. */
-export const panels: PluginModule["panels"] = { music: MusicTab, sound: SoundTab };
+/* giq-music's sandbox panel (ADR-004 D6), by the id its manifest declares. */
+export const panels: PluginModule["panels"] = { music: MusicTab };

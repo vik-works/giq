@@ -19,8 +19,6 @@ export interface ModelOption {
   reasoning: RecipeEntry["reasoning"];
   /** Weights present on disk. */
   onDisk: boolean;
-  /** The engine that runs it: a panel serving several shows what each takes. */
-  engine: string;
 }
 
 export interface SandboxModels {
@@ -51,7 +49,6 @@ function option(r: RecipeEntry): ModelOption {
     policy: r.residency.policy,
     reasoning: r.reasoning,
     onDisk: r.installed,
-    engine: r.engine,
   };
 }
 

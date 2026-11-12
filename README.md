@@ -26,8 +26,7 @@ through a single job queue.
   edit via stable-diffusion.cpp; speech to text with diarization
   (faster-whisper + pyannote); text to speech (Kokoro); speaker voiceprints
   (ECAPA-TDNN); OCR (Unlimited-OCR, GLM-OCR); depth (Depth Anything V2);
-  text to music (ACE-Step 1.5, Stable Audio 3); sound effects (Stable
-  Audio 3).
+  text to music (ACE-Step 1.5).
 - **Recipes, not code.** Every model giq serves is a recipe: one YAML file
   naming its weights, the engine that runs them, the engine's parameters and
   a measured VRAM figure. Clients ask for a recipe by name; your own files

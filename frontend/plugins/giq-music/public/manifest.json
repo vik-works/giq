@@ -13,11 +13,6 @@
       "id": "music",
       "modality": "text2music",
       "label": "tab.music"
-    },
-    {
-      "id": "sound",
-      "modality": "text2sfx",
-      "label": "tab.sound"
     }
   ]
 }

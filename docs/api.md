@@ -213,10 +213,7 @@ generation ends as `response.failed` with `giq_job_failed`.
   1.7B LM; 48 kHz stereo, 10 s to 10 min, lyrics in 50+ languages, 8
   steps); `ace-step-1.5-xl-sft` (the 4B DiT, 50 steps with guidance: the
   closest to a prompt's genre, and slower); `ace-step-1.5-xl-base` (the 4B
-  base DiT, which also adds tracks to audio of your own);
-  `stable-audio-3-medium` and `stable-audio-3-small-music` (Stable Audio 3,
-  Stability AI Community License: instrumentals at 44.1 kHz stereo, up to
-  380 s and 120 s; see below)
+  base DiT, which also adds tracks to audio of your own)
 - Task: `{id, prompt, lyrics?, instrumental?, duration?, bpm?, key_scale?,
   time_signature?, language?, seed?, plan?, format?, reference_audio_b64?,
   source_audio_b64?, mode?, cover_strength?, track?, tracks?}`
@@ -232,7 +229,7 @@ generation ends as `response.failed` with `giq_job_failed`.
   a `duration` renders 30 s. `seed` makes a track reproducible; without one
   the result carries the seed it got. `format`: `flac` (default), `wav`,
   `mp3`.
-- ACE-Step tasks may bring audio of their own, base64 WAV, FLAC, Ogg or MP3.
+- A task may bring audio of its own, base64 WAV, FLAC, Ogg or MP3.
   `reference_audio_b64` lends the track its sound — timbre, mix, playing
   style — but not its melody or rhythm; the planner still runs.
   `source_audio_b64` is what the track is built from, by `mode`:
@@ -266,21 +263,6 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
   | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
   | jq -r '.results[0].audio_b64' | base64 -d > with-guitar.flac
 ```
-
-A Stable Audio 3 recipe takes `{id, prompt, negative_prompt?, duration?,
-seed?, format?}`: no lyrics, no planner, and `duration` from 1 s to the
-recipe's `max_seconds` (its `default_seconds` when unset). The result has the
-same shape, with `bpm`, `key_scale`, `time_signature` and `lyrics` null.
-
-### Text2Sfx (`text2sfx`)
-- Recipes: `stable-audio-3-small-sfx` (Stable Audio 3 Small SFX, Stability
-  AI Community License: sound effects and ambience, 44.1 kHz stereo, up to
-  120 s)
-- Task: `{id, prompt, negative_prompt?, duration?, seed?, format?}`
-- Result: `{id, audio_b64, format, sample_rate, duration, seed, caption}`
-- `duration` defaults to 10 s; `seed` makes a clip reproducible, and without
-  one the result carries the seed it got. `format`: `flac` (default), `wav`,
-  `mp3`.
 
 ### Audio, voiceprints, speech
 

@@ -25,14 +25,13 @@ const str = (v: unknown): string | null => (typeof v === "string" && v ? v : nul
 /* Like the image panels: the job API with ?wait=true holds the request until
    the track exists, and closing the tab while the job still waits in the
    queue cancels it. A task that failed reports its error in its result. */
-export async function runAudioJob(
-  modality: "text2music" | "text2sfx",
+export async function runMusicJob(
   model: string,
   task: Record<string, unknown>,
   signal: AbortSignal,
 ): Promise<MusicResult> {
-  // The plugin's own modalities, not the dashboard's.
-  const req = { modality, model, tasks: [task] };
+  // text2music is this plugin's modality, not one of the dashboard's own.
+  const req = { modality: "text2music", model, tasks: [task] };
   const d = await api.postJSON<JobStatusResponse>("/run?wait=true", req, { signal });
   const res = d.results?.[0] as Record<string, unknown> | undefined;
   if (typeof res?.error === "string" && res.error) throw new Error(res.error);

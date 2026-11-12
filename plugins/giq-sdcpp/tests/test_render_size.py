@@ -215,7 +215,7 @@ def test_model_args_are_one_key_value_each(arg, tmp_path):
 async def test_start_has_sd_server_list_the_lora_before_any_render():
     adapter = _adapter()
     adapter.config.lora = "/m/loras/lightning.safetensors"
-    adapter._client = _Client(loras=["other.safetensors", "lightning.safetensors"])  # ty: ignore[invalid-assignment]
+    adapter._client = _Client(loras=["other.safetensors", "lightning.safetensors"])
     await adapter._index_lora()
     assert adapter._client.gets == ["/sdapi/v1/loras"]  # type: ignore[union-attr]
 
@@ -225,6 +225,6 @@ async def test_a_lora_sd_server_cannot_see_fails_the_start():
 
     adapter = _adapter()
     adapter.config.lora = "/m/loras/lightning.safetensors"
-    adapter._client = _Client(loras=["other.safetensors"])  # ty: ignore[invalid-assignment]
+    adapter._client = _Client(loras=["other.safetensors"])
     with pytest.raises(StartError, match="lightning.safetensors"):
         await adapter._index_lora()

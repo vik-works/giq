@@ -62,6 +62,7 @@ Environment variables:
 | `GIQ_ACESTEP_PYTHON` | `envs/acestep/.venv/bin/python` | The ACE-Step child's interpreter (giq-music) |
 | `GIQ_PIXAL3D_PYTHON` | `envs/pixal3d/.venv/bin/python` | The Pixal3D child's interpreter (giq-3d) |
 | `GIQ_PIXAL3D_SOURCE` | `envs/pixal3d/Pixal3D` | The Pixal3D checkout the child imports, which `giq prepare pixal3d` clones |
+| `GIQ_TRELLIS2_SOURCE` | `envs/pixal3d/TRELLIS.2` | The TRELLIS.2 checkout the child imports for a `trellis2` recipe, cloned by the same step |
 | `GIQ_PIXAL3D_CUDA_ARCH` | `8.9` with PTX | The CUDA architectures `giq prepare pixal3d` compiles the extensions for, in torch's list form |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |

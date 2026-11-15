@@ -116,7 +116,7 @@ giq prepare pixal3d            # the checkout and the extensions, at pinned comm
 giq add pixal3d                # the weights: 46 GB with the multi-view set, plus encoder, camera and matting
 ```
 
-`giq prepare pixal3d` clones Pixal3D, installs MoGe, compiles CuMesh,
+`giq prepare pixal3d` clones Pixal3D and TRELLIS.2, installs MoGe, compiles CuMesh,
 FlexGEMM, O-Voxel and NATTEN against the environment's torch, and caches
 the NAF upsampler. It needs `git`, `nvcc` and a C++ compiler. NATTEN alone
 takes half an hour and about 20 GB of RAM with the six compile jobs the
@@ -158,6 +158,7 @@ tokens.
 
 | Parameter | Meaning |
 |-----------|---------|
+| `pipeline` | Which model generates: `pixal3d` (default) or `trellis2`, Microsoft's TRELLIS.2, the backbone Pixal3D is built on. Same environment, extensions and substitutions; its own checkout (`envs/pixal3d/TRELLIS.2`) and weights. `trellis2` takes one picture only. |
 | `resolution` | The voxel grid the cascade ends at: `1024` (default) or `1536`. The recipe's `vram` figure belongs to one of them. |
 | `low_vram` | Keep the flow models on the CPU and move each to the card for its stage (default `true`). |
 | `views` | What a task brings: `single` (default), one picture, or `multi`, four views round the object. They are different checkpoints of the one repository, each 23 GB in RAM, so a recipe loads one set. |
@@ -171,6 +172,15 @@ Measured on an RTX 5090, one image, the child's own peak:
 | 1024 | all on the card | 84 s | 31.4 GB |
 | 1536 | all on the card | — | out of memory |
 | 1024, four views | low-VRAM | 83 s with a game-ready export | 18.4 GB |
+| 1024, `trellis2` | low-VRAM | 45-85 s | 6.9-13.2 GB, by the object |
+
+Pixal3D and TRELLIS.2 answer one picture differently. Pixal3D lifts the
+picture's pixels into 3D, so its mesh is posed as the picture was taken and
+its surface stays close to it. TRELLIS.2 conditions on the picture without
+tying the mesh to it: the object comes out upright and squared to the axes,
+with the far sides filled in, and a surface that takes more liberties. Tried
+side by side on one prop, a crate: TRELLIS.2 stood it upright with handles
+on both ends, Pixal3D kept its stripes and wear.
 
 Low-VRAM mode is the faster one on a 32 GB card as well as the smaller:
 with everything resident the card is full. 1536 adds about 4% faces to the

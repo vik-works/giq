@@ -74,10 +74,10 @@ def _mesh_plugin() -> Plugin:
                 label="Image to 3D",
                 icon="cube",
                 job_timeout=900.0,
-                # The DINOv3 encoder, the camera estimator and the
-                # background remover, each a repository of its own with its
-                # own licence.
-                parts=frozenset({"encoder", "camera", "matting"}),
+                # The DINOv3 encoder, the camera estimator, the background
+                # remover and TRELLIS.2's structure decoder, each a repository
+                # of its own with its own licence.
+                parts=frozenset({"encoder", "camera", "matting", "structure"}),
                 payload_keys=("image_b64", "views_b64"),
             ),
         ),

@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Image-to-mesh child process: Pixal3D, and the export of what it makes.
+"""Image-to-mesh child process: Pixal3D or TRELLIS.2, and the export of what
+they make.
 
 Invoked by ``MeshAdapter`` via ``<pixal3d python> -u -m
 giq_3d_child._mesh_child --model <recipe> --weights <checkpoint root>
@@ -20,6 +21,12 @@ DINOv3 file for every feature extractor, its parameters renamed as it loads
 (upstream names a mirror on the hub); and BiRefNet's own weights for the
 background remover (upstream names RMBG-2.0, which is non-commercial). The
 hub is offline, so anything missing fails here rather than being fetched.
+
+``--pipeline trellis2`` loads Microsoft's TRELLIS.2 in Pixal3D's place: the
+backbone Pixal3D is built on, from its own checkout and weights, with the
+same substitutions. It takes one picture and no camera, and where Pixal3D
+keeps the picture's pose it stands the object upright in a frame of its own,
+at some cost in likeness.
 
 Per task, single view: the image is cut out of its background unless it
 already carries an alpha channel, the camera it was taken with is estimated
@@ -153,13 +160,78 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
     }
 
 
+def _load_trellis2(args):
+    """TRELLIS.2's pipeline, with the same substitutions as Pixal3D's.
+
+    One more: its pipeline names its structure decoder in another repository
+    on the hub. That repository is the recipe's `structure` part, and the
+    name is pointed at it.
+    """
+    for path, what in (
+        (os.path.join(args.source, "trellis2", "pipelines"), "the TRELLIS.2 checkout"),
+        (os.path.join(args.weights, "pipeline.json"), "the weights"),
+        (os.path.join(args.encoder, "model.safetensors"), "the DINOv3 encoder"),
+        (args.matting, "the background remover"),
+        (os.path.join(args.structure or "", "ckpts"), "the structure decoder's repository"),
+    ):
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{what} is missing: {path}")
+
+    from giq_3d_child import uvraster
+
+    uvraster.install()
+    sys.path.insert(0, args.source)
+
+    from trellis2 import models
+    from trellis2.modules import image_feature_extractor
+    from trellis2.pipelines import rembg
+
+    from giq_3d_child.dinov3 import from_timm
+
+    upstream = rembg.BiRefNet
+
+    class LocalMatting(upstream):
+        """BiRefNet from the recipe's folder, whatever the pipeline's config names."""
+
+        def __init__(self, model_name: str | None = None):
+            super().__init__(model_name=args.matting)
+
+    class LocalDINOv3:
+        """The recipe's encoder, whichever repository the pipeline's config names."""
+
+        @staticmethod
+        def from_pretrained(_name: str, *_, **__):
+            return from_timm(args.encoder)
+
+    rembg.BiRefNet = LocalMatting
+    image_feature_extractor.DINOv3ViTModel = LocalDINOv3
+    hub = "microsoft/TRELLIS-image-large/"
+    load = models.from_pretrained
+
+    def from_pretrained(path: str, **kwargs):
+        if path.startswith(hub):
+            path = os.path.join(args.structure, path[len(hub) :])
+        return load(path, **kwargs)
+
+    models.from_pretrained = from_pretrained
+
+    from trellis2.pipelines import Trellis2ImageTo3DPipeline
+
+    pipeline = Trellis2ImageTo3DPipeline.from_pretrained(args.weights)
+    pipeline.low_vram = args.low_vram
+    pipeline.cuda()
+    return None, pipeline
+
+
 def _load(args):
     """Pixal3D's pipeline, with the three substitutions the module docstring names."""
+    if args.pipeline == "trellis2":
+        return _load_trellis2(args)
     for path, what in (
         (args.source, "the Pixal3D checkout"),
         (args.weights, "the weights"),
         (os.path.join(args.encoder, "model.safetensors"), "the DINOv3 encoder"),
-        (os.path.join(args.camera, "model.pt"), "the MoGe checkpoint"),
+        (os.path.join(args.camera or "", "model.pt"), "the MoGe checkpoint"),
         (args.matting, "the background remover"),
     ):
         if not os.path.exists(path):
@@ -320,6 +392,22 @@ def _generate_multi(px, pipeline, args, inputs: dict):
     )
 
 
+def _generate_trellis2(pipeline, args, inputs: dict):
+    """One picture to TRELLIS.2's mesh. It needs no camera: it does not keep
+    the picture's pose, and stands the object upright in a frame of its own."""
+    if inputs["fov"] is not None:
+        raise ValueError("'fov' is not TRELLIS.2's: it does not model the picture's camera")
+    mesh = pipeline.run(
+        _open(inputs["image"], "'image_b64'"),
+        seed=inputs["seed"],
+        pipeline_type=f"{args.resolution}_cascade",
+        max_num_tokens=MAX_TOKENS,
+    )[0]
+    voxel = mesh.voxel_size
+    voxel = float(voxel.flatten()[0]) if hasattr(voxel, "flatten") else float(voxel)
+    return mesh, mesh.layout, int(round(1.0 / voxel))
+
+
 def _run(models, args, task: dict) -> dict:
     import numpy as np
     import o_voxel
@@ -328,9 +416,13 @@ def _run(models, args, task: dict) -> dict:
     px, pipeline = models
     multi = args.views == "multi"
     inputs = task_inputs(task, multi)
-    generate = _generate_multi if multi else _generate_single
-    meshes, (_shape, _texture, grid) = generate(px, pipeline, args, inputs)
-    mesh = meshes[0]
+    if args.pipeline == "trellis2":
+        mesh, layout, grid = _generate_trellis2(pipeline, args, inputs)
+        meshes = [mesh]
+    else:
+        generate = _generate_multi if multi else _generate_single
+        meshes, (_shape, _texture, grid) = generate(px, pipeline, args, inputs)
+        mesh, layout = meshes[0], pipeline.pbr_attr_layout
     aabb = [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]]
     if inputs["mode"] == "game":
         from giq_3d_child import lowpoly
@@ -340,7 +432,7 @@ def _run(models, args, task: dict) -> dict:
             faces=mesh.faces.cuda(),
             attr_volume=mesh.attrs.cuda(),
             coords=mesh.coords.cuda(),
-            attr_layout=pipeline.pbr_attr_layout,
+            attr_layout=layout,
             grid_size=grid,
             aabb=aabb,
             target_faces=inputs["faces"],
@@ -353,7 +445,7 @@ def _run(models, args, task: dict) -> dict:
             faces=mesh.faces,
             attr_volume=mesh.attrs,
             coords=mesh.coords,
-            attr_layout=pipeline.pbr_attr_layout,
+            attr_layout=layout,
             grid_size=grid,
             aabb=aabb,
             decimation_target=inputs["faces"],
@@ -363,7 +455,8 @@ def _run(models, args, task: dict) -> dict:
             remesh_project=0,
             use_tqdm=False,
         )
-    glb.apply_transform(np.array(ROTATION, dtype=np.float64))
+    if args.pipeline == "pixal3d":
+        glb.apply_transform(np.array(ROTATION, dtype=np.float64))
     data = glb.export(file_type="glb", extension_webp=True)
     del meshes, mesh
     torch.cuda.empty_cache()
@@ -389,7 +482,10 @@ def main() -> None:
     parser.add_argument("--weights", required=True)
     parser.add_argument("--source", required=True)
     parser.add_argument("--encoder", required=True)
-    parser.add_argument("--camera", required=True)
+    # The camera estimator is Pixal3D's; the structure decoder TRELLIS.2's.
+    parser.add_argument("--camera", default=None)
+    parser.add_argument("--structure", default=None)
+    parser.add_argument("--pipeline", choices=("pixal3d", "trellis2"), default="pixal3d")
     parser.add_argument("--matting", required=True)
     parser.add_argument("--resolution", type=int, choices=(1024, 1536), default=1024)
     parser.add_argument("--views", choices=("single", "multi"), default="single")

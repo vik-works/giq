@@ -141,7 +141,7 @@
     {
       "name": "giq-3d",
       "package": "giq-3d",
-      "summary": "Image to textured 3D mesh with Pixal3D",
+      "summary": "Image to textured 3D mesh with Pixal3D and TRELLIS.2",
       "engines": [
         "pixal3d"
       ],
@@ -150,7 +150,8 @@
       ],
       "recipes": [
         "pixal3d",
-        "pixal3d-mv"
+        "pixal3d-mv",
+        "trellis2"
       ],
       "needs": "its own interpreter, set up once: cd envs/pixal3d && uv sync, then giq prepare pixal3d"
     }

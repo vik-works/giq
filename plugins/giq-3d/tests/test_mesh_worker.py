@@ -47,7 +47,7 @@ class _StubMeshWorker(MeshAdapter):
 
 def _recipe(tmp_path, monkeypatch, params: str = "", parts: str | None = None):
     models = tmp_path / "models"
-    for folder in ("Pixal3D", "dinov3", "moge", "birefnet"):
+    for folder in ("Pixal3D", "dinov3", "moge", "birefnet", "trellis1"):
         (models / folder).mkdir(parents=True)
     if parts is None:
         parts = "{encoder: dinov3, camera: moge, matting: birefnet}"
@@ -132,3 +132,36 @@ async def test_results_come_back_as_mesh_results(tmp_path, monkeypatch):
 def test_an_error_envelope_stays_an_error():
     result = hydrate({"id": 7, "error": "boom", "faces": "not a number"})
     assert (result.id, result.error, result.faces) == ("7", "boom", None)
+
+
+def test_a_trellis2_recipe_names_its_own_source_and_parts(tmp_path, monkeypatch):
+    name, models = _recipe(
+        tmp_path,
+        monkeypatch,
+        "params: {pipeline: trellis2}\n",
+        parts="{encoder: dinov3, matting: birefnet, structure: trellis1}",
+    )
+    monkeypatch.setenv("GIQ_TRELLIS2_SOURCE", "/opt/TRELLIS.2")
+    args = MeshAdapter(MeshConfig(model=name)).child_args()
+    flags = dict(zip(args[::2], args[1::2], strict=False))
+    assert (flags["--pipeline"], flags["--source"]) == ("trellis2", "/opt/TRELLIS.2")
+    assert flags["--structure"] == str(models / "trellis1")
+    assert "--camera" not in args, "TRELLIS.2 estimates no camera"
+
+
+def test_trellis2_without_its_structure_decoder_is_refused(tmp_path, monkeypatch):
+    name, _ = _recipe(tmp_path, monkeypatch, "params: {pipeline: trellis2}\n")
+    with pytest.raises(ValueError, match="weights.parts.structure"):
+        MeshAdapter(MeshConfig(model=name)).child_args()
+
+
+def test_trellis2_takes_one_picture():
+    from giq_3d.params import Pixal3DParams
+
+    with pytest.raises(ValueError, match="trellis2 takes one picture"):
+        Pixal3DParams(pipeline="trellis2", views="multi")
+
+
+def test_each_pipeline_has_its_own_default_checkout(monkeypatch):
+    monkeypatch.delenv("GIQ_TRELLIS2_SOURCE", raising=False)
+    assert source_dir("trellis2").endswith(os.path.join("envs", "pixal3d", "TRELLIS.2"))

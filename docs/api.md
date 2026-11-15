@@ -292,8 +292,11 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
 
 ### Image2Mesh (`image2mesh`)
 - Recipes: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR
-  materials) and `pixal3d-mv` (its multi-view checkpoints: four views to a
-  mesh); from the `giq-3d` plugin, which `giq-defaults` does not install
+  materials, posed as the picture and close to it), `trellis2` (Microsoft's
+  TRELLIS.2, MIT: one image to a mesh standing upright in a frame of its
+  own, freer with the surface) and `pixal3d-mv` (Pixal3D's multi-view
+  checkpoints: four views to a mesh); from the `giq-3d` plugin, which
+  `giq-defaults` does not install
 - Task: `{id, image_b64 | views_b64[4], mode?, faces?, texture_size?, close?,
   seed?, fov?}`
 - Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed}`
@@ -301,7 +304,9 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
   prefix allowed. With an alpha channel the object is what is opaque; without
   one the background is removed first. One object, all of it in frame, on a
   plain background works best. The mesh comes out posed the way the picture
-  was taken: drawn from above, it leans toward the viewer.
+  was taken: drawn from above, it leans toward the viewer. `trellis2` takes
+  the same task, less `fov`, and gives the object upright and squared to the
+  axes whatever the picture's angle.
 - `pixal3d-mv` takes `views_b64` in its place: four images a quarter turn
   apart round the object, in the order front, right side, back, left side,
   each level with the object. They need not match in size or framing: every

@@ -43,12 +43,24 @@ START_BUDGET_SECONDS = 900.0
 # which the other engines on a machine already fill; with no room, every
 # start compiles them again.
 KERNEL_CACHE_BYTES = 4 * 1024**3
+# Each pipeline's checkout: the variable that names it, and its folder.
+SOURCES = {
+    "pixal3d": ("GIQ_PIXAL3D_SOURCE", "Pixal3D"),
+    "trellis2": ("GIQ_TRELLIS2_SOURCE", "TRELLIS.2"),
+}
+# The weights.parts each pipeline loads besides its own weights.
+PARTS = {
+    "pixal3d": ("encoder", "camera", "matting"),
+    "trellis2": ("encoder", "matting", "structure"),
+}
 
 
-def source_dir() -> str:
-    """Where Pixal3D's code is: ``GIQ_PIXAL3D_SOURCE``, else the checkout
-    ``giq prepare pixal3d`` makes next to the engine's environment."""
-    return os.environ.get("GIQ_PIXAL3D_SOURCE") or str(repo_root() / "envs" / "pixal3d" / "Pixal3D")
+def source_dir(pipeline: str = "pixal3d") -> str:
+    """Where a pipeline's code is: ``GIQ_PIXAL3D_SOURCE`` or
+    ``GIQ_TRELLIS2_SOURCE``, else the checkout ``giq prepare pixal3d`` makes
+    next to the engine's environment."""
+    variable, folder = SOURCES[pipeline]
+    return os.environ.get(variable) or str(repo_root() / "envs" / "pixal3d" / folder)
 
 
 class MeshResult(BaseModel):
@@ -111,8 +123,10 @@ class MeshAdapter(SubprocessAdapter):
 
     def child_args(self) -> list[str]:
         model = self.config.model
-        args = ["--model", model, "--weights", self.weights, "--source", source_dir()]
-        for part in ("encoder", "camera", "matting"):
+        pipeline = self.params.pipeline
+        args = ["--model", model, "--weights", self.weights, "--pipeline", pipeline]
+        args += ["--source", source_dir(pipeline)]
+        for part in PARTS[pipeline]:
             path = path_of(model, part)
             if not path:
                 raise ValueError(f"{model} names no weights.parts.{part}")

@@ -105,6 +105,10 @@ class SubprocessAdapter:
     # Per-class override for run_batch's IPC wait (diarization of a long
     # recording can exceed the 600s default).
     run_batch_timeout: ClassVar[float] = RUN_BATCH_TIMEOUT_SECONDS
+    # How long the child may take to load its model and say so. An engine
+    # whose first start does one-off work (compiling kernels for the card)
+    # declares more, and the same figure as its start budget.
+    ready_timeout: ClassVar[float] = READY_TIMEOUT_SECONDS
 
     def __init__(self, config: Any, device: str | None = None) -> None:
         self.config = config
@@ -204,10 +208,10 @@ class SubprocessAdapter:
 
     async def _wait_for_ready(self) -> None:
         try:
-            msg = await asyncio.wait_for(self._read_message(), timeout=READY_TIMEOUT_SECONDS)
+            msg = await asyncio.wait_for(self._read_message(), timeout=self.ready_timeout)
         except TimeoutError:
             raise SubprocessWorkerStartError(
-                f"{self._log_prefix} did not signal ready within {READY_TIMEOUT_SECONDS}s"
+                f"{self._log_prefix} did not signal ready within {self.ready_timeout}s"
             ) from None
         except SubprocessWorkerDied as e:
             # Convert EOF-during-startup into a clearer startup-specific error.

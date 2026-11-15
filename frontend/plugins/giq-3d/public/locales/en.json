@@ -4,18 +4,25 @@
     "closeNone": "none",
     "faces": "Triangles",
     "image": "Image of the object",
+    "input": "Input",
     "mode": "Export",
     "model": "Model",
     "seed": "Seed",
     "textureSize": "Texture size"
   },
+  "input": {
+    "picture": "One picture",
+    "views": "Four views"
+  },
   "mesh": {
     "evicts": "Generating evicts instances kept warm: the first asset takes a while, then they reload.",
     "fullHint": "The generated mesh, simplified to the triangle count, with base colour, metallic and roughness. No normal map.",
     "gameHint": "A closed low-poly cage rebuilt from the outside of the mesh, with colour, material and a normal map baked onto it. Small openings are closed and painted on.",
-    "imageHint": "One object, all of it in frame, on a plain background. A transparent background is used as it is; any other is removed first.",
+    "imageHint": "One object, all of it in frame, on a plain background, for a single-view recipe (pixal3d). A transparent background is used as it is; any other is removed first.",
     "needImage": "Choose an image of the object.",
-    "none": "No image-to-3D recipe is installed."
+    "needView": "Choose this view.",
+    "none": "No image-to-3D recipe is installed.",
+    "viewsHint": "Four views a quarter turn apart round the object, level with it, for a multi-view recipe (pixal3d-mv). The asset comes out upright, with the sides as the views show them."
   },
   "mode": {
     "full": "Full detail",
@@ -38,5 +45,11 @@
   },
   "tab": {
     "mesh": "Image to 3D"
+  },
+  "view": {
+    "back": "Back",
+    "front": "Front",
+    "left": "Left side",
+    "right": "Right side"
   }
 }

@@ -15,10 +15,16 @@ import "./MeshTab.css";
 const { Field, FilePicker, SegmentedControl } = components;
 const { ModelSelect, OutputCard, RunButton, fileB64 } = sandbox;
 
+const ACCEPT = "image/png,image/jpeg,image/webp";
+/* The order a multi-view recipe takes its views in: a quarter turn each. */
+const VIEWS = ["front", "right", "back", "left"] as const;
+
 export function MeshTab({ options, model, onModel }: PanelProps) {
   const { t } = useTranslation(NS);
   const f = useFormat();
+  const [input, setInput] = useState<"picture" | "views">("picture");
   const [file, setFile] = useState<File | null>(null);
+  const [views, setViews] = useState<(File | null)[]>([null, null, null, null]);
   const [missing, setMissing] = useState(false);
   const [opts, setOpts] = useState(NO_OPTIONS);
   const runner = useRunner<MeshResult>();
@@ -27,10 +33,14 @@ export function MeshTab({ options, model, onModel }: PanelProps) {
   const faces = FACES[opts.mode];
 
   const go = () => {
-    if (!file) return setMissing(true);
-    void runner.run(async (signal) =>
-      runMeshJob(model, { id: "sbx-mesh", image_b64: await fileB64(file), ...optionFields(opts) }, signal),
-    );
+    if (input === "picture" ? !file : views.some((v) => !v)) return setMissing(true);
+    void runner.run(async (signal) => {
+      const pictures =
+        input === "picture"
+          ? { image_b64: await fileB64(file as File) }
+          : { views_b64: await Promise.all(views.map((v) => fileB64(v as File))) };
+      return runMeshJob(model, { id: "sbx-mesh", ...pictures, ...optionFields(opts) }, signal);
+    });
   };
 
   const res = runner.result;
@@ -43,20 +53,60 @@ export function MeshTab({ options, model, onModel }: PanelProps) {
   return (
     <div className="sbx-panel">
       <div className="card elev-sm sbx-form">
-        <Field label={t("field.image")} error={missing && !file ? t("mesh.needImage") : null}>
-          {(id) => (
-            <FilePicker
-              id={id}
-              accept="image/png,image/jpeg,image/webp"
-              invalid={missing && !file}
-              onChange={(next) => {
-                setFile(next);
-                setMissing(false);
-              }}
-            />
-          )}
-        </Field>
-        <p className="hint">{t("mesh.imageHint")}</p>
+        <div className="field form-field">
+          <span className="form-label" aria-hidden>{t("field.input")}</span>
+          <SegmentedControl
+            label={t("field.input")}
+            value={input}
+            options={[
+              { value: "picture", label: t("input.picture") },
+              { value: "views", label: t("input.views") },
+            ]}
+            onChange={(v) => {
+              setInput(v as "picture" | "views");
+              setMissing(false);
+            }}
+          />
+        </div>
+        {input === "picture" ? (
+          <>
+            <Field label={t("field.image")} error={missing && !file ? t("mesh.needImage") : null}>
+              {(id) => (
+                <FilePicker
+                  id={id}
+                  accept={ACCEPT}
+                  invalid={missing && !file}
+                  onChange={(next) => {
+                    setFile(next);
+                    setMissing(false);
+                  }}
+                />
+              )}
+            </Field>
+            <p className="hint">{t("mesh.imageHint")}</p>
+          </>
+        ) : (
+          <>
+            <div className="pl-giq-3d-views">
+              {VIEWS.map((name, i) => (
+                <Field key={name} label={t(`view.${name}`)} error={missing && !views[i] ? t("mesh.needView") : null}>
+                  {(id) => (
+                    <FilePicker
+                      id={id}
+                      accept={ACCEPT}
+                      invalid={missing && !views[i]}
+                      onChange={(next) => {
+                        setViews((all) => all.map((v, j) => (j === i ? next : v)));
+                        setMissing(false);
+                      }}
+                    />
+                  )}
+                </Field>
+              ))}
+            </div>
+            <p className="hint">{t("mesh.viewsHint")}</p>
+          </>
+        )}
         <div className="sbx-row">
           <Field label={t("field.model")} className="sbx-grow">
             {(id) => <ModelSelect id={id} options={options} value={model} onChange={onModel} />}

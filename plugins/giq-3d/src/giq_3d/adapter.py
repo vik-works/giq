@@ -7,9 +7,10 @@ interpreter.
 
 The child (``giq_3d_child._mesh_child``) loads the recipe's flow models and
 decoders from weights.path, and the DINOv3 encoder, the camera estimator
-and the background remover from weights.parts (encoder, camera, matting). Per task it turns one
-image into a mesh and exports it as GLB: at full detail, or as a game-ready
-low-poly asset with a normal map (``mode``, see the child).
+and the background remover from weights.parts (encoder, camera, matting).
+Per task it turns one image, or four views round the object for a recipe
+with ``views: multi``, into a mesh and exports it as GLB: at full detail, or
+as a game-ready low-poly asset with a normal map (``mode``, see the child).
 
 Pixal3D is a checkout, not a package: its code is imported from the source
 directory ``giq prepare pixal3d`` cloned, which the child is told about.
@@ -116,7 +117,7 @@ class MeshAdapter(SubprocessAdapter):
             if not path:
                 raise ValueError(f"{model} names no weights.parts.{part}")
             args += [f"--{part}", path]
-        args += ["--resolution", str(self.params.resolution)]
+        args += ["--resolution", str(self.params.resolution), "--views", self.params.views]
         return args + (["--low-vram"] if self.params.low_vram else [])
 
     def _spawn_env(self) -> dict[str, str]:

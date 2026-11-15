@@ -19,6 +19,12 @@ class Pixal3DParams(EngineParams):
     # times the generation time and 10 GB more VRAM, so it is a recipe's
     # choice, not a request's: the figure in `vram` belongs to one of them.
     resolution: Literal[1024, 1536] = 1024
+    # What a task brings. `single`: one picture, and a mesh posed the way it
+    # was taken. `multi`: four views a quarter turn apart, and a mesh upright
+    # in their frame. They are different checkpoints of the one repository,
+    # each 23 GB in RAM, so a recipe loads one set and a second recipe the
+    # other.
+    views: Literal["single", "multi"] = "single"
     # Keep the flow models on the CPU and move each to the card for its
     # stage. Measured on an RTX 5090 at 1024 this is the faster mode as well
     # as the smaller one (21 s against 84 s, 15.9 GB against 31.4 GB): with

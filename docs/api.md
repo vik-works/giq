@@ -291,14 +291,25 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
 
 
 ### Image2Mesh (`image2mesh`)
-- Recipe: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR
-  materials; from the `giq-3d` plugin, which `giq-defaults` does not install)
-- Task: `{id, image_b64, mode?, faces?, texture_size?, close?, seed?, fov?}`
+- Recipes: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR
+  materials) and `pixal3d-mv` (its multi-view checkpoints: four views to a
+  mesh); from the `giq-3d` plugin, which `giq-defaults` does not install
+- Task: `{id, image_b64 | views_b64[4], mode?, faces?, texture_size?, close?,
+  seed?, fov?}`
 - Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed}`
 - `image_b64` is one picture of the object: PNG, JPEG or WebP, a data URL
   prefix allowed. With an alpha channel the object is what is opaque; without
   one the background is removed first. One object, all of it in frame, on a
-  plain background works best.
+  plain background works best. The mesh comes out posed the way the picture
+  was taken: drawn from above, it leans toward the viewer.
+- `pixal3d-mv` takes `views_b64` in its place: four images a quarter turn
+  apart round the object, in the order front, right side, back, left side,
+  each level with the object. They need not match in size or framing: every
+  view is cut out and scaled so the object has one height in all four,
+  which is what puts them at one camera distance. The mesh comes out upright
+  and squared to the axes, with the sides as the views show them. Views that
+  disagree about the object give doubled or smeared geometry, so look at
+  them first. `fov` does not apply.
 - `mode` picks the export. `game` (default) is a low-poly asset: a closed
   cage of `faces` triangles (200-50,000, default 3,000) rebuilt from the
   outside of the generated mesh, so no face is spent where nobody can see,

@@ -149,7 +149,8 @@
         "image2mesh"
       ],
       "recipes": [
-        "pixal3d"
+        "pixal3d",
+        "pixal3d-mv"
       ],
       "needs": "its own interpreter, set up once: cd envs/pixal3d && uv sync, then giq prepare pixal3d"
     }

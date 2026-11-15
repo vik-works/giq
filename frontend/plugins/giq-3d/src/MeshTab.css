@@ -11,3 +11,9 @@
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
+
+.pl-giq-3d-views {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+}

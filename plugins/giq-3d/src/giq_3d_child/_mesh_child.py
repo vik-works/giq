@@ -7,8 +7,10 @@
 Invoked by ``MeshAdapter`` via ``<pixal3d python> -u -m
 giq_3d_child._mesh_child --model <recipe> --weights <checkpoint root>
 --source <Pixal3D checkout> --encoder <DINOv3 folder> --camera <MoGe folder>
---matting <BiRefNet folder> --resolution <1024|1536> [--low-vram]``. Loads
-the flow models, decoders and the four DINOv3 feature extractors once.
+--matting <BiRefNet folder> --resolution <1024|1536> --views <single|multi>
+[--low-vram]``. Loads the flow models, decoders and the four DINOv3 feature
+extractors once: the single-view set or the multi-view set, which are
+different checkpoints of the same repository.
 
 Pixal3D is a checkout, not a package: its code is imported from ``--source``.
 Three things are put in place before it is: giq's UV rasteriser under the
@@ -19,9 +21,13 @@ DINOv3 file for every feature extractor, its parameters renamed as it loads
 background remover (upstream names RMBG-2.0, which is non-commercial). The
 hub is offline, so anything missing fails here rather than being fetched.
 
-Per task: the image is cut out of its background unless it already carries
-an alpha channel, the camera it was taken with is estimated (or given, as
-``fov``), the cascade generates the mesh, and it is exported as GLB by
+Per task, single view: the image is cut out of its background unless it
+already carries an alpha channel, the camera it was taken with is estimated
+(or given, as ``fov``), and the cascade generates the mesh posed the way the
+picture was taken. Multi view: four views a quarter turn apart round the
+object (front, right, back, left) are cut out and fitted to the rig those
+cameras make (see ``rig``), and the mesh comes out in the rig's frame,
+upright and squared to the axes. Either way it is exported as GLB by
 ``mode``:
 
   ``game`` (default)  a low-poly cage of ``faces`` triangles with the asset
@@ -49,6 +55,7 @@ os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 # which is most of what keeps low-VRAM mode at its measured peak.
 os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
+from giq_3d_child.rig import VIEW_NAMES, fit_views  # noqa: E402
 from giq_child import (  # noqa: E402
     reserve_ipc_stdout,
     run_ipc_child_loop,
@@ -70,6 +77,8 @@ MAX_TOKENS = 49152
 # The turn Pixal3D gives its export so the asset faces the viewer it was drawn for.
 ROTATION = ((-1, 0, 0, 0), (0, 0, -1, 0), (0, -1, 0, 0), (0, 0, 0, 1))
 MAX_IMAGE_BYTES = 40 * 1024 * 1024
+# The rig's cameras, as Pixal3D ships them with its example views.
+RIG_FILE = os.path.join("assets", "mv_images", "example", "transforms.json")
 
 
 def _integer(value, name: str) -> int:
@@ -78,17 +87,36 @@ def _integer(value, name: str) -> int:
     return int(value)
 
 
-def task_inputs(task: dict) -> dict:
-    """A task's request, checked. Raises ValueError naming the field that is wrong."""
-    image = task.get("image_b64")
-    if not isinstance(image, str) or not image:
-        raise ValueError("task needs an 'image_b64' of the object")
+def _picture(value, name: str) -> bytes:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{name} must be a base64 image")
     try:
-        data = base64.b64decode(image.split(",", 1)[-1], validate=True)
+        data = base64.b64decode(value.split(",", 1)[-1], validate=True)
     except (binascii.Error, ValueError):
-        raise ValueError("'image_b64' is not base64") from None
+        raise ValueError(f"{name} is not base64") from None
     if len(data) > MAX_IMAGE_BYTES:
-        raise ValueError(f"'image_b64' is larger than {MAX_IMAGE_BYTES // 2**20} MB")
+        raise ValueError(f"{name} is larger than {MAX_IMAGE_BYTES // 2**20} MB")
+    return data
+
+
+def task_inputs(task: dict, multi: bool = False) -> dict:
+    """A task's request, checked. Raises ValueError naming the field that is wrong.
+
+    ``multi`` is the recipe's: a multi-view recipe takes ``views_b64``, a
+    single-view one ``image_b64``, and neither takes the other's.
+    """
+    if multi:
+        views = task.get("views_b64")
+        if not isinstance(views, list) or len(views) != len(VIEW_NAMES):
+            raise ValueError(
+                f"task needs 'views_b64': {len(VIEW_NAMES)} images of the object, "
+                f"in the order {', '.join(VIEW_NAMES)}"
+            )
+        data = [_picture(v, f"'views_b64' {n}") for v, n in zip(views, VIEW_NAMES, strict=True)]
+    else:
+        if task.get("image_b64") is None or task.get("image_b64") == "":
+            raise ValueError("task needs an 'image_b64' of the object")
+        data = _picture(task["image_b64"], "'image_b64'")
 
     mode = task.get("mode", "game")
     if mode not in MODES:
@@ -108,12 +136,14 @@ def task_inputs(task: dict) -> dict:
     if not 0 <= seed < 2**32:
         raise ValueError("'seed' must be 0 to 4294967295")
     fov = task.get("fov")
+    if fov is not None and multi:
+        raise ValueError("'fov' is a single picture's: the views' cameras are the rig's")
     if fov is not None:
         if isinstance(fov, bool) or not isinstance(fov, (int, float)) or not 0.05 <= fov <= 2.5:
             raise ValueError("'fov' is the camera's horizontal field of view in radians, 0.05-2.5")
         fov = float(fov)
     return {
-        "image": data,
+        "views" if multi else "image": data,
         "mode": mode,
         "faces": faces,
         "texture_size": size,
@@ -134,8 +164,11 @@ def _load(args):
     ):
         if not os.path.exists(path):
             raise FileNotFoundError(f"{what} is missing: {path}")
-    if not os.path.isfile(os.path.join(args.source, "inference.py")):
-        raise FileNotFoundError(f"{args.source} is not a Pixal3D checkout (no inference.py)")
+    script = "inference_mv.py" if args.views == "multi" else "inference.py"
+    if not os.path.isfile(os.path.join(args.source, script)):
+        raise FileNotFoundError(f"{args.source} is not a Pixal3D checkout (no {script})")
+    if args.views == "multi" and not os.path.isfile(os.path.join(args.source, RIG_FILE)):
+        raise FileNotFoundError(f"{args.source} lacks the rig's cameras ({RIG_FILE})")
 
     from giq_3d_child import uvraster
 
@@ -154,15 +187,21 @@ def _load(args):
 
     rembg.BiRefNet = LocalMatting
 
-    import inference as px
     from pixal3d.trainers.flow_matching.mixins import image_conditioned_proj
 
     from giq_3d_child.dinov3 import TimmDINOv3
 
     image_conditioned_proj.DINOv3ViTModel = TimmDINOv3
+    if args.views == "multi":
+        import inference_mv as px
+    else:
+        import inference as px
     for config in px.IMAGE_COND_CONFIGS.values():
         config["model_name"] = args.encoder
-    pipeline = px.init_pipeline(args.weights, low_vram=args.low_vram)
+    if args.views == "multi":
+        pipeline = px.init_pipeline(args.weights, "pipeline_mv.json", low_vram=args.low_vram)
+    else:
+        pipeline = px.init_pipeline(args.weights, low_vram=args.low_vram)
     return px, pipeline
 
 
@@ -198,26 +237,26 @@ def _camera(px, args, image, fov):
         torch.cuda.empty_cache()
 
 
-def _run(models, args, task: dict) -> dict:
-    import numpy as np
-    import o_voxel
-    import torch
+def _open(data: bytes, name: str):
     from PIL import Image
 
-    px, pipeline = models
-    inputs = task_inputs(task)
     try:
-        picture = Image.open(io.BytesIO(inputs["image"]))
+        picture = Image.open(io.BytesIO(data))
         picture.load()
     except Exception:
-        raise ValueError("'image_b64' is not an image giq can read") from None
+        raise ValueError(f"{name} is not an image giq can read") from None
     if picture.mode not in ("RGB", "RGBA"):
         picture = picture.convert("RGBA" if "A" in picture.getbands() else "RGB")
+    return picture
 
-    image = pipeline.preprocess_image(picture)
+
+def _generate_single(px, pipeline, args, inputs: dict):
+    import torch
+
+    image = pipeline.preprocess_image(_open(inputs["image"], "'image_b64'"))
     camera = _camera(px, args, image, inputs["fov"])
     torch.manual_seed(inputs["seed"])
-    meshes, (_shape, _texture, grid) = pipeline.run(
+    return pipeline.run(
         image,
         camera_params=camera,
         seed=inputs["seed"],
@@ -226,6 +265,71 @@ def _run(models, args, task: dict) -> dict:
         pipeline_type=f"{args.resolution}_cascade",
         max_num_tokens=MAX_TOKENS,
     )
+
+
+def _generate_multi(px, pipeline, args, inputs: dict):
+    import json
+    import shutil
+    import tempfile
+
+    import numpy as np
+    import torch
+
+    # A view is used as it is when it carries a cut-out of its own, like a
+    # single picture is: an alpha channel that is not opaque throughout.
+    matte = px.make_rembg(pipeline)
+    cutouts = []
+    for data, name in zip(inputs["views"], VIEW_NAMES, strict=True):
+        picture = _open(data, f"'views_b64' {name}")
+        cut = picture.mode == "RGBA" and not np.all(np.asarray(picture)[..., 3] == 255)
+        cutouts.append(picture if cut else matte(picture).convert("RGBA"))
+    with tempfile.TemporaryDirectory(prefix="giq-pixal3d-views-") as folder:
+        rig = os.path.join(folder, "transforms.json")
+        shutil.copy(os.path.join(args.source, RIG_FILE), rig)
+        with open(rig) as f:
+            frames = json.load(f)["frames"]
+        for view, frame in zip(fit_views(cutouts), frames, strict=True):
+            view.save(os.path.join(folder, frame["file_path"]))
+        views = px.load_views(folder, len(VIEW_NAMES), rembg=None)
+    torch.manual_seed(inputs["seed"])
+    # The sampling Pixal3D's own multi-view script runs with.
+    return pipeline.run_mv(
+        views,
+        seed=inputs["seed"],
+        sparse_structure_sampler_params={
+            "steps": 12,
+            "guidance_strength": 7.5,
+            "guidance_rescale": 0.7,
+            "rescale_t": 5.0,
+        },
+        shape_slat_sampler_params={
+            "steps": 12,
+            "guidance_strength": 7.5,
+            "guidance_rescale": 0.5,
+            "rescale_t": 3.0,
+        },
+        tex_slat_sampler_params={
+            "steps": 12,
+            "guidance_strength": 1.0,
+            "guidance_rescale": 0.0,
+            "rescale_t": 3.0,
+        },
+        return_latent=True,
+        pipeline_type=f"{args.resolution}_cascade",
+        max_num_tokens=MAX_TOKENS,
+    )
+
+
+def _run(models, args, task: dict) -> dict:
+    import numpy as np
+    import o_voxel
+    import torch
+
+    px, pipeline = models
+    multi = args.views == "multi"
+    inputs = task_inputs(task, multi)
+    generate = _generate_multi if multi else _generate_single
+    meshes, (_shape, _texture, grid) = generate(px, pipeline, args, inputs)
     mesh = meshes[0]
     aabb = [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]]
     if inputs["mode"] == "game":
@@ -288,6 +392,7 @@ def main() -> None:
     parser.add_argument("--camera", required=True)
     parser.add_argument("--matting", required=True)
     parser.add_argument("--resolution", type=int, choices=(1024, 1536), default=1024)
+    parser.add_argument("--views", choices=("single", "multi"), default="single")
     parser.add_argument("--low-vram", action="store_true")
     args = parser.parse_args()
     try:

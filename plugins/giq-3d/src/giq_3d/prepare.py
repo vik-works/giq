@@ -81,8 +81,17 @@ def _run(command: list[str], env: dict[str, str] | None = None, cwd: str | None 
     subprocess.run(command, check=True, env=env, cwd=cwd)
 
 
-def _has(python: str, module: str) -> bool:
-    probe = subprocess.run([python, "-c", f"import {module}"], capture_output=True)
+def _has(python: str, distribution: str) -> bool:
+    """Whether a distribution is installed in the engine's environment.
+
+    Asked of the package metadata, not by importing: O-Voxel imports
+    nvdiffrast at the top, which is deliberately absent, so an import says
+    "missing" for a build that is there and it would be rebuilt every time.
+    """
+    probe = subprocess.run(
+        [python, "-c", "import importlib.metadata as m, sys; m.version(sys.argv[1])", distribution],
+        capture_output=True,
+    )
     return probe.returncode == 0
 
 
@@ -116,9 +125,10 @@ def build_env(python: str) -> dict[str, str]:
     arch = env.get("GIQ_PIXAL3D_CUDA_ARCH", ARCH)
     env["TORCH_CUDA_ARCH_LIST"] = arch if "+PTX" in arch or arch != ARCH else f"{arch}+PTX"
     env["NATTEN_CUDA_ARCH"] = arch.replace("+PTX", "")
-    # A CUDA translation unit takes a gigabyte or two to compile, so the
-    # job count is held to what a 32 GB machine survives, not to the cores.
-    jobs = str(max(1, min(12, (os.cpu_count() or 4) - 2)))
+    # NATTEN's translation units take several gigabytes each to compile:
+    # with 12 jobs the build passed 28 GB and was killed. Six fits in about
+    # 20 GB; NATTEN_N_WORKERS and MAX_JOBS raise or lower it.
+    jobs = str(max(1, min(6, (os.cpu_count() or 4) - 2)))
     env.setdefault("NATTEN_N_WORKERS", jobs)
     env.setdefault("MAX_JOBS", jobs)
     env["NVCC_PREPEND_FLAGS"] = f"-ccbin {host} -I{site}/include " + env.get(
@@ -185,7 +195,7 @@ def main(argv: list[str]) -> int:
         _pip(python, "--no-build-isolation", "--no-deps", requirement, env=env)
     if not _has(python, "natten"):
         env = env or build_env(python)
-        _say("building NATTEN (about twenty minutes)")
+        _say("building NATTEN (about half an hour)")
         _natten(python, env)
 
     _say("caching the NAF upsampler")

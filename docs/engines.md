@@ -115,8 +115,9 @@ giq add pixal3d                # the weights: 23 GB, plus encoder, camera and ma
 
 `giq prepare pixal3d` clones Pixal3D, installs MoGe, compiles CuMesh,
 FlexGEMM, O-Voxel and NATTEN against the environment's torch, and caches
-the NAF upsampler. It needs `git`, `nvcc` and a C++ compiler; NATTEN alone
-takes about twenty minutes. A CUDA toolkit older than the card is enough:
+the NAF upsampler. It needs `git`, `nvcc` and a C++ compiler. NATTEN alone
+takes half an hour and about 20 GB of RAM with the six compile jobs the
+step uses; `NATTEN_N_WORKERS` sets another number. A CUDA toolkit older than the card is enough:
 the build targets an older architecture with PTX, which the driver compiles
 for the card at load time. Verified with Ubuntu 24.04's CUDA 12.0 and
 gcc 12 for an RTX 5090; set `GIQ_PIXAL3D_CUDA_ARCH` (torch's architecture

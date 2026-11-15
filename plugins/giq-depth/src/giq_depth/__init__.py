@@ -13,7 +13,7 @@ from pathlib import Path
 
 from giq.plugin import API_VERSION, AdapterContext, Modality, Plugin
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 
 def _depth(ctx: AdapterContext):

@@ -4,14 +4,14 @@
 
 [project]
 name = "giq-music"
-version = "0.8.0"
+version = "0.8.1"
 description = "Text to music for giq (ACE-Step 1.5)"
 license = "Apache-2.0"
 license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "giq==0.8.0",
+    "giq==0.8.1",
 ]
 
 [project.entry-points."giq.plugins"]

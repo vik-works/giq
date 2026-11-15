@@ -35,6 +35,9 @@ class SdCppParams(EngineParams):
     model_args: tuple[str, ...] = ()
     # How strongly weights.parts.lora applies to every render.
     lora_strength: float = Field(default=1.0, gt=0.0, le=2.0)
+    # How strongly weights.parts.lora_camera applies to a task that asks for
+    # it. 0.9 is what the multiple-angles LoRA's card recommends.
+    lora_camera_strength: float = Field(default=0.9, gt=0.0, le=2.0)
 
     @field_validator("model_args")
     @classmethod

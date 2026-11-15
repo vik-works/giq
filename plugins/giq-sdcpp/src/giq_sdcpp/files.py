@@ -13,7 +13,10 @@ from giq.weights import path_of, recipe_of
 
 # llm_vision: the vision tower a GGUF text encoder leaves in a file of its
 # own (an mmproj), which the edit models read the reference image with.
-IMAGE_PARTS = ("diffusion", "text_encoder", "vae", "lora", "llm_vision")
+# lora_camera: a LoRA a task switches on, where `lora` rides along on every
+# render: camera control for an edit model, which only the tasks that ask for
+# another viewpoint want.
+IMAGE_PARTS = ("diffusion", "text_encoder", "vae", "lora", "llm_vision", "lora_camera")
 _REQUIRED_IMAGE_PARTS = ("diffusion", "text_encoder", "vae")
 
 
@@ -26,6 +29,7 @@ class ImageFiles:
     vae: str
     lora: str | None = None
     llm_vision: str | None = None
+    lora_camera: str | None = None
 
 
 def image_files(name: str) -> ImageFiles:
@@ -45,6 +49,7 @@ def image_files(name: str) -> ImageFiles:
         vae=str(files["vae"]),
         lora=_str(files["lora"]),
         llm_vision=_str(files["llm_vision"]),
+        lora_camera=_str(files["lora_camera"]),
     )
 
 

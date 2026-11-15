@@ -20,7 +20,7 @@ from giq_sdcpp.params import SdCppParams
 
 __version__ = "0.8.1"
 
-_IMAGE_PARTS = frozenset({"diffusion", "text_encoder", "vae", "lora", "llm_vision"})
+_IMAGE_PARTS = frozenset({"diffusion", "text_encoder", "vae", "lora", "llm_vision", "lora_camera"})
 
 
 def _sdcpp(ctx: AdapterContext):

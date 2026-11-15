@@ -144,6 +144,9 @@ class SdCppConfig:
     # A LoRA every render applies (a Lightning distillation, say), by file.
     lora: str | None = None
     lora_strength: float = 1.0
+    # LoRAs a task switches on by name (`loras: ["camera"]`), by file.
+    task_loras: dict[str, str] = field(default_factory=dict)
+    task_lora_strengths: dict[str, float] = field(default_factory=dict)
     flow_shift: float | None = None
     model_args: tuple[str, ...] = ()
     width: int = 800
@@ -177,6 +180,8 @@ class SdCppConfig:
             self.vae = cfg.vae
             self.llm_vision = cfg.llm_vision
             self.lora = cfg.lora
+            if cfg.lora_camera:
+                self.task_loras = {"camera": cfg.lora_camera}
             gen = get_config().image_generation
             self.width = gen.width
             self.height = gen.height
@@ -199,6 +204,16 @@ class SdCppConfig:
             self.flow_shift = flow_shift
         self.model_args = tuple(getattr(params, "model_args", ()) or self.model_args)
         self.lora_strength = getattr(params, "lora_strength", self.lora_strength)
+        self.task_lora_strengths = {
+            name: getattr(params, f"lora_{name}_strength", 1.0) for name in self.task_loras
+        }
+        # sd-server reads LoRAs from one folder, named once at start.
+        folders = {os.path.dirname(p) for p in (self.lora, *self.task_loras.values()) if p}
+        if len(folders) > 1:
+            raise ValueError(
+                f"{self.model}'s LoRAs are in different folders ({', '.join(sorted(folders))}): "
+                "sd-server takes one"
+            )
 
 
 @dataclass
@@ -298,9 +313,9 @@ class SdCppAdapter:
             flags += ["--flow-shift", str(cfg.flow_shift)]
         if cfg.model_args:
             flags += ["--model-args", ",".join(cfg.model_args)]
-        if cfg.lora:
+        if loras := [p for p in (cfg.lora, *cfg.task_loras.values()) if p]:
             # sd-server takes LoRAs per request, by name inside this folder.
-            flags += ["--lora-model-dir", os.path.dirname(cfg.lora)]
+            flags += ["--lora-model-dir", os.path.dirname(loras[0])]
         return flags
 
     async def _drain_stderr(self) -> None:
@@ -336,17 +351,46 @@ class SdCppAdapter:
             await asyncio.sleep(1.0)
         raise StartError(f"sd-server not ready after {READY_TIMEOUT_SECONDS:.0f}s")
 
+    def _loras(self, task: dict[str, Any]) -> list[dict[str, Any]]:
+        """The LoRAs one render applies: the recipe's own, then the ones the
+        task switches on by name. Raises ValueError for a name the recipe
+        does not have."""
+        loras = []
+        if self.config.lora:
+            loras.append(
+                {
+                    "path": os.path.basename(self.config.lora),
+                    "multiplier": self.config.lora_strength,
+                }
+            )
+        asked = task.get("loras") or []
+        if isinstance(asked, str) or not all(isinstance(name, str) for name in asked):
+            raise ValueError("'loras' must be a list of names")
+        for name in dict.fromkeys(asked):
+            if name not in self.config.task_loras:
+                have = ", ".join(sorted(self.config.task_loras)) or "none"
+                raise ValueError(f"{self.config.model} has no LoRA named {name!r}; it has: {have}")
+            loras.append(
+                {
+                    "path": os.path.basename(self.config.task_loras[name]),
+                    "multiplier": self.config.task_lora_strengths.get(name, 1.0),
+                }
+            )
+        return loras
+
     async def _index_lora(self) -> None:
         """Have sd-server list its LoRA folder, and check the recipe's LoRA
         is in it. sd-server resolves a request's LoRA against a list only
         that route fills: until then every render naming one is a 400."""
-        if not self.config.lora or not self._client:
+        wanted = [p for p in (self.config.lora, *self.config.task_loras.values()) if p]
+        if not wanted or not self._client:
             return
         resp = await self._client.get("/sdapi/v1/loras", timeout=10.0)
         resp.raise_for_status()
-        name = os.path.basename(self.config.lora)
-        if name not in {entry.get("path") for entry in resp.json()}:
-            raise StartError(f"sd-server does not list the recipe's LoRA {name}")
+        listed = {entry.get("path") for entry in resp.json()}
+        for name in map(os.path.basename, wanted):
+            if name not in listed:
+                raise StartError(f"sd-server does not list the recipe's LoRA {name}")
 
     async def stop(self) -> None:
         try:
@@ -414,13 +458,8 @@ class SdCppAdapter:
                     "seed": task.get("seed", -1) if task.get("seed") is not None else -1,
                     "batch_size": 1,
                 }
-                if self.config.lora:
-                    payload["lora"] = [
-                        {
-                            "path": os.path.basename(self.config.lora),
-                            "multiplier": self.config.lora_strength,
-                        }
-                    ]
+                if loras := self._loras(task):
+                    payload["lora"] = loras
                 if task.get("reference_image_b64"):
                     payload["extra_images"] = [task["reference_image_b64"]]
                 resp = await self._client.post("/sdapi/v1/txt2img", json=payload)

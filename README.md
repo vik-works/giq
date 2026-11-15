@@ -91,7 +91,8 @@ flowchart TB
 A request names a recipe (`model`) and becomes a job, which waits in the
 queue for an instance of that recipe — the recipe running on a card. If one
 is up — a keep-warm (resident) instance, or the on-demand one that ran last —
-the job runs at once; resident LLMs take several requests in parallel. If
+the job runs at once; an instance takes as many jobs in parallel as its
+recipe has lanes, kept warm or not. If
 not, giq checks the recipe's card: the declared VRAM figure plus a margin,
 against what is free there now. When it does not fit, giq evicts resident
 instances on that card until it does, runs the job, and the residents loop

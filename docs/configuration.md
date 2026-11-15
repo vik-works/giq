@@ -146,7 +146,7 @@ max_batch: 32
 | `residency.priority` | Position in the default resident set, lowest first; unset = loads on demand |
 | `vram.gb`, `vram.measured` | The gate's figure, and whether it was observed on real hardware (`measured_on`, `notes` optional). vllm with a `kv_cache_memory` budget: `vram.weights_gb` + `vram.overhead_gb` instead, and `gb` is their sum with the budget |
 | `aliases` | Other names clients may send; unique like names |
-| `lane_width`, `max_batch`, `voices` | Concurrent jobs on a resident's lane (default per modality; for vllm it is `params.max_num_seqs` and cannot be set), batch ceiling (a number, or one per modality), TTS voices |
+| `lane_width`, `max_batch`, `voices` | Concurrent jobs on an instance of the recipe, kept warm or loaded on demand (default per modality; for vllm it is `params.max_num_seqs` and cannot be set), batch ceiling (a number, or one per modality), TTS voices |
 
 llama.cpp `params`: `ctx_size` (shared by the slots), `parallel` (slots;
 more than one turns on continuous batching), `cache_type_k` and
@@ -370,9 +370,11 @@ layers *and KV cache* across every visible GPU — half your LLM ends up on a
 card giq is not scheduling against.
 
 **Not implemented yet:** two *batch* jobs running at once on different cards.
-Each card holds its own on-demand instance, but job dispatch is still
-serialized, so a render on one card and a batch on the other take turns.
-Resident instances (the pinned set) serve concurrently throughout.
+Each card holds its own on-demand instance, but on-demand jobs are
+dispatched in queue order from one loop: a render on one card and a batch on
+the other take turns whenever either runs on a recipe with a single lane.
+Jobs already running on a wider instance carry on meanwhile, and resident
+instances (the pinned set) serve concurrently throughout.
 
 ## Systemd service
 

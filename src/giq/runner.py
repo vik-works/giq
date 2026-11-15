@@ -377,13 +377,13 @@ class Adapter(Protocol):
     async def run_batch(self, tasks: list[dict], params: dict | None = None) -> list[Any]: ...
 
 
-# Lane widths: how many jobs may run concurrently on a resident's adapter.
+# Lane widths: how many jobs may run concurrently on an instance's adapter.
 # Each modality registers its default (giq.builtins); a recipe or its engine
 # can say otherwise (Recipe.lanes).
 
 
 def _lane_width(model: str, adapter: Any) -> int:
-    """How many jobs a resident runs at once.
+    """How many jobs an instance of ``model`` runs at once.
 
     An engine that schedules requests itself says how many it takes (ADR-002,
     D8): handing vllm fewer than its max_num_seqs wastes the batch it was
@@ -403,11 +403,11 @@ class Instance:
     """A recipe running on a card (ADR-003): its adapter, where, and why.
 
     The runner indexes instances two ways, because it schedules them two
-    ways. A *resident* is kept loaded by policy and has a lane — a semaphore
-    of ``width`` concurrent jobs, so an embed never queues behind a chat
-    generation; the runner finds residents by recipe. An *on-demand* instance
-    is loaded for a job and unloaded when idle, one per card, and dispatch to
-    it is serialized; the runner finds it by card. ``GET /instances`` is both.
+    ways. A *resident* is kept loaded by policy; the runner finds residents
+    by recipe. An *on-demand* instance is loaded for a job and unloaded when
+    idle, one per card; the runner finds it by card. Either has a lane — a
+    semaphore of ``width`` concurrent jobs — so a burst for one recipe reaches
+    the engine together, loaded by policy or not. ``GET /instances`` is both.
     """
 
     def __init__(
@@ -522,6 +522,10 @@ class Runner:
         self._residents: dict[str, Instance] = {}
         self._resident_task: asyncio.Task | None = None
         self._resident_jobs: set[asyncio.Task] = set()
+        # Jobs in flight on an on-demand instance's lanes. Kept apart from the
+        # resident jobs: the residents loop reads those as "a resident is
+        # being waited on", which a burst for an on-demand recipe is not.
+        self._on_demand_jobs: set[asyncio.Task] = set()
         self._queue_empty_since: float | None = None
         self._last_job_time: datetime | None = None
         self._paused = False
@@ -681,6 +685,17 @@ class Runner:
                 return slot.adapter.base_url
         return None
 
+    @property
+    def _on_demand_busy(self) -> bool:
+        """An on-demand job is loading its instance or running on one.
+
+        Everything that may unload an on-demand instance, or load a resident
+        into the VRAM one is using, asks here. The dispatch loop's own flag
+        covers a load and a job run inline; the lanes cover jobs it has handed
+        off and moved on from.
+        """
+        return self._processing_job or any(s.in_flight for s in self._slots.values())
+
     def is_resident_key(self, model: str) -> bool:
         return model in self._resident_keys
 
@@ -737,10 +752,11 @@ class Runner:
         # Lane tasks that are still waiting for (or holding) a resident have no
         # adapter to come back to; cancel them rather than let them wait out
         # RESIDENT_WAIT_TIMEOUT_SECONDS.
-        for task in list(self._resident_jobs):
+        lane_jobs = [*self._resident_jobs, *self._on_demand_jobs]
+        for task in lane_jobs:
             task.cancel()
-        if self._resident_jobs:
-            await asyncio.gather(*self._resident_jobs, return_exceptions=True)
+        if lane_jobs:
+            await asyncio.gather(*lane_jobs, return_exceptions=True)
 
         async with self._worker_lock:
             try:
@@ -784,13 +800,13 @@ class Runner:
     async def _await_quiet(self, timeout: float) -> bool:
         """Wait until nothing is running. False if ``timeout`` expired first.
 
-        Busy = the batch slot is processing, a resident lane has a job in
-        flight, or a resident llama-server reports active slots (direct clients
+        Busy = an on-demand job is loading or running, a resident lane has a
+        job in flight, or a resident llama-server reports active slots (direct clients
         bypass the lanes entirely — see _defer_while_busy).
         """
         started = monotonic()
         while True:
-            busy = self._processing_job or any(r.in_flight for r in self._residents.values())
+            busy = self._on_demand_busy or any(r.in_flight for r in self._residents.values())
             if not busy:
                 for res in self._residents.values():
                     if isinstance(res.adapter, ServedLLM) and await res.adapter.active_slot_count():
@@ -856,10 +872,11 @@ class Runner:
                 await self._resident_task
             except asyncio.CancelledError:
                 pass
-        for task in list(self._resident_jobs):
+        lane_jobs = [*self._resident_jobs, *self._on_demand_jobs]
+        for task in lane_jobs:
             task.cancel()
-        if self._resident_jobs:
-            await asyncio.gather(*self._resident_jobs, return_exceptions=True)
+        if lane_jobs:
+            await asyncio.gather(*lane_jobs, return_exceptions=True)
         async with self._worker_lock:
             await self._unload_worker()
             for key in list(self._residents):
@@ -874,8 +891,11 @@ class Runner:
         """Main processing loop.
 
         Jobs for resident models fan out to per-resident lane tasks (concurrent
-        across residents, width-bounded within one); everything else runs
-        serially in the batch slot with resident eviction as needed.
+        across residents, width-bounded within one). Everything else is loaded
+        on demand, one load at a time and in queue order, with resident
+        eviction as needed; once its instance is up, a job runs on that
+        instance's lane, so the loop is free to hand the next job for the same
+        recipe to the engine alongside it.
         """
         while self._running:
             try:
@@ -910,7 +930,14 @@ class Runner:
                 await asyncio.sleep(1)
 
     async def _process_job(self, job: Job) -> None:
-        """Process a single job."""
+        """Load an on-demand job's instance, then run the job on it.
+
+        The load is serial: one instance per card, swapped in queue order.
+        The run is serial too on an instance one lane wide. On a wider one the
+        job is handed to a lane task and this returns, so the dispatch loop
+        can put the next job for the same recipe next to it — which is what
+        lets vllm batch a burst for a recipe nobody pinned.
+        """
         logger.info(f"Processing job {job.job_id}: {job.request.modality}/{job.request.model}")
         _log_inflight("start", job)
 
@@ -919,6 +946,7 @@ class Runner:
         self._processing_job = True
 
         device = self._device_for(job.request.model)
+        handed_off = False
         try:
             # Sleepy-model job: free enough resident VRAM first, on THIS card
             # (waits for in-flight resident sessions, capped so this job can't
@@ -926,39 +954,16 @@ class Runner:
             # them would free memory the load cannot use.
             await self._evict_residents_for(job.request.model)
 
-            # Ensure correct adapter is loaded
-            adapter = await self._ensure_worker(job.request.model, job.request.model_path)
+            # Ensure correct adapter is loaded, and take a lane on it
+            adapter, lane = await self._claim_lane(job)
 
-            # Run the job with a timeout to prevent infinite hangs
-            timeout = _job_timeout(job.request.modality, job)
-            if adapter:
-                if job.request.chat_request is not None:
-                    # Raw chat completion passthrough (tool-calling path)
-                    if not isinstance(adapter, ServedLLM):
-                        raise RuntimeError("chat_request requires LLM worker")
-                    if job.stream is not None:
-                        raw_result = await asyncio.wait_for(
-                            adapter.chat_completion_stream(job.request.chat_request, job.stream),
-                            timeout=timeout,
-                        )
-                    else:
-                        raw_result = await asyncio.wait_for(
-                            adapter.chat_completion(job.request.chat_request),
-                            timeout=timeout,
-                        )
-                    # Store raw dict as single result
-                    job.results = [raw_result]
-                    job.status = JobStatus.completed
-                else:
-                    results = await asyncio.wait_for(
-                        adapter.run_batch(
-                            job.request.tasks,
-                            job.request.params,
-                        ),
-                        timeout=timeout,
-                    )
-                    job.results = _as_dicts(results)
-                    job.status = JobStatus.completed
+            if lane is not None:
+                task = asyncio.create_task(self._run_on_lane(job, lane))
+                self._on_demand_jobs.add(task)
+                task.add_done_callback(self._on_demand_jobs.discard)
+                handed_off = True
+            elif adapter:
+                await self._run_on(adapter, job)
             else:
                 job.status = JobStatus.failed
                 job.error = f"Failed to load adapter: {job.request.modality}"
@@ -970,11 +975,7 @@ class Runner:
             job.error = f"Job timed out after {limit:.0f}s"
             # llama-server may still be generating after HTTP cancel; tear it
             # down so it doesn't keep burning VRAM + CPU in the background.
-            try:
-                async with self._worker_lock:
-                    await self._unload_worker(device)
-            except Exception as unload_err:
-                logger.error(f"Failed to unload timed-out adapter: {unload_err}")
+            await self._unload_after_failure(device)
 
         except Exception as e:
             logger.error(f"Job {job.job_id} failed: {e}")
@@ -982,19 +983,143 @@ class Runner:
             job.error = str(e)
             # A adapter that errored mid-generation may be wedged. Unload so
             # the next job gets a clean slate rather than inheriting the mess.
-            try:
-                async with self._worker_lock:
-                    await self._unload_worker(device)
-            except Exception as unload_err:
-                logger.error(f"Failed to unload failed adapter: {unload_err}")
+            await self._unload_after_failure(device)
 
         finally:
             self._processing_job = False
             # The reader is blocked on the sentinel; it has to arrive whether
             # the job succeeded, failed, timed out or never loaded a adapter.
-            if job.stream is not None:
+            # A job handed to a lane is not finished: its task sends it.
+            if job.stream is not None and not handed_off:
                 await job.stream.close()
 
+        if handed_off:
+            # Let the lane task start before the loop claims the next job.
+            await asyncio.sleep(0)
+            return
+        await self._finish_on_demand_job(job)
+
+    async def _claim_lane(self, job: Job) -> tuple[Adapter | None, Instance | None]:
+        """Load ``job``'s instance and take one of its lanes.
+
+        Returns the adapter and, when the job is to run on a lane, the
+        instance whose lane is now held and counted in flight. An instance
+        one lane wide returns no lane: the caller runs the job inline, and
+        the dispatch loop waiting on it is what keeps the instance to one job.
+
+        The wait for a free lane happens here, in the dispatch loop, rather
+        than in a spawned task: jobs the engine has no room for stay queued
+        in order behind this one instead of all being claimed at once.
+        """
+        model = job.request.model
+        device = self._device_for(model)
+        while True:
+            adapter = await self._ensure_worker(model, job.request.model_path)
+            slot = self._slots.get(device)
+            if slot is None or slot.adapter is not adapter or slot.width <= 1:
+                return adapter, None
+            await slot.lane.acquire()
+            # A failed sibling may have unloaded the instance while this job
+            # waited for the lane; load it again rather than run on a corpse.
+            if self._slots.get(device) is slot and slot.adapter.is_ready and not self._paused:
+                slot.active_count += 1
+                slot.last_active = monotonic()
+                return adapter, slot
+            slot.lane.release()
+
+    async def _run_on(self, adapter: Adapter, job: Job) -> None:
+        """Run ``job`` on a loaded adapter and store its results.
+
+        Raises what the adapter raises, and TimeoutError past the job's
+        budget; the caller decides what a failure means for the instance.
+        """
+        timeout = _job_timeout(job.request.modality, job)
+        if job.request.chat_request is not None:
+            # Raw chat completion passthrough (tool-calling path)
+            if not isinstance(adapter, ServedLLM):
+                raise RuntimeError("chat_request requires LLM worker")
+            if job.stream is not None:
+                raw_result = await asyncio.wait_for(
+                    adapter.chat_completion_stream(job.request.chat_request, job.stream),
+                    timeout=timeout,
+                )
+            else:
+                raw_result = await asyncio.wait_for(
+                    adapter.chat_completion(job.request.chat_request),
+                    timeout=timeout,
+                )
+            # Store raw dict as single result
+            job.results = [raw_result]
+        else:
+            results = await asyncio.wait_for(
+                adapter.run_batch(job.request.tasks, job.request.params),
+                timeout=timeout,
+            )
+            job.results = _as_dicts(results)
+        job.status = JobStatus.completed
+
+    async def _run_on_lane(self, job: Job, slot: Instance) -> None:
+        """Run one job on an on-demand instance's lane, next to its siblings.
+
+        The dispatch loop took the lane and counted the job in before
+        creating this task (see _claim_lane); this gives both back.
+        """
+        cancelled = False
+        try:
+            try:
+                await self._run_on(slot.adapter, job)
+            finally:
+                slot.active_count -= 1
+                slot.last_active = monotonic()
+                slot.lane.release()
+        except TimeoutError:
+            limit = _job_timeout(job.request.modality, job)
+            logger.error(f"Job {job.job_id} timed out after {limit:.0f}s")
+            job.status = JobStatus.failed
+            job.error = f"Job timed out after {limit:.0f}s"
+            await self._unload_after_failure(slot.device, slot)
+        except asyncio.CancelledError:
+            cancelled = True
+            job.status = JobStatus.failed
+            job.error = "Cancelled (giq paused)" if self._paused else "Cancelled (runner shutdown)"
+            raise
+        except Exception as e:
+            logger.error(f"Job {job.job_id} failed: {e}")
+            job.status = JobStatus.failed
+            job.error = str(e)
+            await self._unload_after_failure(slot.device, slot)
+        finally:
+            if job.stream is not None:
+                await job.stream.close()
+            # A cancelled job ends with the runner pausing or stopping: no
+            # warm timeout to arm for an instance that is being unloaded.
+            await self._finish_on_demand_job(job, rearm=not cancelled)
+
+    async def _unload_after_failure(
+        self, device: str | None, instance: Instance | None = None
+    ) -> None:
+        """Unload the on-demand instance a job just failed or timed out on.
+
+        A failed job may leave its adapter wedged, so the next one gets a
+        clean start — unless other jobs are still running on the instance's
+        lanes. One request the engine rejected is not a reason to fail the
+        fifteen it is still generating for; the last of them to fail takes
+        the instance down. ``instance`` names the one the job ran on, so a
+        successor already loaded on the card is left alone.
+        """
+        try:
+            async with self._worker_lock:
+                slot = self._slots.get(device)
+                if slot is None or slot.in_flight:
+                    return
+                if instance is not None and slot is not instance:
+                    return
+                await self._unload_worker(device)
+        except Exception as unload_err:
+            logger.error(f"Failed to unload adapter after a failed job: {unload_err}")
+
+    async def _finish_on_demand_job(self, job: Job, *, rearm: bool = True) -> None:
+        """Record a finished on-demand job and re-arm the warm timeout."""
         job.completed_at = datetime.now()
         self._last_job_time = datetime.now()
 
@@ -1002,11 +1127,12 @@ class Runner:
 
         await get_stats().record_job(job)
 
-        # Clean up finished jobs older than 5 minutes
-        await self._cleanup_finished_jobs()
+        if rearm:
+            # Clean up finished jobs older than 5 minutes
+            await self._cleanup_finished_jobs()
 
-        # Schedule warm timeout check
-        self._schedule_warm_timeout()
+            # Schedule warm timeout check
+            self._schedule_warm_timeout()
 
         logger.info(
             f"Job {job.job_id} {job.status}: "
@@ -1069,30 +1195,7 @@ class Runner:
                 res.active_count += 1
                 res.last_active = monotonic()
                 try:
-                    timeout = _job_timeout(job.request.modality, job)
-                    if job.request.chat_request is not None:
-                        if not isinstance(res.adapter, ServedLLM):
-                            raise RuntimeError("chat_request requires LLM worker")
-                        if job.stream is not None:
-                            raw_result = await asyncio.wait_for(
-                                res.adapter.chat_completion_stream(
-                                    job.request.chat_request, job.stream
-                                ),
-                                timeout=timeout,
-                            )
-                        else:
-                            raw_result = await asyncio.wait_for(
-                                res.adapter.chat_completion(job.request.chat_request),
-                                timeout=timeout,
-                            )
-                        job.results = [raw_result]
-                    else:
-                        results = await asyncio.wait_for(
-                            res.adapter.run_batch(job.request.tasks, job.request.params),
-                            timeout=timeout,
-                        )
-                        job.results = _as_dicts(results)
-                    job.status = JobStatus.completed
+                    await self._run_on(res.adapter, job)
                 finally:
                     res.active_count -= 1
                     res.last_active = monotonic()
@@ -1179,7 +1282,7 @@ class Runner:
                 if self._paused:
                     self._queue_empty_since = None
                     continue
-                if self._processing_job:
+                if self._on_demand_busy:
                     self._queue_empty_since = None
                     continue
                 await self._release_demoted_residents()
@@ -1207,7 +1310,7 @@ class Runner:
                     # mid-sequence would otherwise fight our loads for VRAM
                     # (its eviction pass vs. our next resident — starved a
                     # zimage job for 180s at startup).
-                    if self._processing_job:
+                    if self._on_demand_busy:
                         break
                     pending = await self._queue.get_pending()
                     if any(j.request.model not in self._resident_keys for j in pending):
@@ -1462,6 +1565,17 @@ class Runner:
             if slot and slot.key == model and slot.adapter.is_ready:
                 return slot.adapter
 
+            # Jobs still running on the instance this one displaces finish
+            # first. Nothing joins them meanwhile: the dispatch loop is the
+            # only way onto an on-demand lane, and it is waiting right here.
+            if slot is not None and slot.in_flight:
+                await slot.drain()
+                slot.release_all()
+                # The wait can be as long as a job; a pause that landed in it
+                # has already taken the card back.
+                if self._paused:
+                    raise RuntimeError("giq is paused — no adapters may load")
+
             # Unload whatever else holds this card's slot (free VRAM first)
             await self._unload_worker(device)
 
@@ -1494,7 +1608,9 @@ class Runner:
 
             # Publish the adapter BEFORE start() so that _unload_worker can reap
             # it if start() raises (including CancelledError during load).
-            self._slots[device] = Instance(adapter, model, device, residency=ON_DEMAND)
+            self._slots[device] = Instance(
+                adapter, model, device, residency=ON_DEMAND, width=_lane_width(model, adapter)
+            )
             try:
                 await adapter.start()
             except BaseException:
@@ -1573,7 +1689,7 @@ class Runner:
         nothing queued for them.
         """
         # Never unload while actively processing a job
-        if self._processing_job:
+        if self._on_demand_busy:
             return
 
         pending = await self._queue.get_pending()
@@ -1583,7 +1699,7 @@ class Runner:
                 async with self._worker_lock:
                     # Re-validate state under lock: run-loop may have already
                     # switched adapters while we were waiting to acquire.
-                    if self._processing_job:
+                    if self._on_demand_busy:
                         return
                     pending = await self._queue.get_pending()
                     for slot in self._contested_slots(pending):
@@ -1598,7 +1714,7 @@ class Runner:
         await asyncio.sleep(WARM_TIMEOUT_SECONDS)
 
         # Re-check after sleep - might be processing now
-        if self._processing_job:
+        if self._on_demand_busy:
             return
 
         if self._last_job_time:
@@ -1606,7 +1722,7 @@ class Runner:
             if elapsed >= WARM_TIMEOUT_SECONDS:
                 async with self._worker_lock:
                     # Re-validate under lock; run-loop may have claimed a job.
-                    if self._processing_job:
+                    if self._on_demand_busy:
                         return
                     if not self._last_job_time:
                         return

@@ -101,8 +101,9 @@ a model; inside giq, the word is not used for anything else.
   knows its recipe, card, port, adapter, state (`starting`, `ready`,
   `stopped`, read from the adapter) and the residency it was started under.
 - The runner indexes instances the two ways it schedules them: residents by
-  recipe, each with a lane of concurrent jobs, and the on-demand instance by
-  card, with serialized dispatch. (Amended while implementing: the proposal
+  recipe, and the on-demand instance by card, loaded one at a time in queue
+  order. Either has a lane of concurrent jobs, as wide as its recipe says.
+  (Amended while implementing: the proposal
   was one map, but the two indexes are two scheduling policies, and folding
   them into one changes dispatch for no gain. One type is what makes an
   instance a thing of its own.)

@@ -166,7 +166,9 @@ A second LLM engine next to llama.cpp, for two things llama-server does not
 do: vendor checkpoints that run natively only on vllm (NVIDIA's ModelOpt
 NVFP4 and FP8), and many users at once — vllm's paged KV cache and
 continuous batching serve up to `max_num_seqs` requests from one shared pool
-where llama-server hands out fixed slots. Measured on an RTX 5090 with
+where llama-server hands out fixed slots. A recipe does not have to be kept
+warm for that: an instance loaded on demand takes the same number at once
+for as long as it is up. Measured on an RTX 5090 with
 NVIDIA's NVFP4 checkpoint of Qwen3.8-27B, 256 generated tokens per request:
 
 | Parallel requests | vllm, fp8 KV | llama.cpp Q6_K through giq (one slot) |

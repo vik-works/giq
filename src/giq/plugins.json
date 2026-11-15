@@ -137,6 +137,21 @@
         "ace-step-1.5-xl-sft"
       ],
       "needs": "its own interpreter, set up once: cd envs/acestep && uv sync"
+    },
+    {
+      "name": "giq-3d",
+      "package": "giq-3d",
+      "summary": "Image to textured 3D mesh with Pixal3D",
+      "engines": [
+        "pixal3d"
+      ],
+      "modalities": [
+        "image2mesh"
+      ],
+      "recipes": [
+        "pixal3d"
+      ],
+      "needs": "its own interpreter, set up once: cd envs/pixal3d && uv sync, then giq prepare pixal3d"
     }
   ]
 }

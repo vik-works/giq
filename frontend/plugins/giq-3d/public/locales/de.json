@@ -1,0 +1,42 @@
+{
+  "field": {
+    "close": "Öffnungen schließen bis",
+    "closeNone": "keine",
+    "faces": "Dreiecke",
+    "image": "Bild des Objekts",
+    "mode": "Export",
+    "model": "Modell",
+    "seed": "Seed",
+    "textureSize": "Texturgröße"
+  },
+  "mesh": {
+    "evicts": "Generieren verdrängt vorgehaltene Instanzen — das erste Asset dauert, danach laden sie neu.",
+    "fullHint": "Das generierte Mesh, auf die Dreieckszahl vereinfacht, mit Grundfarbe, Metall und Rauheit. Ohne Normal Map.",
+    "gameHint": "Eine geschlossene Low-Poly-Hülle, von außen um das Mesh neu aufgebaut, mit Farbe, Material und Normal Map darauf gebacken. Kleine Öffnungen werden geschlossen und aufgemalt.",
+    "imageHint": "Ein Objekt, vollständig im Bild, vor einfarbigem Hintergrund. Ein transparenter Hintergrund wird übernommen, jeder andere zuerst entfernt.",
+    "needImage": "Ein Bild des Objekts auswählen.",
+    "none": "Kein Bild-zu-3D-Rezept installiert."
+  },
+  "mode": {
+    "full": "Volle Details",
+    "game": "Spielfertig"
+  },
+  "out": {
+    "download": "GLB herunterladen",
+    "faces_one": "{{formatted}} Dreieck",
+    "faces_other": "{{formatted}} Dreiecke",
+    "latency": "{{value}}",
+    "seed": "Seed {{seed}}",
+    "size": "{{value}}",
+    "texture": "Texturen {{size}} px",
+    "viewerHint": "Ziehen zum Drehen, Scrollen zum Zoomen.",
+    "viewerLabel": "3D-Ansicht des generierten Assets"
+  },
+  "run": {
+    "generating": "Generiere …",
+    "mesh": "Generieren"
+  },
+  "tab": {
+    "mesh": "Bild zu 3D"
+  }
+}

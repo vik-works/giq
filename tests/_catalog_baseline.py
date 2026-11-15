@@ -456,6 +456,23 @@ BUILTIN_SPECS = [
         "vram_gb": 1.0,
         "worker": "tts",
     },
+    {
+        "aliases": (),
+        "backend": "pixal3d",
+        "detail": "image → textured mesh · PBR · GLB · full detail or game-ready low-poly",
+        "engine": None,
+        "label": "Pixal3D",
+        "lane_width": None,
+        "max_batch": 2,
+        "measured": True,
+        "mmproj": None,
+        "model": "pixal3d",
+        "resident_priority": None,
+        "vision": False,
+        "voices": (),
+        "vram_gb": 16.0,
+        "worker": "image2mesh",
+    },
 ]
 
 LLM_TABLES = {

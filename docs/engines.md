@@ -102,6 +102,76 @@ it loads from a scratch root of links over `weights.path`, with the DiT's
 code copied there, checks every folder before ACE-Step does, and runs with
 the Hugging Face hub offline.
 
+## pixal3d
+
+Pixal3D is a checkout rather than a package, and it stands on TRELLIS.2's
+compiled extensions, so the engine takes two steps to set up:
+
+```bash
+cd envs/pixal3d && uv sync     # torch 2.10 (CUDA 12.8) and what installs from an index
+giq prepare pixal3d            # the checkout and the extensions, at pinned commits
+giq add pixal3d                # the weights: 23 GB, plus encoder, camera and matting
+```
+
+`giq prepare pixal3d` clones Pixal3D, installs MoGe, compiles CuMesh,
+FlexGEMM, O-Voxel and NATTEN against the environment's torch, and caches
+the NAF upsampler. It needs `git`, `nvcc` and a C++ compiler; NATTEN alone
+takes about twenty minutes. A CUDA toolkit older than the card is enough:
+the build targets an older architecture with PTX, which the driver compiles
+for the card at load time. Verified with Ubuntu 24.04's CUDA 12.0 and
+gcc 12 for an RTX 5090; set `GIQ_PIXAL3D_CUDA_ARCH` (torch's architecture
+list form, `12.0`) for a toolkit that knows the card. Each step is skipped
+when its result is already there.
+
+`uv sync` removes what the lock file does not name, which is everything
+`giq prepare pixal3d` installed: after a change to the environment, sync
+with `uv sync --inexact`, or run the prepare step again.
+
+The first start after a build is slow. The extensions are compiled as PTX,
+and the driver compiles each kernel for the card when it is first loaded:
+on an RTX 5090 that start ran past five minutes, where a warm one takes 45
+seconds. The engine's start budget is 15 minutes for that reason. The
+driver caches what it compiled (`~/.nv/ComputeCache`, 1 GiB unless
+`CUDA_CACHE_MAXSIZE` says otherwise; giq gives the child 4 GiB), so it
+happens once.
+
+Three parts of the upstream pipeline are replaced, each for its licence:
+
+| Upstream | giq | Why |
+|----------|-----|-----|
+| nvdiffrast, in the GLB export's texture bake | giq's own UV rasteriser | NVIDIA's licence allows research and evaluation only. The bake needs no depth test, perspective or gradients; on real atlases the two agree on 99.99% of texels. |
+| nvdiffrec, in the preview renderer | not installed | Same licence; giq renders no previews. |
+| `briaai/RMBG-2.0`, the background remover | `ZhengPeng7/BiRefNet` (MIT) | RMBG-2.0 is non-commercial. Same architecture, its own weights. |
+
+The encoder is DINOv3 ViT-L/16 under Meta's DINOv3 licence, which does not
+exclude commercial use, forbids military and weapons use, and has to travel
+with the weights. Meta's repository for it is gated behind a form; the
+recipe takes the same weights from timm's ungated redistribution
+(`weights.parts.encoder`), and the child renames the parameters to
+transformers' as it loads. `python -m giq_3d_child.dinov3 <folder>` on the
+engine's interpreter checks that the two implementations return the same
+tokens.
+
+| Parameter | Meaning |
+|-----------|---------|
+| `resolution` | The voxel grid the cascade ends at: `1024` (default) or `1536`. The recipe's `vram` figure belongs to one of them. |
+| `low_vram` | Keep the flow models on the CPU and move each to the card for its stage (default `true`). |
+
+Measured on an RTX 5090, one image, the child's own peak:
+
+| Resolution | Mode | Generation | Peak VRAM |
+|---|---|---|---|
+| 1024 | low-VRAM | 19-32 s | 15.9 GB |
+| 1536 | low-VRAM | 72 s | 25.7 GB |
+| 1024 | all on the card | 84 s | 31.4 GB |
+| 1536 | all on the card | — | out of memory |
+
+Low-VRAM mode is the faster one on a 32 GB card as well as the smaller:
+with everything resident the card is full. 1536 adds about 4% faces to the
+generated mesh. Loading takes about 45 s; the export after generation takes
+about 50 s at full detail and 70 s for a game-ready asset, mostly on the CPU
+(`docs/api.md`, Image2Mesh).
+
 ## Chat templates
 
 Both LLM engines render a conversation with the checkpoint's own chat

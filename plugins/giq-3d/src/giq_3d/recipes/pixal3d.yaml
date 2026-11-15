@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Pixal3D (MIT; https://huggingface.co/TencentARC/Pixal3D, SIGGRAPH 2026):
+# one image in, a textured mesh with PBR materials out. Three 1.3B flow
+# models on the TRELLIS.2 backbone build structure, shape and texture, each
+# conditioned on DINOv3 features lifted into 3D by back-projection, which is
+# what keeps the mesh aligned with the picture. Sleepy model: loads on
+# demand, evictable.
+#
+# What it needs besides its own weights, and under which terms:
+#   encoder  DINOv3 ViT-L/16, Meta's "DINOv3 License": commercial use is not
+#            excluded, military and weapons use is, and the licence travels
+#            with the weights. Taken from timm's ungated redistribution;
+#            the child renames its parameters to transformers' as it loads.
+#   camera   MoGe-2 (MIT), estimates the camera the picture was taken with.
+#   matting  BiRefNet's own weights (MIT), cuts the object out of an image
+#            that has no alpha channel. Never the non-commercial RMBG-2.0
+#            the upstream pipeline names.
+# The NAF feature upsampler (Apache-2.0) is torch.hub's to cache, which
+# `giq prepare pixal3d` does once.
+#
+# The texture bake runs on giq's own UV rasteriser, not nvdiffrast, whose
+# licence allows research and evaluation only; nvdiffrec is not installed.
+name: pixal3d
+label: Pixal3D
+modalities: [image2mesh]
+engine: pixal3d
+detail: "image → textured mesh · PBR · GLB · full detail or game-ready low-poly"
+weights:
+  path: TencentARC-Pixal3D
+  source: hf:TencentARC/Pixal3D
+  revision: b0cb2e1b794cab9aa0ac38a95d794a4d9337437f
+  format: safetensors
+  licence: mit
+  parts:
+    encoder:
+      path: timm-vit_large_patch16_dinov3_qkvb.lvd1689m
+      source: hf:timm/vit_large_patch16_dinov3_qkvb.lvd1689m
+      revision: 3653d393df9fd16a9c1bae8a6c5a514f683b70ce
+      format: safetensors
+      licence: dinov3-license
+    camera:
+      path: Ruicheng-moge-2-vitl
+      source: hf:Ruicheng/moge-2-vitl
+      revision: 39c4d5e957afe587e04eec59dc2bcc3be5ecd968
+      licence: mit
+    matting:
+      path: ZhengPeng7-BiRefNet
+      source: hf:ZhengPeng7/BiRefNet
+      revision: e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4
+      licence: mit
+params:
+  resolution: 1024
+  low_vram: true
+vram:
+  # Measured on an RTX 5090, the child's own peak: 15,864 and 15,886 MiB for
+  # two different images at 1024 in low-VRAM mode. Generation takes 19-32 s
+  # warm, the full-detail export about 50 s, a game-ready one about 70 s;
+  # about 45 s to load.
+  gb: 16.0
+  measured: true
+# One asset per task; a batch generates them one after another.
+max_batch: 2

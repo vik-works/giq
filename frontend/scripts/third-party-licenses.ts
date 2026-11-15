@@ -75,10 +75,10 @@ function check(entry: { name: string; license: string | null; text: string | nul
   if (!entry.text) throw new Error(`${entry.name}: bundled, but ships no LICENSE/COPYING/OFL file`);
 }
 
-function render(entries: Entry[]): string {
+function render(entries: Entry[], bundle: string): string {
   const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
   const header = [
-    "Third-party software bundled in the giq dashboard (giq/static/ui/).",
+    `Third-party software bundled in ${bundle}.`,
     "giq itself is licensed under Apache-2.0; see LICENSE and NOTICE.",
     "",
     ...sorted.map((e) => `  ${e.name}@${e.version} (${e.license})`),
@@ -94,9 +94,11 @@ function render(entries: Entry[]): string {
  * It skips modules that render to nothing, which is what a CSS import becomes
  * (@fontsource's @font-face sheet and the woff2 files it pulls in), so the
  * companion plugin collects the packages of every CSS module in the graph and
- * both sets go into one file.
+ * both sets go into one file. ``bundle`` names what the file is about: the
+ * dashboard by default, or a plugin panel that bundles packages of its own
+ * (a panel is a separate build, so the dashboard's file does not cover it).
  */
-export function thirdPartyLicenses(): Plugin[] {
+export function thirdPartyLicenses(bundle = "the giq dashboard (giq/static/ui/)"): Plugin[] {
   const cssPackages = new Map<string, Entry>();
   let report: string | null = null;
 
@@ -144,7 +146,7 @@ export function thirdPartyLicenses(): Plugin[] {
           entries.set(`${entry.name}@${dep.version}`, { ...entry, version: dep.version ?? "?" } as Entry);
         }
         for (const e of cssPackages.values()) entries.set(`${e.name}@${e.version}`, e);
-        report = render([...entries.values()]);
+        report = render([...entries.values()], bundle);
       },
     },
   }) as Plugin;

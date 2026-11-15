@@ -28,6 +28,7 @@ BUILTIN_MODALITIES = {
     "ocr",
     "depth",
     "decide",
+    "text2music",
 }
 
 
@@ -79,15 +80,30 @@ def installed(monkeypatch):
 
 def test_the_builtins_register_through_the_contract():
     assert set(plugins.modalities()) == BUILTIN_MODALITIES
-    assert {"llama.cpp", "vllm", "sd.cpp", "transformers", "imajev"} <= set(plugins.engines())
+    assert {
+        "llama.cpp",
+        "vllm",
+        "sd.cpp",
+        "transformers",
+        "imajev",
+        "acestep",
+    } <= set(plugins.engines())
     assert plugins.engines_for("llm") == {"llama.cpp", "vllm"}
     assert plugins.engines_for("ocr") == {"transformers"}
     assert plugins.engines_for("decide") == {"imajev"}
+    assert plugins.engines_for("text2music") == {"acestep"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
     loaded = {s.name for s in plugins.status() if s.loaded}
-    assert {"giq", "giq-vllm", "giq-sdcpp", "giq-speech", "giq-ocr", "giq-depth", "giq-imajev"} <= (
-        loaded
-    )
+    assert {
+        "giq",
+        "giq-vllm",
+        "giq-sdcpp",
+        "giq-speech",
+        "giq-ocr",
+        "giq-depth",
+        "giq-imajev",
+        "giq-music",
+    } <= (loaded)
 
 
 def test_a_plugins_modality_is_served_end_to_end(installed, tmp_path):

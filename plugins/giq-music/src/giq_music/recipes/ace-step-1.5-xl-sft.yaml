@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# ACE-Step 1.5 XL SFT (MIT; https://huggingface.co/ACE-Step/acestep-v15-xl-sft):
+# the 4B DiT, supervised fine-tuned, ACE-Step's highest-quality variant.
+# 50 steps with classifier-free guidance, so it follows a prompt's genre
+# far more closely than the 8-step turbo, at several times the render time.
+# The card allows commercial use of the output.
+#
+# The DiT is a repository of its own (18.8 GB, four shards); the VAE, the
+# text encoder and the planner LM are the turbo recipe's checkpoint root,
+# which ACE-Step also checks for before it loads: one download for both.
+name: ace-step-1.5-xl-sft
+label: ACE-Step 1.5 XL SFT
+modalities: [text2music]
+engine: acestep
+detail: "text → music · lyrics · 4B DiT, 50 steps · 48 kHz stereo"
+weights:
+  path: ACE-Step-Ace-Step1.5
+  source: hf:ACE-Step/Ace-Step1.5
+  revision: 19671f406d603126926c1b7e2adc169acbcade22
+  format: safetensors
+  licence: mit
+  parts:
+    dit:
+      path: ACE-Step-acestep-v15-xl-sft
+      source: hf:ACE-Step/acestep-v15-xl-sft
+      revision: d06de46b4622f781cf07f4a013a67d591ca52819
+      licence: mit
+params:
+  dit: acestep-v15-xl-sft
+  lm: acestep-5Hz-lm-1.7B
+  steps: 50
+  guidance: 7.0
+  tasks: [cover]
+vram:
+  # Measured on an RTX 5090, the child's own peak: 18,560 MiB for a 30 s
+  # track and 19,568 MiB for 10 min, both planned, with guidance. 5.7 s per
+  # 30 s track and 75 s per 10 min, warm; ~40 s to load.
+  gb: 20.0
+  measured: true
+max_batch: 4

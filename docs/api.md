@@ -208,6 +208,62 @@ generation ends as `response.failed` with `giq_job_failed`.
 - Task: `{id, image_b64, visualize?}`
 - Result: `{id, depth_b64, width, height, depth_min, depth_max, metric, visualization_b64?}`
 
+### Text2Music (`text2music`)
+- Recipes: `ace-step-1.5-turbo` (ACE-Step 1.5, MIT: a 2B DiT planned by a
+  1.7B LM; 48 kHz stereo, 10 s to 10 min, lyrics in 50+ languages, 8
+  steps); `ace-step-1.5-xl-sft` (the 4B DiT, 50 steps with guidance: the
+  closest to a prompt's genre, and slower); `ace-step-1.5-xl-base` (the 4B
+  base DiT, which also adds tracks to audio of your own)
+- Task: `{id, prompt, lyrics?, instrumental?, duration?, bpm?, key_scale?,
+  time_signature?, language?, seed?, plan?, format?, reference_audio_b64?,
+  source_audio_b64?, mode?, cover_strength?, track?, tracks?}`
+- Result: `{id, audio_b64, format, sample_rate, duration, seed, bpm,
+  key_scale, time_signature, caption, lyrics}`
+- `prompt` describes the music (genre, instruments, mood). `lyrics` uses
+  section tags (`[verse]`, `[chorus]` …); without lyrics the track is an
+  instrumental unless `instrumental` says otherwise. `plan` (default on)
+  lets the planner fill in what the task leaves open — `duration` (10-600 s),
+  `bpm` (30-300), `key_scale` (`"A minor"`), `time_signature` (`2/4`, `3/4`,
+  `4/4`, `6/8`) — and enrich a short prompt; the result reports what the
+  track got, the task's values where it gave them. Unplanned, a task without
+  a `duration` renders 30 s. `seed` makes a track reproducible; without one
+  the result carries the seed it got. `format`: `flac` (default), `wav`,
+  `mp3`.
+- A task may bring audio of its own, base64 WAV, FLAC, Ogg or MP3.
+  `reference_audio_b64` lends the track its sound — timbre, mix, playing
+  style — but not its melody or rhythm; the planner still runs.
+  `source_audio_b64` is what the track is built from, by `mode`:
+  - `cover` (the default): the source's structure, melody and groove in the
+    prompt's style. `cover_strength` (0-1, default 0.5) is how closely it
+    follows; ACE-Step's guide puts a change of genre at 0.3-0.5.
+  - `lego`: the source stays, and the model plays one `track` over it —
+    `guitar`, `bass`, `drums`, `keyboard`, `synth`, `strings`, `brass`,
+    `woodwinds`, `percussion`, `vocals`, `backing_vocals`, `fx`.
+  - `complete`: the source stays, and the model fills in what it lacks, or
+    the `tracks` listed.
+
+  With source audio the planner sits out and the source's length is the
+  track's. Which modes a recipe does is its `tasks` parameter: every
+  ACE-Step recipe covers, and lego and complete need `ace-step-1.5-xl-base`.
+
+```bash
+curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' \
+  -d '{"modality":"text2music","model":"ace-step-1.5-turbo",
+       "tasks":[{"id":"1","prompt":"warm lo-fi hip hop, mellow Rhodes piano","duration":60}]}' \
+  | jq -r '.results[0].audio_b64' | base64 -d > track.flac
+```
+
+A guitar over a drum beat of your own:
+
+```bash
+jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
+  model:"ace-step-1.5-xl-base", tasks:[{id:"1", source_audio_b64:$beat,
+  mode:"lego", track:"guitar",
+  prompt:"thrash metal, down-tuned distorted rhythm guitar, palm-muted riffs"}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  | jq -r '.results[0].audio_b64' | base64 -d > with-guitar.flac
+```
+
 ### Audio, voiceprints, speech
 
 The resident audio stack (`whisper-large-v3`: faster-whisper plus pyannote

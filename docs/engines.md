@@ -32,7 +32,10 @@ audio stack, Kokoro, both OCR models and depth) and `vllm` (`envs/vllm`, the
 second LLM engine, [below](#vllm)); `GIQ_VLLM_PYTHON` points elsewhere.
 The decide child (giq-imajev) runs on its own interpreter, `imajev`
 (`envs/imajev`, torch + PEFT + imajev at a pinned commit;
-`GIQ_IMAJEV_PYTHON` points elsewhere).
+`GIQ_IMAJEV_PYTHON` points elsewhere). The text2music child (giq-music) runs
+on `acestep` (`envs/acestep`, ACE-Step 1.5 at a pinned commit with the torch
+and transformers it pins; set up once with `cd envs/acestep && uv sync`;
+`GIQ_ACESTEP_PYTHON` points elsewhere).
 
 ## Engine names
 
@@ -46,6 +49,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `sd.cpp` | `flux_klein`, `zimage` | `sd-server` |
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
+| `acestep` | `ace-step-1.5-turbo`, `ace-step-1.5-xl-sft`, `ace-step-1.5-xl-base` (text to music) | `envs/acestep` (giq-music) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and
@@ -65,6 +69,30 @@ An sd.cpp recipe may set one parameter:
 Renders larger than the configured size decode the VAE in tiles; renders at
 it decode untiled, as measured. See [the API](api.md#text2image-text2image)
 for how a request names its size.
+
+## acestep
+
+An acestep recipe's `weights.path` is ACE-Step's own checkpoint layout —
+the `ACE-Step/Ace-Step1.5` repository as it is, holding the turbo DiT, the
+1.7B planner, the text encoder and the VAE — and its parameters name the
+folders in it the child loads. ACE-Step checks for that whole root before
+it loads anything, so every acestep recipe has it. A DiT that ACE-Step
+publishes as a repository of its own (the XL ones) is the recipe's
+`weights.parts.dit`, and joins the root under its `dit` name:
+
+| Parameter | Meaning |
+|-----------|---------|
+| `dit` | The DiT's folder name (default `acestep-v15-turbo`): in `weights.path`, or the name `weights.parts.dit` loads under. It picks the model code ACE-Step syncs. |
+| `lm` | The planner LM's folder (default `acestep-5Hz-lm-1.7B`); `null` loads none, and every task renders as given. |
+| `steps` | Diffusion steps: 8 for the turbo DiTs (ACE-Step caps them there), 50 for base and sft. |
+| `guidance` | Classifier-free guidance, 1-20 (default 7): how strictly base and sft follow the prompt. The turbo DiTs are distilled without it and ignore it. |
+| `tasks` | What the DiT does with a task's source audio: `cover` (default; every DiT), and `lego` and `complete`, the base models' alone. |
+
+ACE-Step downloads any part it finds missing and rewrites the DiT folder's
+model code on load. The child keeps it from doing either to the model store:
+it loads from a scratch root of links over `weights.path`, with the DiT's
+code copied there, checks every folder before ACE-Step does, and runs with
+the Hugging Face hub offline.
 
 ## Chat templates
 

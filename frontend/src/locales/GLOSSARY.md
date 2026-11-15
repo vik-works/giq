@@ -86,6 +86,7 @@ The six domain terms are ADR-003's; use them in no other sense.
 | Voiceprint (`embed`) | Stimmabdruck |
 | Document OCR | Dokument-OCR |
 | Depth | Tiefe |
+| Text to music | Text zu Musik |
 | vision (capability) | Bildverständnis |
 
 ## Serving and queue
@@ -150,6 +151,16 @@ The six domain terms are ADR-003's; use them in no other sense.
 | transcript | Transkript | |
 | speaker | Sprecher | |
 | voice | Stimme | |
+| track (music) | Track | |
+| lyrics | Liedtext | |
+| reference audio | Referenz-Audio | the clip a track should sound like |
+| cover (music) | Cover / covern | a track keeping another's structure in a new style |
+| backing vocals | Backgroundgesang | |
+| planner (text to music) | Planer | the LM that fills in tempo, key, length |
+| compose | komponieren | "Komponiere…" while running |
+| key (music) | Tonart | |
+| negative prompt | Negativ-Prompt | what the output should avoid |
+| time signature | Takt | "4/4-Takt" |
 | record / recording | aufnehmen / Aufnahme | |
 | upload | hochladen | |
 | run | ausführen | |

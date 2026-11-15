@@ -13,6 +13,7 @@ members = [
     "giq-defaults",
     "giq-depth",
     "giq-imajev",
+    "giq-music",
     "giq-ocr",
     "giq-sdcpp",
     "giq-speech",
@@ -827,6 +828,7 @@ dependencies = [
     { name = "giq" },
     { name = "giq-depth" },
     { name = "giq-imajev" },
+    { name = "giq-music" },
     { name = "giq-ocr" },
     { name = "giq-sdcpp" },
     { name = "giq-speech" },
@@ -841,6 +843,7 @@ requires-dist = [
     { name = "giq", editable = "." },
     { name = "giq-depth", editable = "plugins/giq-depth" },
     { name = "giq-imajev", editable = "plugins/giq-imajev" },
+    { name = "giq-music", editable = "plugins/giq-music" },
     { name = "giq-ocr", editable = "plugins/giq-ocr" },
     { name = "giq-sdcpp", editable = "plugins/giq-sdcpp" },
     { name = "giq-speech", editable = "plugins/giq-speech" },
@@ -877,6 +880,17 @@ requires-dist = [
 name = "giq-imajev"
 version = "0.7.0"
 source = { editable = "plugins/giq-imajev" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
+
+[[package]]
+name = "giq-music"
+version = "0.7.0"
+source = { editable = "plugins/giq-music" }
 dependencies = [
     { name = "giq" },
 ]

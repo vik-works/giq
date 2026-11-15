@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# ACE-Step 1.5 XL base (MIT; https://huggingface.co/ACE-Step/acestep-v15-xl-base):
+# the 4B DiT before fine-tuning. A little below XL SFT in quality and more
+# varied, and the variant that does every task: besides covers, it adds one
+# track to a task's source audio (lego: a guitar over your own drums) and
+# fills in the tracks a source lacks (complete). 50 steps with
+# classifier-free guidance. The card allows commercial use of the output.
+#
+# The DiT is a repository of its own (18.8 GB, four shards); the VAE, the
+# text encoder and the planner LM are the turbo recipe's checkpoint root,
+# which ACE-Step also checks for before it loads.
+name: ace-step-1.5-xl-base
+label: ACE-Step 1.5 XL base
+modalities: [text2music]
+engine: acestep
+detail: "text → music · lyrics · adds tracks to your audio · 4B DiT · 48 kHz stereo"
+weights:
+  path: ACE-Step-Ace-Step1.5
+  source: hf:ACE-Step/Ace-Step1.5
+  revision: 19671f406d603126926c1b7e2adc169acbcade22
+  format: safetensors
+  licence: mit
+  parts:
+    dit:
+      path: ACE-Step-acestep-v15-xl-base
+      source: hf:ACE-Step/acestep-v15-xl-base
+      revision: 220c1166efbdd9583eafcb12eb160594bbfcb241
+      licence: mit
+params:
+  dit: acestep-v15-xl-base
+  lm: acestep-5Hz-lm-1.7B
+  steps: 50
+  guidance: 7.0
+  tasks: [cover, lego, complete]
+vram:
+  # Measured on an RTX 5090, the child's own peak: 19,568 MiB for a planned
+  # 10 min track, the same as XL SFT, and no more for a guitar played over a
+  # 30 s source (4.3 s, warm).
+  gb: 20.0
+  measured: true
+max_batch: 4

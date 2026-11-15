@@ -61,5 +61,6 @@ src/giq/static/ui/
 # Per-person agent settings; the shared ones are .claude/settings.json.
 .claude/settings.local.json
 
-# Pixal3D's checkout, cloned by `giq prepare pixal3d` (plugins/giq-3d)
+# The checkouts `giq prepare pixal3d` clones (plugins/giq-3d)
 envs/pixal3d/Pixal3D/
+envs/pixal3d/TRELLIS.2/

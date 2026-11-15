@@ -8,7 +8,8 @@ After ``cd envs/pixal3d && uv sync`` the environment has torch and
 everything that installs from an index. This adds, each skipped when it is
 already there:
 
-  1. Pixal3D itself, a checkout at a pinned commit (it is not a package);
+  1. Pixal3D and TRELLIS.2 themselves, checkouts at pinned commits (neither
+     is a package);
   2. MoGe, the camera estimator, without its dependencies;
   3. the compiled extensions, at pinned commits: CuMesh, FlexGEMM, O-Voxel
      (from TRELLIS.2) and NATTEN. Their own install scripts take whatever
@@ -40,6 +41,11 @@ import urllib.request
 from pathlib import Path
 
 PIXAL3D = ("https://github.com/TencentARC/Pixal3D.git", "f7cf38429b0bd264f1995f0f8743a88b1c728b94")
+# The commit O-Voxel is built from, checked out for the trellis2 recipes too.
+TRELLIS2 = (
+    "https://github.com/microsoft/TRELLIS.2.git",
+    "75fbf0183001ed9876c8dbb35de6b68552ee08bd",
+)
 MOGE = "git+https://github.com/microsoft/MoGe.git@74fbce054ebed49800de42d0ad0e83495065719a"
 EXTENSIONS = (
     (
@@ -172,12 +178,15 @@ def main(argv: list[str]) -> int:
         _say(f"{e}\n  set it up first: cd envs/pixal3d && uv sync")
         return 1
 
-    source = Path(source_dir())
-    if not (source / "inference.py").is_file():
-        url, commit = PIXAL3D
-        _say(f"cloning Pixal3D at {commit[:10]} into {source}")
-        _run(["git", "clone", "--quiet", url, str(source)])
-        _run(["git", "checkout", "--quiet", commit], cwd=str(source))
+    for pipeline, (url, commit), marker in (
+        ("pixal3d", PIXAL3D, "inference.py"),
+        ("trellis2", TRELLIS2, "trellis2"),
+    ):
+        source = Path(source_dir(pipeline))
+        if not (source / marker).exists():
+            _say(f"cloning {source.name} at {commit[:10]} into {source}")
+            _run(["git", "clone", "--quiet", url, str(source)])
+            _run(["git", "checkout", "--quiet", commit], cwd=str(source))
 
     if not _has(python, "moge"):
         _say("installing MoGe")

@@ -64,7 +64,9 @@ An sd.cpp recipe's files are its `weights.parts`: `diffusion`,
 `text_encoder` and `vae`, and optionally `llm_vision` (the vision tower of
 a GGUF text encoder, its mmproj file, which the edit models read the
 reference image with) and `lora` (a LoRA every render applies, such as a
-Lightning distillation). An sd.cpp recipe may set:
+Lightning distillation) and `lora_camera` (a camera-control LoRA only the
+tasks that ask for it apply; all of a recipe's LoRAs share one folder). An
+sd.cpp recipe may set:
 
 | Parameter | Meaning |
 |-----------|---------|
@@ -73,6 +75,7 @@ Lightning distillation). An sd.cpp recipe may set:
 | `flow_shift` | The flow models' timestep shift; unset = sd.cpp's default for the model. |
 | `model_args` | sd-server's `--model-args`, one `key=value` each, e.g. `qwen_image_zero_cond_t=true`, which Qwen-Image-Edit-2511 needs. |
 | `lora_strength` | How strongly `weights.parts.lora` applies (default 1.0). |
+| `lora_camera_strength` | How strongly `weights.parts.lora_camera` applies to a task that asks for it with `loras: ["camera"]` (default 0.9). |
 
 Renders larger than the configured size decode the VAE in tiles; renders at
 it decode untiled, as measured. See [the API](api.md#text2image-text2image)

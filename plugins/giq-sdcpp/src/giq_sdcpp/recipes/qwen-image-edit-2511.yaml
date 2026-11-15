@@ -49,6 +49,16 @@ weights:
       source: hf:lightx2v/Qwen-Image-Edit-2511-Lightning/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
       revision: 107d238d68b8387e32843d0b4a2e24ceb0d3ad86
       licence: apache-2.0
+    # Camera control, for the tasks that ask for it (`loras: ["camera"]`):
+    # fal's multiple-angles LoRA, trained on Gaussian-splat renders of 96
+    # camera poses. Its prompt is the pose, `<sks>` then an azimuth, an
+    # elevation and a distance: "<sks> right side view eye-level shot
+    # medium shot" (docs/api.md lists them).
+    lora_camera:
+      path: loras/qwen-image-edit-2511-multiple-angles-lora.safetensors
+      source: hf:fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA/qwen-image-edit-2511-multiple-angles-lora.safetensors
+      revision: e3066224ab74263f4a5b6179cd1a3b0a15577e44
+      licence: apache-2.0
 vram:
   # Measured on an RTX 5090, sd-server's own peak: 19,992 MiB for a 1 MP
   # edit (512x512 and 1 MP references alike), 20,920 MiB at 2016x1152 and
@@ -62,6 +72,7 @@ params:
   cfg_scale: 1.0
   flow_shift: 3.0
   model_args: [qwen_image_zero_cond_t=true]
+  lora_camera_strength: 0.9
   # 2.4 MP (2048x1152), inside the measured figure above.
   max_render_pixels: 2400000
 max_batch: 2

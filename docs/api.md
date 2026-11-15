@@ -193,9 +193,32 @@ generation ends as `response.failed` with `giq_job_failed`.
 ### Image Edit (`image_edit`)
 - Recipes: `flux_klein` (reference edits via sd.cpp), `qwen-image-edit-2511`
   (Qwen-Image-Edit-2511 with the 4-step Lightning LoRA, sd.cpp)
-- Task: `{id, reference_image_b64, instruction, negative_prompt?, width?, height?}`
-  (size as for text2image)
+- Task: `{id, reference_image_b64, instruction, negative_prompt?, width?,
+  height?, seed?, loras?}` (size as for text2image)
 - Result: `{id, image_b64, seed}`
+- `loras` switches on LoRAs the recipe carries for the tasks that want them,
+  by name, beside the one it applies to every render. A name the recipe does
+  not have fails the task. `qwen-image-edit-2511` has `camera`:
+  [fal's multiple-angles LoRA](https://huggingface.co/fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA)
+  (Apache-2.0), which redraws the reference from another camera position.
+  With it the instruction is the position and nothing else: `<sks>`, then an
+  azimuth (`front view`, `front-right quarter view`, `right side view`,
+  `back-right quarter view`, `back view`, `back-left quarter view`,
+  `left side view`, `front-left quarter view`), an elevation (`low-angle
+  shot`, `eye-level shot`, `elevated shot`, `high-angle shot`) and a
+  distance (`close-up`, `medium shot`, `wide shot`).
+- The LoRA decides what an object's front is, and the reference's own angle
+  shows through: from a three-quarter picture, a "side view" comes back
+  nearer three-quarter than side-on. Where the views have to be exact, check
+  them before relying on them.
+
+```bash
+jq -n --rawfile img <(base64 -w0 crate.png) '{modality:"image_edit",
+  model:"qwen-image-edit-2511", tasks:[{id:"1", reference_image_b64:$img,
+  instruction:"<sks> back view eye-level shot medium shot", loras:["camera"]}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  | jq -r '.results[0].image_b64' | base64 -d > crate-back.png
+```
 
 ### OCR (`ocr`)
 - Recipes: `unlimited-ocr` (baidu, 3B, one pass over many pages),

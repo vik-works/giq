@@ -228,3 +228,73 @@ async def test_a_lora_sd_server_cannot_see_fails_the_start():
     adapter._client = _Client(loras=["other.safetensors"])
     with pytest.raises(StartError, match="lightning.safetensors"):
         await adapter._index_lora()
+
+
+def _camera_adapter():
+    adapter = _adapter()
+    adapter.config.lora = "/m/loras/lightning.safetensors"
+    adapter.config.task_loras = {"camera": "/m/loras/angles.safetensors"}
+    adapter.config.task_lora_strengths = {"camera": 0.9}
+    return adapter
+
+
+async def test_a_task_switches_a_named_lora_on_beside_the_recipes_own():
+    adapter = _camera_adapter()
+    await adapter.run_batch(
+        [
+            {"id": "plain", "instruction": "make it night", "reference_image_b64": "aW1n"},
+            {
+                "id": "view",
+                "instruction": "<sks> right side view eye-level shot medium shot",
+                "reference_image_b64": "aW1n",
+                "loras": ["camera", "camera"],
+            },
+        ]
+    )
+    plain, view = adapter._client.payloads  # type: ignore[union-attr]
+    lightning = {"path": "lightning.safetensors", "multiplier": 1.0}
+    assert plain["lora"] == [lightning], "a task that does not ask gets the recipe's alone"
+    assert view["lora"] == [lightning, {"path": "angles.safetensors", "multiplier": 0.9}]
+
+
+async def test_a_lora_the_recipe_does_not_have_fails_the_task_by_name():
+    adapter = _camera_adapter()
+    (result,) = await adapter.run_batch([{"id": "t", "prompt": "a fox", "loras": ["depth"]}])
+    assert "has no LoRA named 'depth'; it has: camera" in (result.error or "")
+    (result,) = await adapter.run_batch([{"id": "t", "prompt": "a fox", "loras": "camera"}])
+    assert "'loras' must be a list of names" in (result.error or "")
+
+
+def test_the_qwen_edit_recipe_carries_the_camera_lora():
+    cfg = SdCppConfig(
+        model="qwen-image-edit-2511",
+        diffusion="d",
+        lora="/m/loras/lightning.safetensors",
+        task_loras={"camera": "/m/loras/angles.safetensors"},
+        device="gpu",
+        port=1,
+    )
+    assert cfg.task_lora_strengths == {"camera": 0.9}
+    flags = SdCppAdapter(cfg)._model_flags()
+    assert flags[flags.index("--lora-model-dir") + 1] == "/m/loras"
+
+
+def test_loras_in_two_folders_are_refused():
+    with pytest.raises(ValueError, match="LoRAs are in different folders"):
+        SdCppConfig(
+            model="qwen-image-edit-2511",
+            diffusion="d",
+            lora="/m/loras/lightning.safetensors",
+            task_loras={"camera": "/elsewhere/angles.safetensors"},
+            device="gpu",
+            port=1,
+        )
+
+
+async def test_start_checks_the_task_loras_are_listed_too():
+    from giq_sdcpp.adapter import StartError
+
+    adapter = _camera_adapter()
+    adapter._client = _Client(loras=["lightning.safetensors"])
+    with pytest.raises(StartError, match="angles.safetensors"):
+        await adapter._index_lora()

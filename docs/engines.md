@@ -113,7 +113,7 @@ compiled extensions, so the engine takes two steps to set up:
 ```bash
 cd envs/pixal3d && uv sync     # torch 2.10 (CUDA 12.8) and what installs from an index
 giq prepare pixal3d            # the checkout and the extensions, at pinned commits
-giq add pixal3d                # the weights: 23 GB, plus encoder, camera and matting
+giq add pixal3d                # the weights: 46 GB with the multi-view set, plus encoder, camera and matting
 ```
 
 `giq prepare pixal3d` clones Pixal3D, installs MoGe, compiles CuMesh,
@@ -160,6 +160,7 @@ tokens.
 |-----------|---------|
 | `resolution` | The voxel grid the cascade ends at: `1024` (default) or `1536`. The recipe's `vram` figure belongs to one of them. |
 | `low_vram` | Keep the flow models on the CPU and move each to the card for its stage (default `true`). |
+| `views` | What a task brings: `single` (default), one picture, or `multi`, four views round the object. They are different checkpoints of the one repository, each 23 GB in RAM, so a recipe loads one set. |
 
 Measured on an RTX 5090, one image, the child's own peak:
 
@@ -169,6 +170,7 @@ Measured on an RTX 5090, one image, the child's own peak:
 | 1536 | low-VRAM | 72 s | 25.7 GB |
 | 1024 | all on the card | 84 s | 31.4 GB |
 | 1536 | all on the card | — | out of memory |
+| 1024, four views | low-VRAM | 83 s with a game-ready export | 18.4 GB |
 
 Low-VRAM mode is the faster one on a 32 GB card as well as the smaller:
 with everything resident the card is full. 1536 adds about 4% faces to the

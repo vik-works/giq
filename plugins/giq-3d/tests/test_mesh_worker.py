@@ -79,7 +79,14 @@ def test_the_childs_flags_come_from_the_recipe(tmp_path, monkeypatch):
     assert flags["--camera"] == str(models / "moge")
     assert flags["--matting"] == str(models / "birefnet")
     assert flags["--resolution"] == "1536"
+    assert flags["--views"] == "single"
     assert "--low-vram" not in args
+
+
+def test_a_multi_view_recipe_tells_the_child_so(tmp_path, monkeypatch):
+    name, _ = _recipe(tmp_path, monkeypatch, "params: {views: multi}\n")
+    args = MeshAdapter(MeshConfig(model=name)).child_args()
+    assert args[args.index("--views") + 1] == "multi"
 
 
 def test_low_vram_is_the_default(tmp_path, monkeypatch):

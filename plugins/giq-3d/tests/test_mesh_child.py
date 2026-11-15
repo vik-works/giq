@@ -57,3 +57,35 @@ def test_a_wrong_field_is_named(task, message):
 
 def test_whole_floats_count_as_whole_numbers():
     assert task_inputs({"image_b64": IMAGE, "faces": 1500.0, "seed": 7.0})["faces"] == 1500
+
+
+VIEWS = [IMAGE] * 4
+
+
+def test_a_multi_view_task_brings_four_views_in_order():
+    inputs = task_inputs({"views_b64": VIEWS, "faces": 800}, multi=True)
+    assert inputs["views"] == [b"\x89PNG not really"] * 4
+    assert "image" not in inputs and inputs["faces"] == 800
+
+
+@pytest.mark.parametrize(
+    ("task", "message"),
+    [
+        (
+            {"image_b64": IMAGE},
+            "needs 'views_b64': 4 images of the object, in the order front, right",
+        ),
+        ({"views_b64": VIEWS[:3]}, "needs 'views_b64': 4 images"),
+        ({"views_b64": [IMAGE, "not base64!", IMAGE, IMAGE]}, "'views_b64' right is not base64"),
+        ({"views_b64": [IMAGE, IMAGE, IMAGE, 7]}, "'views_b64' left must be a base64 image"),
+        ({"views_b64": VIEWS, "fov": 0.3}, "'fov' is a single picture's"),
+    ],
+)
+def test_a_wrong_multi_view_task_is_named(task, message):
+    with pytest.raises(ValueError, match=message):
+        task_inputs(task, multi=True)
+
+
+def test_a_single_view_recipe_does_not_take_views():
+    with pytest.raises(ValueError, match="needs an 'image_b64'"):
+        task_inputs({"views_b64": VIEWS})

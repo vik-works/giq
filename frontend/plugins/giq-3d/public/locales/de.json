@@ -4,18 +4,25 @@
     "closeNone": "keine",
     "faces": "Dreiecke",
     "image": "Bild des Objekts",
+    "input": "Eingabe",
     "mode": "Export",
     "model": "Modell",
     "seed": "Seed",
     "textureSize": "Texturgröße"
   },
+  "input": {
+    "picture": "Ein Bild",
+    "views": "Vier Ansichten"
+  },
   "mesh": {
     "evicts": "Generieren verdrängt vorgehaltene Instanzen — das erste Asset dauert, danach laden sie neu.",
     "fullHint": "Das generierte Mesh, auf die Dreieckszahl vereinfacht, mit Grundfarbe, Metall und Rauheit. Ohne Normal Map.",
     "gameHint": "Eine geschlossene Low-Poly-Hülle, von außen um das Mesh neu aufgebaut, mit Farbe, Material und Normal Map darauf gebacken. Kleine Öffnungen werden geschlossen und aufgemalt.",
-    "imageHint": "Ein Objekt, vollständig im Bild, vor einfarbigem Hintergrund. Ein transparenter Hintergrund wird übernommen, jeder andere zuerst entfernt.",
+    "imageHint": "Ein Objekt, vollständig im Bild, vor einfarbigem Hintergrund, für ein Einzelbild-Rezept (pixal3d). Ein transparenter Hintergrund wird übernommen, jeder andere zuerst entfernt.",
     "needImage": "Ein Bild des Objekts auswählen.",
-    "none": "Kein Bild-zu-3D-Rezept installiert."
+    "needView": "Diese Ansicht auswählen.",
+    "none": "Kein Bild-zu-3D-Rezept installiert.",
+    "viewsHint": "Vier Ansichten, je eine Vierteldrehung um das Objekt, auf Augenhöhe, für ein Mehransichts-Rezept (pixal3d-mv). Das Asset steht aufrecht, mit den Seiten, wie die Ansichten sie zeigen."
   },
   "mode": {
     "full": "Volle Details",
@@ -38,5 +45,11 @@
   },
   "tab": {
     "mesh": "Bild zu 3D"
+  },
+  "view": {
+    "back": "Hinten",
+    "front": "Vorne",
+    "left": "Linke Seite",
+    "right": "Rechte Seite"
   }
 }

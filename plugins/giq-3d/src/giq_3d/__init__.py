@@ -78,7 +78,7 @@ def _mesh_plugin() -> Plugin:
                 # background remover, each a repository of its own with its
                 # own licence.
                 parts=frozenset({"encoder", "camera", "matting"}),
-                payload_keys=("image_b64",),
+                payload_keys=("image_b64", "views_b64"),
             ),
         ),
         adapters={

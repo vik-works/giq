@@ -473,6 +473,23 @@ BUILTIN_SPECS = [
         "vram_gb": 16.0,
         "worker": "image2mesh",
     },
+    {
+        "aliases": (),
+        "backend": "pixal3d",
+        "detail": "four views → textured mesh · upright · PBR · GLB · full detail or game-ready low-poly",
+        "engine": None,
+        "label": "Pixal3D multi-view",
+        "lane_width": None,
+        "max_batch": 2,
+        "measured": True,
+        "mmproj": None,
+        "model": "pixal3d-mv",
+        "resident_priority": None,
+        "vision": False,
+        "voices": (),
+        "vram_gb": 18.5,
+        "worker": "image2mesh",
+    },
 ]
 
 LLM_TABLES = {

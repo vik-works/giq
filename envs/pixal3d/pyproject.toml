@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-pixal3d"
+version = "0.1.0"
+description = "Interpreter for giq's image2mesh child: Pixal3D (TRELLIS.2 backbone)"
+# 3.11 because the prebuilt flash-attn wheel (cu128, torch 2.10) is cp311 only.
+requires-python = ">=3.11,<3.12"
+# What installs from an index. The compiled extensions Pixal3D needs on top
+# (CuMesh, FlexGEMM, O-Voxel, NATTEN) are built into this environment by
+# `giq prepare pixal3d`, pinned to commits there: they compile against this
+# torch with the machine's CUDA toolkit, and one needs a patch, which a lock
+# file cannot express. Pixal3D itself is a checkout, cloned by the same step.
+# A plain `uv sync` removes them again, as it removes anything the lock does
+# not name: re-sync with `uv sync --inexact`.
+dependencies = [
+    # torch 2.10 on CUDA 12.8 runs RTX 50 cards, which the torch 2.6 that
+    # TRELLIS.2's own setup installs does not.
+    "torch==2.10.0",
+    "torchvision==0.25.0",
+    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.12/flash_attn-2.8.3+cu128torch2.10-cp311-cp311-linux_x86_64.whl",
+    # Pixal3D's pins (its requirements.txt), less gradio.
+    "transformers==4.57.3",
+    "diffusers==0.37.1",
+    "accelerate==1.13.0",
+    "kornia==0.8.2",
+    "timm==1.0.22",
+    "plyfile==1.1.3",
+    "zstandard==0.25.0",
+    "easydict",
+    "imageio",
+    "tqdm",
+    "trimesh",
+    "pillow",
+    "opencv-python-headless",
+    "huggingface-hub",
+    "safetensors",
+    # The 3D utilities TRELLIS.2 pins. MoGe, the camera estimator, is
+    # installed by `giq prepare pixal3d` without its dependencies: its
+    # project file pins torch to another CUDA index, which uv refuses to
+    # resolve next to this one, and FlexGEMM to a commit that has moved a
+    # module Pixal3D imports.
+    "utils3d @ git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8",
+    # The one dependency of MoGe's the camera estimate imports and nothing
+    # above brings: its own fork of utils3d, at the commit MoGe pins.
+    "utils3d_moge @ git+https://github.com/EasternJournalist/utils3d-moge.git@62f09d58509485564e24d5d9f6aac9ee9ebc0c37",
+    # The game-ready export: the skin (scipy, scikit-image), its
+    # simplification (pyfqmr) and its atlas (xatlas).
+    "scipy",
+    "scikit-image",
+    "pyfqmr",
+    "xatlas",
+    # For building the extensions. The CCCL headers are CUDA 12.8's, put in
+    # front of an older toolkit's: CuMesh uses a cub::DeviceRadixSort
+    # overload that CUDA 12.0's CUB does not have.
+    "nvidia-cuda-cccl-cu12==12.8.*",
+    "setuptools",
+    "wheel",
+    "ninja",
+    "pybind11",
+    "cmake",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }

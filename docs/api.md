@@ -266,6 +266,41 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
   | jq -r '.results[0].audio_b64' | base64 -d > with-guitar.flac
 ```
 
+
+### Image2Mesh (`image2mesh`)
+- Recipe: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR
+  materials; from the `giq-3d` plugin, which `giq-defaults` does not install)
+- Task: `{id, image_b64, mode?, faces?, texture_size?, close?, seed?, fov?}`
+- Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed}`
+- `image_b64` is one picture of the object: PNG, JPEG or WebP, a data URL
+  prefix allowed. With an alpha channel the object is what is opaque; without
+  one the background is removed first. One object, all of it in frame, on a
+  plain background works best.
+- `mode` picks the export. `game` (default) is a low-poly asset: a closed
+  cage of `faces` triangles (200-50,000, default 3,000) rebuilt from the
+  outside of the generated mesh, so no face is spent where nobody can see,
+  with base colour, metallic-roughness and a tangent-space normal map baked
+  onto it from the full mesh. `close` (0-8, default 4) is how wide an opening
+  may be, in voxels of the cage's 384 grid, and still be closed in the cage:
+  vent slots become colour and normal map, a carry handle stays open; 0
+  closes nothing. `full` is Pixal3D's own export, the generated mesh
+  simplified to `faces` (5,000-1,000,000, default 100,000), without a normal
+  map.
+- `texture_size`: 1024, 2048 (default for `game`) or 4096 (default for
+  `full`). `seed` (default 42) makes an asset reproducible. `fov` is the
+  camera's horizontal field of view in radians; without it the camera is
+  estimated from the image.
+- The GLB is glTF 2.0 with WebP textures (`EXT_texture_webp`), Y up. A
+  `game` asset at 3,000 faces is about 1 MB, a `full` one at 100,000 about
+  8 MB.
+
+```bash
+jq -n --rawfile img <(base64 -w0 cannon.png) '{modality:"image2mesh",
+  model:"pixal3d", tasks:[{id:"1", image_b64:$img, faces:1500}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  | jq -r '.results[0].glb_b64' | base64 -d > cannon.glb
+```
+
 ### Audio, voiceprints, speech
 
 The resident audio stack (`whisper-large-v3`: faster-whisper plus pyannote

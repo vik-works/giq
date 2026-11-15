@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "giq",
+    "giq-3d",
     "giq-defaults",
     "giq-depth",
     "giq-imajev",
@@ -791,6 +792,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "giq-3d" },
     { name = "giq-defaults" },
     { name = "httpx" },
     { name = "pytest" },
@@ -812,6 +814,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "giq-3d", editable = "plugins/giq-3d" },
     { name = "giq-defaults", editable = "plugins/giq-defaults" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.0.2" },
@@ -819,6 +822,17 @@ dev = [
     { name = "ruff", specifier = ">=0.15.0" },
     { name = "ty", specifier = ">=0.0.74" },
 ]
+
+[[package]]
+name = "giq-3d"
+version = "0.7.0"
+source = { editable = "plugins/giq-3d" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
 
 [[package]]
 name = "giq-defaults"

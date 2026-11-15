@@ -42,6 +42,7 @@ version.
 | `giq-imajev` | engine `imajev`; modality `decide`; `POST /decide`; its sandbox panel | its own interpreter (`envs/imajev`) |
 | `giq-music` | engine `acestep`; modality `text2music`; its sandbox panel | its own interpreter (`envs/acestep`) |
 | `giq-defaults` | all of the above | |
+| `giq-3d` | engine `pixal3d`; modality `image2mesh` | its own interpreter (`envs/pixal3d`) and a build step (`giq prepare pixal3d`); not in `giq-defaults` |
 
 Each brings its own built-in recipes, so a recipe appears in the Add page
 once its plugin is installed (see [Getting a recipe's

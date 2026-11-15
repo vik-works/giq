@@ -1,0 +1,18 @@
+{
+  "api_version": 1,
+  "module": "index.js",
+  "styles": [
+    "index.css"
+  ],
+  "locales": {
+    "en": "locales/en.json",
+    "de": "locales/de.json"
+  },
+  "panels": [
+    {
+      "id": "mesh",
+      "modality": "image2mesh",
+      "label": "tab.mesh"
+    }
+  ]
+}

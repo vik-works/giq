@@ -43,6 +43,10 @@ class Modality(StrEnum):
     # description, optional lyrics and musical constraints in, an encoded
     # 48 kHz stereo track out. See giq_music.adapter.MusicResult.
     text2music = "text2music"
+    # Image to 3D (Pixal3D in a child process on its own interpreter): one
+    # picture of an object in, a textured mesh as GLB out, at full detail or
+    # as a game-ready low-poly asset. See giq_3d.adapter.MeshResult.
+    image2mesh = "image2mesh"
 
 
 class JobStatus(StrEnum):

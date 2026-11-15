@@ -29,6 +29,7 @@ BUILTIN_MODALITIES = {
     "depth",
     "decide",
     "text2music",
+    "image2mesh",
 }
 
 
@@ -87,11 +88,13 @@ def test_the_builtins_register_through_the_contract():
         "transformers",
         "imajev",
         "acestep",
+        "pixal3d",
     } <= set(plugins.engines())
     assert plugins.engines_for("llm") == {"llama.cpp", "vllm"}
     assert plugins.engines_for("ocr") == {"transformers"}
     assert plugins.engines_for("decide") == {"imajev"}
     assert plugins.engines_for("text2music") == {"acestep"}
+    assert plugins.engines_for("image2mesh") == {"pixal3d"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
     loaded = {s.name for s in plugins.status() if s.loaded}
     assert {
@@ -103,6 +106,7 @@ def test_the_builtins_register_through_the_contract():
         "giq-depth",
         "giq-imajev",
         "giq-music",
+        "giq-3d",
     } <= (loaded)
 
 

@@ -17,7 +17,7 @@ from giq.paths import env_python
 from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Plugin
 from giq.plugins import curated_ui
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"
 
 
 def _decide(ctx: AdapterContext):

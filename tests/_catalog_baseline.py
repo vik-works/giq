@@ -507,6 +507,23 @@ BUILTIN_SPECS = [
         "vram_gb": 13.5,
         "worker": "image2mesh",
     },
+    {
+        "aliases": (),
+        "backend": "pixal3d",
+        "detail": "image → textured mesh, whole or cut into its parts · upright · PBR · GLB",
+        "engine": None,
+        "label": "TRELLIS.2 with parts",
+        "lane_width": None,
+        "max_batch": 2,
+        "measured": True,
+        "mmproj": None,
+        "model": "trellis2-parts",
+        "resident_priority": None,
+        "vision": False,
+        "voices": (),
+        "vram_gb": 25.5,
+        "worker": "image2mesh",
+    },
 ]
 
 LLM_TABLES = {

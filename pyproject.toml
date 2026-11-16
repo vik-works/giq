@@ -82,7 +82,7 @@ python-version = "3.11"
 # and giq-3d's on envs/pixal3d, which have these and giq's venv does not.
 allowed-unresolved-imports = [
     "vision_decision.**", "peft", "acestep.**", "flash_attn",
-    "pixal3d.**", "inference", "o_voxel.**", "cumesh.**", "flex_gemm.**", "pyfqmr",
+    "pixal3d.**", "trellis2.**", "inference", "o_voxel.**", "cumesh.**", "flex_gemm.**", "pyfqmr",
     "xatlas", "skimage.**", "scipy.**", "cv2", "trimesh.**", "timm", "safetensors.**",
 ]
 

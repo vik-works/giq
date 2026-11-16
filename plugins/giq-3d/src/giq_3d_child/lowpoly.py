@@ -91,8 +91,32 @@ def carve(occupied: torch.Tensor, close: int) -> torch.Tensor:
     return solid
 
 
-def skin(vertices: torch.Tensor, close: int) -> tuple[np.ndarray, np.ndarray]:
-    """One closed outward-facing surface round a mesh in [-0.5, 0.5]^3."""
+def surface_points(vertices: torch.Tensor, faces: torch.Tensor) -> torch.Tensor:
+    """Points on a mesh's faces, about three to a voxel of the skin's grid.
+
+    The generator's vertices are closer together than the voxels, so on a
+    whole asset they mark every voxel the surface crosses. A part grown to
+    fill the grid has them further apart, and a skin cut from vertices
+    alone would leak between them.
+    """
+    a, b, c = (vertices[faces[:, i].long()] for i in range(3))
+    per_face = torch.linalg.cross(b - a, c - a).norm(dim=1) / 2 * RES**2 * 3
+    count = min(int(per_face.sum().item()) + 1, 40_000_000)
+    pick = torch.multinomial(per_face / per_face.sum(), count, replacement=True)
+    r1 = torch.rand(count, 1, device=vertices.device).sqrt()
+    r2 = torch.rand(count, 1, device=vertices.device)
+    return (1 - r1) * a[pick] + r1 * (1 - r2) * b[pick] + r1 * r2 * c[pick]
+
+
+def skin(vertices: torch.Tensor, close: int, shell: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """One closed outward-facing surface round a mesh in [-0.5, 0.5]^3.
+
+    ``shell`` keeps that many voxels round the surface solid whatever the
+    carve sees. A whole asset needs none: its surface encloses something.
+    A part cut out of one is often a sheet, a bucket's wall or a track's
+    belt, seen from both sides: the carve leaves a sheet nothing, and its
+    skin comes out as lace.
+    """
     from scipy import ndimage
     from skimage import measure
 
@@ -103,7 +127,10 @@ def skin(vertices: torch.Tensor, close: int) -> tuple[np.ndarray, np.ndarray]:
     idx = ((vertices + 0.5) * RES).long().clamp(0, RES - 1) + pad
     occupied = torch.zeros((n, n, n), dtype=torch.bool, device=vertices.device)
     occupied[idx[:, 0], idx[:, 1], idx[:, 2]] = True
-    solid = carve(occupied, close).cpu().numpy()
+    solid = carve(occupied, close)
+    if shell:
+        solid |= _dilate(occupied, shell)
+    solid = solid.cpu().numpy()
     # One object: crumbs the carve pinches off are not worth their faces.
     labels, count = ndimage.label(solid)
     if count > 1:
@@ -220,11 +247,25 @@ def export(
     target_faces: int,
     texture_size: int,
     close: int,
+    part: bool = False,
+    shell: int = 0,
 ):
     """The generated asset as a low-poly trimesh with baked PBR and normal maps.
 
     The arguments up to ``aabb`` are what the stock export takes; the mesh
     comes back in the stock export's axes, so both land the same way up.
+
+    ``shell`` keeps that many voxels round the whole asset's surface solid
+    whatever the carve sees (see ``skin``): for an asset with thin panels
+    seen from both sides, the plaster between a frame's timbers, which the
+    carve would otherwise leave nothing of.
+
+    ``part`` says the mesh is a piece cut out of an asset, not the asset. A
+    piece is given the whole grid to itself, moved to the middle and grown
+    to fill it, so a bucket is skinned as finely as the excavator it came
+    off; the box the volume is read in moves and grows along, so every
+    point still reads the voxel it came from. Its skin is cut from points
+    on its faces and keeps a shell round them (see ``skin``).
     """
     import cumesh
     import cv2
@@ -234,7 +275,15 @@ def export(
 
     dev = vertices.device
     size = texture_size
-    sv, sf = skin(vertices, close)
+    aabb = torch.as_tensor(aabb, dtype=torch.float32, device=dev)
+    middle, grow = torch.zeros(3, device=dev), 1.0
+    if part:
+        low, high = vertices.min(0).values, vertices.max(0).values
+        middle, grow = (low + high) / 2, 0.96 / float((high - low).max())
+        vertices, aabb = (vertices - middle) * grow, (aabb - middle) * grow
+        sv, sf = skin(torch.cat([vertices, surface_points(vertices, faces)]), close, shell=1)
+    else:
+        sv, sf = skin(vertices, close, shell=shell)
     cv_np, cf_np = simplify(sv, sf, target_faces)
     vmap, uf, uv = unwrap(cv_np, cf_np, size)
     cage_v = torch.from_numpy(cv_np).to(dev)
@@ -277,7 +326,6 @@ def export(
     )
 
     # PBR attributes from the generator's volume, as the stock export reads them.
-    aabb = torch.as_tensor(aabb, dtype=torch.float32, device=dev)
     grid = torch.tensor([grid_size] * 3, dtype=torch.int32, device=dev)
     voxel = (aabb[1] - aabb[0]) / grid
     attrs = grid_sample_3d(
@@ -339,7 +387,7 @@ def export(
         return x
 
     return trimesh.Trimesh(
-        vertices=glb_axes(V),
+        vertices=glb_axes(V / grow + middle),
         faces=UF.cpu().numpy(),
         vertex_normals=glb_axes(N),
         visual=trimesh.visual.TextureVisuals(uv=UV.cpu().numpy(), material=material),

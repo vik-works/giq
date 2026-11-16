@@ -294,12 +294,14 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
 - Recipes: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR
   materials, posed as the picture and close to it), `trellis2` (Microsoft's
   TRELLIS.2, MIT: one image to a mesh standing upright in a frame of its
-  own, freer with the surface) and `pixal3d-mv` (Pixal3D's multi-view
-  checkpoints: four views to a mesh); from the `giq-3d` plugin, which
-  `giq-defaults` does not install
+  own, freer with the surface), `trellis2-parts` (the same with a part
+  segmenter beside it: an asset whole, or cut into its parts) and
+  `pixal3d-mv` (Pixal3D's multi-view checkpoints: four views to a mesh);
+  from the `giq-3d` plugin, which `giq-defaults` does not install
 - Task: `{id, image_b64 | views_b64[4], mode?, faces?, texture_size?, close?,
-  seed?, fov?}`
-- Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed}`
+  shell?, seed?, fov?, parts?, part_seeds?}`
+- Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed,
+  parts?, contacts?}`
 - `image_b64` is one picture of the object: PNG, JPEG or WebP, a data URL
   prefix allowed. With an alpha channel the object is what is opaque; without
   one the background is removed first. One object, all of it in frame, on a
@@ -322,13 +324,33 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
   onto it from the full mesh. `close` (0-8, default 4) is how wide an opening
   may be, in voxels of the cage's 384 grid, and still be closed in the cage:
   vent slots become colour and normal map, a carry handle stays open; 0
-  closes nothing. `full` is Pixal3D's own export, the generated mesh
+  closes nothing. `shell` (0-2, default 0) keeps that many voxels round the
+  surface solid whatever can be seen through it: 1 is for an asset with thin
+  panels seen from both sides, the plaster of a half-timbered wall, which
+  the cage would otherwise lose. `full` is Pixal3D's own export, the generated mesh
   simplified to `faces` (5,000-1,000,000, default 100,000), without a normal
   map.
 - `texture_size`: 1024, 2048 (default for `game`) or 4096 (default for
   `full`). `seed` (default 42) makes an asset reproducible. `fov` is the
   camera's horizontal field of view in radians; without it the camera is
   estimated from the image.
+- `parts: true` (`trellis2-parts` only, `game` exports only) cuts the asset
+  into the rigid pieces it is made of: a chest comes back as a box and a
+  lid, an excavator as cab, chassis, track belts, arm and bucket. The GLB
+  then holds one mesh a piece, named `part_0` (the largest) onward, each a
+  closed low-poly cage of its own with its own textures, all in the asset's
+  frame; `faces` is the total, shared out by each piece's share of the
+  surface, with at least 500 a piece. The result adds `parts`, a
+  `{name, faces, vertices, share}` per piece, and `contacts`, a
+  `{parts: [a, b], points, centre}` for every two pieces that touch: how
+  many vertices of the generated mesh they share and the middle of those,
+  in the GLB's coordinates. Nothing says what turns on what: a hinge or a
+  turntable is the caller's to place, and a contact is where to look. The
+  cut is drawn by a sampling model and differs from one drawing to the
+  next, so it is drawn `part_seeds` times (1-6, default 3) and the drawings
+  are laid over one another; more seeds find more cuts, at about 10 s each.
+  At most eight pieces are kept. An asset the model sees as one piece comes
+  back as one.
 - The GLB is glTF 2.0 with WebP textures (`EXT_texture_webp`), Y up. A
   `game` asset at 3,000 faces is about 1 MB, a `full` one at 100,000 about
   8 MB.

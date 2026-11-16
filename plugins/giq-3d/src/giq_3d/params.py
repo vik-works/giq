@@ -40,9 +40,15 @@ class Pixal3DParams(EngineParams):
     # everything resident the card is full and the allocator thrashes. Off
     # only for a card with room for all of it at once.
     low_vram: bool = True
+    # Load the recipe's `segmenter` part beside the generator, so a task may
+    # ask for `parts`. The segmenter is TRELLIS.2's texture model taught to
+    # paint parts, and runs on its decoders: it is a trellis2 recipe's.
+    segment: bool = False
 
     @model_validator(mode="after")
     def _one_picture_for_trellis2(self) -> Pixal3DParams:
         if self.pipeline == "trellis2" and self.views == "multi":
             raise ValueError("trellis2 takes one picture: `views: multi` is pixal3d's")
+        if self.segment and self.pipeline != "trellis2":
+            raise ValueError("`segment` is trellis2's: the segmenter runs on its decoders")
         return self

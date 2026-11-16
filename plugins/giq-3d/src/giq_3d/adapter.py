@@ -77,6 +77,10 @@ class MeshResult(BaseModel):
     vertices: int | None = None
     texture_size: int | None = None
     seed: int | None = None
+    # A `parts` export: the GLB's meshes by name with their faces and share
+    # of the surface, and which of them touch, how much and where.
+    parts: list[dict] | None = None
+    contacts: list[dict] | None = None
     error: str | None = None
 
 
@@ -131,6 +135,11 @@ class MeshAdapter(SubprocessAdapter):
             if not path:
                 raise ValueError(f"{model} names no weights.parts.{part}")
             args += [f"--{part}", path]
+        if self.params.segment:
+            path = path_of(model, "segmenter")
+            if not path:
+                raise ValueError(f"{model} sets `segment` and names no weights.parts.segmenter")
+            args += ["--segmenter", path]
         args += ["--resolution", str(self.params.resolution), "--views", self.params.views]
         return args + (["--low-vram"] if self.params.low_vram else [])
 

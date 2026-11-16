@@ -165,3 +165,44 @@ def test_trellis2_takes_one_picture():
 def test_each_pipeline_has_its_own_default_checkout(monkeypatch):
     monkeypatch.delenv("GIQ_TRELLIS2_SOURCE", raising=False)
     assert source_dir("trellis2").endswith(os.path.join("envs", "pixal3d", "TRELLIS.2"))
+
+
+def test_a_recipe_that_segments_hands_its_segmenter_to_the_child(tmp_path, monkeypatch):
+    name, models = _recipe(
+        tmp_path,
+        monkeypatch,
+        "params: {pipeline: trellis2, segment: true}\n",
+        parts="{encoder: dinov3, matting: birefnet, structure: trellis1, segmenter: seg.ckpt}",
+    )
+    args = MeshAdapter(MeshConfig(model=name)).child_args()
+    flags = dict(zip(args[::2], args[1::2], strict=False))
+    assert flags["--segmenter"] == str(models / "seg.ckpt")
+
+
+def test_segmenting_needs_its_checkpoint_and_trellis2(tmp_path, monkeypatch):
+    from giq_3d.params import Pixal3DParams
+
+    name, _ = _recipe(
+        tmp_path,
+        monkeypatch,
+        "params: {pipeline: trellis2, segment: true}\n",
+        parts="{encoder: dinov3, matting: birefnet, structure: trellis1}",
+    )
+    with pytest.raises(ValueError, match="weights.parts.segmenter"):
+        MeshAdapter(MeshConfig(model=name)).child_args()
+    with pytest.raises(ValueError, match="`segment` is trellis2's"):
+        Pixal3DParams(pipeline="pixal3d", segment=True)
+
+
+def test_a_parts_result_keeps_its_parts_and_contacts():
+    result = hydrate(
+        {
+            "id": "a",
+            "glb_b64": "Z2xURg==",
+            "faces": 4000,
+            "parts": [{"name": "part_0", "faces": 2300, "vertices": 1500, "share": 0.57}],
+            "contacts": [{"parts": [0, 1], "points": 1006, "centre": [0.2, -0.1, 0.0]}],
+        }
+    )
+    assert result.parts[0]["name"] == "part_0" and result.contacts[0]["parts"] == [0, 1]
+    assert hydrate({"id": "b", "glb_b64": "Z2xURg=="}).parts is None

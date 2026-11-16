@@ -151,7 +151,8 @@
       "recipes": [
         "pixal3d",
         "pixal3d-mv",
-        "trellis2"
+        "trellis2",
+        "trellis2-parts"
       ],
       "needs": "its own interpreter, set up once: cd envs/pixal3d && uv sync, then giq prepare pixal3d"
     }

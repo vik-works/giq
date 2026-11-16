@@ -75,9 +75,9 @@ def _mesh_plugin() -> Plugin:
                 icon="cube",
                 job_timeout=900.0,
                 # The DINOv3 encoder, the camera estimator, the background
-                # remover and TRELLIS.2's structure decoder, each a repository
-                # of its own with its own licence.
-                parts=frozenset({"encoder", "camera", "matting", "structure"}),
+                # remover, TRELLIS.2's structure decoder and a part
+                # segmenter, each a repository of its own with its own licence.
+                parts=frozenset({"encoder", "camera", "matting", "structure", "segmenter"}),
                 payload_keys=("image_b64", "views_b64"),
             ),
         ),

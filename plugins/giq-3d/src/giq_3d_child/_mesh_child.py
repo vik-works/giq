@@ -42,6 +42,11 @@ upright and squared to the axes. Either way it is exported as GLB by
   ``full``            Pixal3D's own export: the generated mesh simplified to
                       ``faces``, base colour, metallic and roughness only.
 
+A recipe that carries a segmenter also takes ``parts``: the asset is cut
+into the rigid pieces it is made of, and the GLB holds one mesh a piece,
+each a game-ready export of its own (see ``_parts``). What moves and how is
+not decided here: the result says which pieces touch, and where.
+
 Wire protocol: see giq_child (``run_ipc_child_loop``). This module is a
 top-level package importing no giq: the pixal3d interpreter carries torch
 and Pixal3D's extensions, never giq's venv. The parsing below is pure, so
@@ -79,11 +84,22 @@ TEXTURE_SIZE = {"game": 2048, "full": 4096}
 # Voxels (of the cage's 384 grid) an opening may be wide and still be closed
 # in a game cage: 4 seals vent slots and keeps a carry handle open.
 CLOSE, MAX_CLOSE = 4, 8
+# Voxels of surface a game cage may be asked to keep solid whatever is seen
+# through: 1 keeps a thin panel, more only thickens it.
+MAX_SHELL = 2
 # Pixal3D's own cap on the tokens of the high-resolution stage.
 MAX_TOKENS = 49152
 # The turn Pixal3D gives its export so the asset faces the viewer it was drawn for.
 ROTATION = ((-1, 0, 0, 0), (0, 0, -1, 0), (0, -1, 0, 0), (0, 0, 0, 1))
 MAX_IMAGE_BYTES = 40 * 1024 * 1024
+# How many times a segmentation is drawn when the task does not say, and
+# the most it may ask for: each is about 10 s, and past a handful the cuts
+# repeat one another.
+PART_SEEDS, MAX_PART_SEEDS = 3, 6
+# The most pieces an asset is cut into; the smallest beyond it are merged.
+MAX_PARTS = 8
+# A piece is never asked for fewer faces than this, however small its share.
+PART_FACES = 500
 # The rig's cameras, as Pixal3D ships them with its example views.
 RIG_FILE = os.path.join("assets", "mv_images", "example", "transforms.json")
 
@@ -139,6 +155,9 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
     close = CLOSE if task.get("close") is None else _integer(task["close"], "close")
     if not 0 <= close <= MAX_CLOSE:
         raise ValueError(f"'close' must be 0-{MAX_CLOSE}, got {close}")
+    shell = 0 if task.get("shell") is None else _integer(task["shell"], "shell")
+    if not 0 <= shell <= MAX_SHELL:
+        raise ValueError(f"'shell' must be 0-{MAX_SHELL}, got {shell}")
     seed = 42 if task.get("seed") is None else _integer(task["seed"], "seed")
     if not 0 <= seed < 2**32:
         raise ValueError("'seed' must be 0 to 4294967295")
@@ -149,12 +168,24 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
         if isinstance(fov, bool) or not isinstance(fov, (int, float)) or not 0.05 <= fov <= 2.5:
             raise ValueError("'fov' is the camera's horizontal field of view in radians, 0.05-2.5")
         fov = float(fov)
+    parts = task.get("parts", False)
+    if not isinstance(parts, bool):
+        raise ValueError("'parts' is true or false")
+    if parts and mode != "game":
+        raise ValueError("'parts' is a game export's: each piece is a low-poly cage of its own")
+    seeds = task.get("part_seeds")
+    seeds = PART_SEEDS if seeds is None else _integer(seeds, "part_seeds")
+    if not 1 <= seeds <= MAX_PART_SEEDS:
+        raise ValueError(f"'part_seeds' must be 1-{MAX_PART_SEEDS}, got {seeds}")
     return {
+        "parts": parts,
+        "part_seeds": seeds,
         "views" if multi else "image": data,
         "mode": mode,
         "faces": faces,
         "texture_size": size,
         "close": close,
+        "shell": shell,
         "seed": seed,
         "fov": fov,
     }
@@ -408,6 +439,121 @@ def _generate_trellis2(pipeline, args, inputs: dict):
     return mesh, mesh.layout, int(round(1.0 / voxel))
 
 
+_segmenter: list = []
+
+
+def _parts(pipeline, args, mesh, layout, grid: int, picture, inputs: dict):
+    """The asset as its pieces: a scene of one game-ready mesh a piece, and what touches.
+
+    The segmenter paints the asset one colour a part, once a seed; the
+    paintings are laid over one another, so a cut any of them found is a
+    cut. The colours go onto the generated mesh at its full detail, and
+    each piece is exported on its own from the generator's volume, its
+    faces a share of ``faces`` by its share of the surface.
+    """
+    import numpy as np
+    import o_voxel
+    import torch
+    import trimesh
+    from trellis2 import models
+
+    from giq_3d_child import lowpoly, parts
+    from giq_3d_child.segment import GRID, Segmenter, condition
+
+    box = [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]]
+    # The label tidying walks every edge of the mesh: bounded like the stock export.
+    mesh.simplify(16777216)
+    full = o_voxel.postprocess.to_glb(
+        vertices=mesh.vertices,
+        faces=mesh.faces,
+        attr_volume=mesh.attrs,
+        coords=mesh.coords,
+        attr_layout=layout,
+        grid_size=grid,
+        aabb=box,
+        decimation_target=100000,
+        texture_size=2048,
+        remesh=True,
+        remesh_band=1,
+        remesh_project=0,
+        use_tqdm=False,
+    )
+    if not _segmenter:
+        decoders = {
+            "shape": pipeline.models["shape_slat_decoder"],
+            "tex": pipeline.models["tex_slat_decoder"],
+        }
+        _segmenter.append(Segmenter(args.weights, args.segmenter, models, decoders))
+    segmenter = _segmenter[0]
+    segmenter.to("cuda")
+    pipeline.image_cond_model.cuda()
+    try:
+        laid_out, (centre, scale) = segmenter.lay_out(trimesh.Scene(full))
+        cond = condition(pipeline.image_cond_model, pipeline.preprocess_image(picture))
+        vertices = mesh.vertices.cpu().numpy().astype(np.float64)
+        faces = mesh.faces.cpu().numpy().astype(np.int64)
+
+        def stock_axes(p: np.ndarray) -> np.ndarray:
+            return np.stack([p[:, 0], p[:, 2], -p[:, 1]], axis=1)
+
+        a, b, c = (vertices[faces[:, i]] for i in range(3))
+        area = np.linalg.norm(np.cross(b - a, c - a), axis=1) / 2
+        centroids = (stock_axes((a + b + c) / 3) - centre) * scale
+        del a, b, c
+        labelings = []
+        for n in range(inputs["part_seeds"]):
+            where, colours = segmenter.paint(laid_out, cond, inputs["seed"] + n)
+            groups = parts.colour_groups(colours)
+            labelings.append(parts.onto_faces(centroids, (where + 0.5) / GRID - 0.5, groups))
+    finally:
+        # The decoders are the pipeline's: they go back where low-VRAM mode keeps them.
+        segmenter.to("cpu" if args.low_vram else "cuda")
+        if args.low_vram:
+            pipeline.image_cond_model.cpu()
+        torch.cuda.empty_cache()
+    labels = parts.tidy(faces, parts.overlay(labelings), MAX_PARTS)
+    labels = parts.tidy(faces, parts.smooth(centroids, area, labels), MAX_PARTS)
+
+    scene, pieces = trimesh.Scene(), []
+    for part in range(int(labels.max()) + 1):
+        used, inverse = np.unique(faces[labels == part], return_inverse=True)
+        share = float(area[labels == part].sum() / area.sum())
+        target = max(PART_FACES, int(round(inputs["faces"] * share)))
+        cage = lowpoly.export(
+            vertices=mesh.vertices[torch.from_numpy(used).to(mesh.vertices.device)].cuda(),
+            faces=torch.from_numpy(inverse.reshape(-1, 3).astype(np.int32)).cuda(),
+            attr_volume=mesh.attrs.cuda(),
+            coords=mesh.coords.cuda(),
+            attr_layout=layout,
+            grid_size=grid,
+            aabb=box,
+            target_faces=target,
+            # A small piece has a small share of the texels to fill, too.
+            texture_size=inputs["texture_size"] if share >= 0.2 else inputs["texture_size"] // 2,
+            close=min(inputs["close"], 2),
+            part=True,
+        )
+        name = f"part_{part}"
+        scene.add_geometry(cage, node_name=name, geom_name=name)
+        pieces.append(
+            {
+                "name": name,
+                "faces": int(len(cage.faces)),
+                "vertices": int(len(cage.vertices)),
+                "share": round(share, 4),
+            }
+        )
+    touching = [
+        {
+            "parts": c["parts"],
+            "points": c["points"],
+            "centre": [round(float(x), 5) for x in c["centre"]],
+        }
+        for c in parts.contacts(stock_axes(vertices), faces, labels)
+    ]
+    return scene, pieces, touching
+
+
 def _run(models, args, task: dict) -> dict:
     import numpy as np
     import o_voxel
@@ -424,7 +570,13 @@ def _run(models, args, task: dict) -> dict:
         meshes, (_shape, _texture, grid) = generate(px, pipeline, args, inputs)
         mesh, layout = meshes[0], pipeline.pbr_attr_layout
     aabb = [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]]
-    if inputs["mode"] == "game":
+    pieces = touching = None
+    if inputs["parts"]:
+        if not args.segmenter:
+            raise ValueError("'parts' needs a recipe that carries a segmenter")
+        picture = _open(inputs["image"], "'image_b64'")
+        glb, pieces, touching = _parts(pipeline, args, mesh, layout, grid, picture, inputs)
+    elif inputs["mode"] == "game":
         from giq_3d_child import lowpoly
 
         glb = lowpoly.export(
@@ -438,6 +590,7 @@ def _run(models, args, task: dict) -> dict:
             target_faces=inputs["faces"],
             texture_size=inputs["texture_size"],
             close=inputs["close"],
+            shell=inputs["shell"],
         )
     else:
         glb = o_voxel.postprocess.to_glb(
@@ -460,16 +613,19 @@ def _run(models, args, task: dict) -> dict:
     data = glb.export(file_type="glb", extension_webp=True)
     del meshes, mesh
     torch.cuda.empty_cache()
-    return {
+    out = {
         "id": task.get("id", "unknown"),
         "glb_b64": base64.b64encode(data).decode("ascii"),
         "format": "glb",
         "mode": inputs["mode"],
-        "faces": int(len(glb.faces)),
-        "vertices": int(len(glb.vertices)),
+        "faces": sum(p["faces"] for p in pieces) if pieces else int(len(glb.faces)),
+        "vertices": sum(p["vertices"] for p in pieces) if pieces else int(len(glb.vertices)),
         "texture_size": inputs["texture_size"],
         "seed": inputs["seed"],
     }
+    if pieces:
+        out |= {"parts": pieces, "contacts": touching}
+    return out
 
 
 def main() -> None:
@@ -485,6 +641,8 @@ def main() -> None:
     # The camera estimator is Pixal3D's; the structure decoder TRELLIS.2's.
     parser.add_argument("--camera", default=None)
     parser.add_argument("--structure", default=None)
+    # A part-segmentation checkpoint; with it, a task may ask for `parts`.
+    parser.add_argument("--segmenter", default=None)
     parser.add_argument("--pipeline", choices=("pixal3d", "trellis2"), default="pixal3d")
     parser.add_argument("--matting", required=True)
     parser.add_argument("--resolution", type=int, choices=(1024, 1536), default=1024)

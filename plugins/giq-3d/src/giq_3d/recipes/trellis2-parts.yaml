@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# TRELLIS.2 with a part segmenter beside it: everything `trellis2` does, and
+# a task may ask for `parts`, an asset cut into the rigid pieces it is made
+# of, each exported game-ready on its own in one GLB. A chest comes back as
+# a box and a lid; what turns on what is the caller's to say, from which
+# pieces the result reports as touching.
+#
+# The segmenter is SegviGen (Li et al., arXiv:2603.16869, MIT;
+# https://huggingface.co/fenghora/SegviGen): TRELLIS.2's 512 texture flow
+# model fine-tuned to paint an asset one flat colour a part. It runs on
+# TRELLIS.2's own decoders, inside the generator's process, from giq's
+# sampling loop (giq_3d_child/segment.py); only its checkpoint is new.
+#
+# It is a sampler and draws a different cut each time: three seeds on one
+# chest gave one part, two and four. A task draws `part_seeds` of them
+# (three by default) and lays them over one another. Tried on a chest (box
+# and lid) and an excavator (cab, chassis, two belts, arm, bucket).
+#
+# A recipe of its own, not a part of `trellis2`: the checkpoint is 7.9 GB
+# that a machine making whole assets has no use for. Its other parts and
+# their terms are `trellis2`'s.
+name: trellis2-parts
+label: TRELLIS.2 with parts
+modalities: [image2mesh]
+engine: pixal3d
+detail: "image → textured mesh, whole or cut into its parts · upright · PBR · GLB"
+weights:
+  path: microsoft-TRELLIS.2-4B
+  source: hf:microsoft/TRELLIS.2-4B
+  revision: af44b45f2e35a493886929c6d786e563ec68364d
+  format: safetensors
+  licence: mit
+  parts:
+    encoder:
+      path: timm-vit_large_patch16_dinov3_qkvb.lvd1689m
+      source: hf:timm/vit_large_patch16_dinov3_qkvb.lvd1689m
+      revision: 3653d393df9fd16a9c1bae8a6c5a514f683b70ce
+      format: safetensors
+      licence: dinov3-license
+    matting:
+      path: ZhengPeng7-BiRefNet
+      source: hf:ZhengPeng7/BiRefNet
+      revision: e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4
+      licence: mit
+    structure:
+      path: microsoft-TRELLIS-image-large
+      source: hf:microsoft/TRELLIS-image-large
+      revision: 25e0d31ffbebe4b5a97464dd851910efc3002d96
+      format: safetensors
+      licence: mit
+    segmenter:
+      path: fenghora-SegviGen/full_seg.ckpt
+      source: hf:fenghora/SegviGen/full_seg.ckpt
+      revision: 73326b77a17b5194bcc918dbf13d8d5cefb1cca5
+      licence: mit
+params:
+  pipeline: trellis2
+  resolution: 1024
+  low_vram: true
+  segment: true
+vram:
+  # Measured on an RTX 5090, the child's own peak at 1024 in low-VRAM mode:
+  # 25,172 MiB for a chest cut in two with three seeds, generation
+  # included; 21,904 MiB for the same chest whole straight after. The
+  # segmenter is a second 1.3B flow model and two encoders beside the
+  # generator's own. A parts job on the chest took 343 s from a cold start.
+  gb: 25.5
+  measured: true
+# One asset per task; a batch generates them one after another.
+max_batch: 2

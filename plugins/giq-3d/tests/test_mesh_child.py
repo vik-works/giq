@@ -89,3 +89,25 @@ def test_a_wrong_multi_view_task_is_named(task, message):
 def test_a_single_view_recipe_does_not_take_views():
     with pytest.raises(ValueError, match="needs an 'image_b64'"):
         task_inputs({"views_b64": VIEWS})
+
+
+def test_parts_are_off_unless_asked_for_and_are_a_game_exports():
+    plain = task_inputs({"image_b64": IMAGE})
+    assert (plain["parts"], plain["part_seeds"]) == (False, 3)
+    asked = task_inputs({"image_b64": IMAGE, "parts": True, "part_seeds": 5})
+    assert (asked["parts"], asked["part_seeds"]) == (True, 5)
+    for task, message in (
+        ({"parts": "yes"}, "'parts' is true or false"),
+        ({"parts": True, "mode": "full"}, "'parts' is a game export's"),
+        ({"parts": True, "part_seeds": 0}, "'part_seeds' must be 1-6"),
+        ({"part_seeds": 2.5}, "'part_seeds' must be a whole number"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            task_inputs({"image_b64": IMAGE, **task})
+
+
+def test_a_shell_is_off_unless_asked_for_and_small():
+    assert task_inputs({"image_b64": IMAGE})["shell"] == 0
+    assert task_inputs({"image_b64": IMAGE, "shell": 1})["shell"] == 1
+    with pytest.raises(ValueError, match="'shell' must be 0-2"):
+        task_inputs({"image_b64": IMAGE, "shell": 3})

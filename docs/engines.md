@@ -162,6 +162,7 @@ tokens.
 | `resolution` | The voxel grid the cascade ends at: `1024` (default) or `1536`. The recipe's `vram` figure belongs to one of them. |
 | `low_vram` | Keep the flow models on the CPU and move each to the card for its stage (default `true`). |
 | `views` | What a task brings: `single` (default), one picture, or `multi`, four views round the object. They are different checkpoints of the one repository, each 23 GB in RAM, so a recipe loads one set. |
+| `segment` | Load the recipe's `weights.parts.segmenter` beside the generator, so a task may ask for `parts` (default `false`; `trellis2` only). The segmenter is SegviGen (MIT), TRELLIS.2's texture model fine-tuned to paint an asset one colour a part; it runs on TRELLIS.2's decoders from giq's own sampling loop. |
 
 Measured on an RTX 5090, one image, the child's own peak:
 
@@ -173,6 +174,7 @@ Measured on an RTX 5090, one image, the child's own peak:
 | 1536 | all on the card | — | out of memory |
 | 1024, four views | low-VRAM | 83 s with a game-ready export | 18.4 GB |
 | 1024, `trellis2` | low-VRAM | 45-85 s | 6.9-13.2 GB, by the object |
+| 1024, `trellis2` with `parts` | low-VRAM | 343 s for a chest in two parts, from a cold start | 25.2 GB |
 
 Pixal3D and TRELLIS.2 answer one picture differently. Pixal3D lifts the
 picture's pixels into 3D, so its mesh is posed as the picture was taken and

@@ -153,3 +153,38 @@ def test_a_point_off_a_triangle_is_clamped_onto_it():
     assert torch.allclose(w, torch.tensor([[0.5, 0.25, 0.25]]))
     w = lowpoly.on_triangle(tri, torch.tensor([[-3.0, -3.0, 0.0]]))
     assert float(w.min()) >= 0 and abs(float(w.sum()) - 1) < 1e-6
+
+
+def _sheet(n: int = 60) -> "torch.Tensor":
+    """A flat square sheet in the middle of the box: a wall with no thickness."""
+    line = torch.linspace(-0.3, 0.3, n)
+    x, y = torch.meshgrid(line, line, indexing="ij")
+    return torch.stack([x.reshape(-1), y.reshape(-1), torch.zeros(n * n)], dim=1)
+
+
+def test_a_sheet_seen_from_both_sides_keeps_a_skin_only_with_a_shell(monkeypatch):
+    pytest.importorskip("skimage")
+    pytest.importorskip("scipy")
+    # A coarse grid: the carve marches every direction across it on the CPU.
+    monkeypatch.setattr(lowpoly, "RES", 48)
+    # The carve sees both faces of a sheet and leaves nothing of it.
+    with pytest.raises((ValueError, RuntimeError)):
+        lowpoly.skin(_sheet(100), close=0)
+    v, f = lowpoly.skin(_sheet(100), close=0, shell=1)
+    assert len(f) > 100
+    span = v.max(axis=0) - v.min(axis=0)
+    assert span[0] == pytest.approx(0.6, abs=0.07) and span[1] == pytest.approx(0.6, abs=0.07)
+    # Three voxels thick, less what smoothing the surface takes off.
+    assert 1 / lowpoly.RES < span[2] < 4 / lowpoly.RES
+    a, b, c = v[f[:, 0]], v[f[:, 1]], v[f[:, 2]]
+    assert float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum()) > 0, "closed and outward"
+
+
+def test_surface_points_fill_the_gaps_between_far_apart_vertices():
+    corners = torch.tensor([[-0.4, -0.4, 0.0], [0.4, -0.4, 0.0], [0.4, 0.4, 0.0], [-0.4, 0.4, 0.0]])
+    faces = torch.tensor([[0, 1, 2], [0, 2, 3]])
+    points = lowpoly.surface_points(corners, faces)
+    assert points[:, 2].abs().max() < 1e-6 and points[:, :2].abs().max() <= 0.4
+    cells = ((points[:, :2] + 0.5) * lowpoly.RES).long()
+    touched = torch.unique(cells[:, 0] * lowpoly.RES + cells[:, 1])
+    assert len(touched) > 0.9 * (0.8 * lowpoly.RES) ** 2, "nearly every voxel the quad crosses"

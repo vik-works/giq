@@ -228,7 +228,7 @@ Three things run differently from upstream's command line:
 | Upstream | giq | Why |
 |----------|-----|-----|
 | bpy in a server process of its own on a fixed port (59876, all interfaces), sent pickles over HTTP | bpy in the child, on its main thread, with no data-loader workers | Nothing listens. A pickle endpoint runs whatever is sent to it, and a fixed port lets only one rigger run on a machine. |
-| The model in training mode: the shape encoder samples the mesh's points from an unseeded generator | Eval mode, without gradients | A task's `seed` alone picks the rig. |
+| The model in training mode: the shape encoder samples the mesh's points from an unseeded generator | Eval mode, without gradients | A task's `seed` picks the skeleton: the same seed on the same card gives the same bones, across restarts. The skin weights agree to within a few hundredths on most vertices, not to the bit, and another card's kernels can draw another skeleton for the same seed. |
 | The skin tokenizer and the transformer's config at paths relative to the checkout | The recipe's `weights.path` and `weights.parts.llm` | The weights live in the model store, the code in its checkout. |
 
 | Parameter | Meaning |

@@ -27,7 +27,9 @@ workaround for data-loader worker threads. Here the mesh is read on the
 main thread with no workers, so bpy runs in this process and nothing
 listens anywhere. Upstream also leaves the model in training mode, which
 draws the shape encoder's point sample from an unseeded generator; in eval
-mode that sample is fixed, so a task's ``seed`` alone picks the rig.
+mode that sample is fixed, so a task's ``seed`` picks the skeleton on a
+given card. The skin weights still differ by a few hundredths from run to
+run, and another card's kernels can draw another skeleton.
 
 Per task: the GLB is read with bpy, TokenRig generates the skeleton and
 the skin tokens in one sequence by beam search with sampling, the tokens

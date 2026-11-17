@@ -381,11 +381,13 @@ jq -n --rawfile img <(base64 -w0 cannon.png) '{modality:"image2mesh",
   seed to seed; `bones` says how many this one got. There is no animation:
   the rest pose is the mesh's own.
 - `seed` (default 42) seeds the sampler, and another seed draws another
-  skeleton. The sampler is a beam search with sampling, and its settings are
-  upstream's, with their defaults: `num_beams` (1-20, default 10; fewer is
-  faster), `temperature` (0.1-2.0, default 1.0), `top_k` (1-200, default 5),
-  `top_p` (0.1-1.0, default 0.95), `repetition_penalty` (0.5-3.0, default
-  2.0).
+  skeleton. The same seed on the same card draws the same skeleton again;
+  its skin weights come back within a few hundredths, not to the bit, and
+  another card can draw another skeleton for it. The sampler is a beam
+  search with sampling, and its settings are upstream's, with their
+  defaults: `num_beams` (1-20, default 10; fewer is faster), `temperature`
+  (0.1-2.0, default 1.0), `top_k` (1-200, default 5), `top_p` (0.1-1.0,
+  default 0.95), `repetition_penalty` (0.5-3.0, default 2.0).
 - `keep_skeleton: true` skins a GLB to the armature it already has: its
   bones stay, and only the weights are generated. A GLB without one fails
   the task.

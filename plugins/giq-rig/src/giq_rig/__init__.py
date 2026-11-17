@@ -20,7 +20,7 @@ from giq.paths import env_python
 from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Plugin
 from giq_rig.params import SkinTokensParams
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 
 def _rig(ctx: AdapterContext):

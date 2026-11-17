@@ -47,6 +47,10 @@ class Modality(StrEnum):
     # picture of an object in, a textured mesh as GLB out, at full detail or
     # as a game-ready low-poly asset. See giq_3d.adapter.MeshResult.
     image2mesh = "image2mesh"
+    # A mesh to a rig (SkinTokens in a child process on its own interpreter):
+    # a mesh as GLB in, the same mesh skinned to a skeleton the model
+    # generated out. See giq_rig.adapter.RigResult.
+    mesh2rig = "mesh2rig"
 
 
 class JobStatus(StrEnum):

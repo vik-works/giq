@@ -64,6 +64,8 @@ Environment variables:
 | `GIQ_PIXAL3D_SOURCE` | `envs/pixal3d/Pixal3D` | The Pixal3D checkout the child imports, which `giq prepare pixal3d` clones |
 | `GIQ_TRELLIS2_SOURCE` | `envs/pixal3d/TRELLIS.2` | The TRELLIS.2 checkout the child imports for a `trellis2` recipe, cloned by the same step |
 | `GIQ_PIXAL3D_CUDA_ARCH` | `8.9` with PTX | The CUDA architectures `giq prepare pixal3d` compiles the extensions for, in torch's list form |
+| `GIQ_SKINTOKENS_PYTHON` | `envs/skintokens/.venv/bin/python` | The SkinTokens child's interpreter (giq-rig) |
+| `GIQ_SKINTOKENS_SOURCE` | `envs/skintokens/SkinTokens` | The SkinTokens checkout the child imports, which `giq prepare skintokens` clones |
 | `GIQ_VLLM_PYTHON` | `envs/vllm/.venv/bin/python` | The vllm engine's interpreter; `vllm serve` is the console script beside it ([engines.md](engines.md#vllm)) |
 | `GIQ_OCR_MODEL_DIR`, `GIQ_GLM_OCR_MODEL_DIR`, `GIQ_GLM_LAYOUT_DIR` | the recipe's | The `unlimited-ocr` snapshot, the `glm-ocr` snapshot and its layout part; each outranks that built-in's `weights` (see [Weights](#weights)) |
 | `GIQ_DEPTH_MODELS_DIR` | `GIQ_MODELS_DIR` | Root for the relative weight paths of depth recipes |

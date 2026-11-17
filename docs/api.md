@@ -362,6 +362,44 @@ jq -n --rawfile img <(base64 -w0 cannon.png) '{modality:"image2mesh",
   | jq -r '.results[0].glb_b64' | base64 -d > cannon.glb
 ```
 
+### Mesh2Rig (`mesh2rig`)
+- Recipes: `skintokens` (SkinTokens, MIT: a mesh to a skeleton and its skin
+  weights, generated as one sequence); from the `giq-rig` plugin, which
+  `giq-defaults` does not install
+- Task: `{id, glb_b64, seed?, keep_skeleton?, voxel_skin?, num_beams?,
+  temperature?, top_k?, top_p?, repetition_penalty?}`
+- Result: `{id, glb_b64, format, bones, seed}`
+- `glb_b64` is the mesh as binary glTF (GLB), base64, a data URL prefix
+  allowed, up to 64 MB. A character or creature standing in its rest pose
+  works best, an A- or T-pose for a humanoid: rigged game and VRoid
+  characters and rigged Objaverse models are what the model learnt from.
+  A GLB from `image2mesh` goes in as it comes out.
+- What comes back is the same GLB — its meshes, materials, textures, scale
+  and placement as given — bound to one armature: bones named `bone_0`
+  onward, each vertex weighted to at most four of them. How many bones a
+  mesh gets is the model's choice, and differs from mesh to mesh and from
+  seed to seed; `bones` says how many this one got. There is no animation:
+  the rest pose is the mesh's own.
+- `seed` (default 42) seeds the sampler, and another seed draws another
+  skeleton. The sampler is a beam search with sampling, and its settings are
+  upstream's, with their defaults: `num_beams` (1-20, default 10; fewer is
+  faster), `temperature` (0.1-2.0, default 1.0), `top_k` (1-200, default 5),
+  `top_p` (0.1-1.0, default 0.95), `repetition_penalty` (0.5-3.0, default
+  2.0).
+- `keep_skeleton: true` skins a GLB to the armature it already has: its
+  bones stay, and only the weights are generated. A GLB without one fails
+  the task.
+- `voxel_skin: true` trims the weight a bone has on parts of the mesh that
+  do not touch the part it sits in, a hand's weight on the thigh it hangs
+  beside.
+
+```bash
+jq -n --rawfile mesh <(base64 -w0 hero.glb) '{modality:"mesh2rig",
+  model:"skintokens", tasks:[{id:"1", glb_b64:$mesh}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  | jq -r '.results[0].glb_b64' | base64 -d > hero-rigged.glb
+```
+
 ### Audio, voiceprints, speech
 
 The resident audio stack (`whisper-large-v3`: faster-whisper plus pyannote

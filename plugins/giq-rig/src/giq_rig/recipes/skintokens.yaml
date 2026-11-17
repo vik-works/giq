@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# SkinTokens (Zhang et al., arXiv:2602.04805; code and weights MIT;
+# https://huggingface.co/VAST-AI/SkinTokens): a mesh in, the same mesh
+# skinned to a skeleton out. TokenRig, a transformer of Qwen3-0.6B's shape,
+# generates the skeleton and the skin weights as one token sequence; the
+# skin weights are tokens of a learned codebook, the FSQ-CVAE the
+# repository also holds. Sleepy model: loads on demand, evictable.
+#
+# What it was trained on: ArticulationXL 2.0, rigged models curated from
+# Objaverse; character models from VRoid Hub; and models from
+# The Models Resource, which collects models extracted from commercial
+# games. The MIT licence on the weights is VAST-AI's grant and says nothing
+# about the terms of those assets.
+#
+# What it needs besides its own weights:
+#   llm  Qwen3-0.6B's config.json (Apache-2.0), the transformer's
+#        architecture. Only the file: TokenRig's own checkpoint holds all
+#        of its weights, so Qwen's are never fetched.
+# Its code is a checkout `giq prepare skintokens` fetches; part of it is
+# under GPL-3.0 (docs/engines.md).
+#
+# The checkpoints are pickled training states (torch.load with
+# weights_only=False), which run code as they load: they come from the
+# pinned revision below, and from nowhere else.
+name: skintokens
+label: SkinTokens
+modalities: [mesh2rig]
+engine: skintokens
+detail: "mesh → skeleton + skin weights · GLB · the mesh and its textures kept"
+weights:
+  path: VAST-AI-SkinTokens
+  source: hf:VAST-AI/SkinTokens
+  revision: 79736cad0fd84de384d5eede659b4ebd24effe33
+  licence: mit
+  parts:
+    llm:
+      path: Qwen-Qwen3-0.6B/config.json
+      source: hf:Qwen/Qwen3-0.6B/config.json
+      revision: c1899de289a04d12100db370d81485cdf75e47ca
+      licence: apache-2.0
+vram:
+  # Measured on an RTX 5090 with upstream's own command line, on this
+  # model in the engine's environment (torch 2.10, CUDA 12.8): the card's
+  # peak, 4,022 to 4,738 MiB over four runs of one or two character
+  # meshes each, the CUDA context included; about 30 s a run, the model
+  # load included. giq's child runs the same model without gradients.
+  gb: 5.0
+  measured: true
+# One mesh per task; a batch rigs them one after another.
+max_batch: 4

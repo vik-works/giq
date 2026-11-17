@@ -16,6 +16,7 @@ members = [
     "giq-imajev",
     "giq-music",
     "giq-ocr",
+    "giq-rig",
     "giq-sdcpp",
     "giq-speech",
     "giq-vllm",
@@ -794,6 +795,7 @@ dependencies = [
 dev = [
     { name = "giq-3d" },
     { name = "giq-defaults" },
+    { name = "giq-rig" },
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -816,6 +818,7 @@ requires-dist = [
 dev = [
     { name = "giq-3d", editable = "plugins/giq-3d" },
     { name = "giq-defaults", editable = "plugins/giq-defaults" },
+    { name = "giq-rig", editable = "plugins/giq-rig" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
@@ -942,6 +945,17 @@ requires-dist = [
     { name = "torchvision", specifier = ">=0.28.0,<0.29.0" },
     { name = "transformers", specifier = ">=5.16.1" },
 ]
+
+[[package]]
+name = "giq-rig"
+version = "0.9.0"
+source = { editable = "plugins/giq-rig" }
+dependencies = [
+    { name = "giq" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "giq", editable = "." }]
 
 [[package]]
 name = "giq-sdcpp"

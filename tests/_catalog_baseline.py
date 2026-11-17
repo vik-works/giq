@@ -538,7 +538,7 @@ BUILTIN_SPECS = [
         "resident_priority": None,
         "vision": False,
         "voices": (),
-        "vram_gb": 5.0,
+        "vram_gb": 4.5,
         "worker": "mesh2rig",
     },
 ]

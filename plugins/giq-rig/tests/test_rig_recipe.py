@@ -23,7 +23,7 @@ def test_the_builtin_recipe_is_complete():
     llm = recipe.weights.parts["llm"]
     assert llm.source == "hf:Qwen/Qwen3-0.6B/config.json", "the config alone, not Qwen's weights"
     assert llm.revision and llm.licence == "apache-2.0"
-    assert recipe.vram.measured and recipe.vram.gb == 5.0
+    assert recipe.vram.measured and recipe.vram.gb == 4.5
 
 
 def test_it_loads_on_demand():

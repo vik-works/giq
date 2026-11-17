@@ -235,13 +235,14 @@ Three things run differently from upstream's command line:
 |-----------|---------|
 | `checkpoint` | The TokenRig checkpoint, a path inside `weights.path` (default `experiments/articulation_xl_quantization_256_token_4/grpo_1400.ckpt`, the GRPO-refined one upstream recommends). The skin tokenizer it was trained with is named inside it, relative to the same root. |
 
-Measured on an RTX 5090 with upstream's command line, in this
-environment, before the engine was in giq: the card's peak was 4,022 to
-4,738 MiB over four runs of one or two character meshes each, CUDA context
-included, and a run took about 30 s with the model load. Upstream asks for
-a 14 GB card. The child runs the same model without gradients; its own
-peak is not yet measured. The rig itself is computed on the card; reading
-the mesh and writing the skinned one is Blender's, on the CPU.
+Measured through the queue, the child's own peak is 4,248 MiB on an RTX
+5090 and 3,770 MiB on an RTX 5060 Ti, over game characters of 3,000 to
+4,000 vertices, a 15,000-vertex giraffe and a batch of three. Upstream
+asks for a 14 GB card; a 16 GB card has room to spare. A rig takes 5-9 s
+warm on the 5090 and 11-16 s on the 5060 Ti; a cold start, the model load
+included, takes about 30 s on either. The rig itself is computed on the
+card; reading the mesh and writing the skinned one is Blender's, on the
+CPU.
 
 ## Chat templates
 

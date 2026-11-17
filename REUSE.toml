@@ -32,7 +32,8 @@ path = [
 SPDX-FileCopyrightText = "2026 vikworks UG (haftungsbeschränkt)"
 SPDX-License-Identifier = "Apache-2.0"
 
-# Screenshots of the dashboard (rendered from mocked data) in the README and docs.
+# Screenshots of the dashboard (rendered from mocked data) and renders of what
+# giq made, in the README, the docs and the release notes.
 [[annotations]]
 path = "docs/images/*.png"
 SPDX-FileCopyrightText = "2026 vikworks UG (haftungsbeschränkt)"

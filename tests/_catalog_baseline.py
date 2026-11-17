@@ -524,6 +524,23 @@ BUILTIN_SPECS = [
         "vram_gb": 25.5,
         "worker": "image2mesh",
     },
+    {
+        "aliases": (),
+        "backend": "skintokens",
+        "detail": "mesh → skeleton + skin weights · GLB · the mesh and its textures kept",
+        "engine": None,
+        "label": "SkinTokens",
+        "lane_width": None,
+        "max_batch": 4,
+        "measured": True,
+        "mmproj": None,
+        "model": "skintokens",
+        "resident_priority": None,
+        "vision": False,
+        "voices": (),
+        "vram_gb": 4.5,
+        "worker": "mesh2rig",
+    },
 ]
 
 LLM_TABLES = {

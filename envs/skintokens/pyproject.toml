@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-skintokens"
+version = "0.1.0"
+description = "Interpreter for giq's mesh2rig child: SkinTokens (TokenRig)"
+# 3.11 because bpy 5.0 is published for CPython 3.11 only, and so is the
+# prebuilt flash-attn wheel (cu128, torch 2.10).
+requires-python = ">=3.11,<3.12"
+# What SkinTokens' inference imports, at the versions it was run with. Its
+# own requirements.txt names more: gradio, bottle and tornado serve its demo
+# and its bpy server, which giq's child does without; python-box, addict
+# and fast-simplification are imported by none of the code the child runs.
+# SkinTokens itself is a checkout, cloned by `giq prepare skintokens`.
+dependencies = [
+    # torch 2.10 on CUDA 12.8 runs RTX 50 cards.
+    "torch==2.10.0",
+    # TokenRig's transformer and the shape encoder ask for flash attention
+    # by name. A wheel built for this torch and CUDA, so nothing compiles.
+    "flash-attn @ https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.7.12/flash_attn-2.8.3+cu128torch2.10-cp311-cp311-linux_x86_64.whl",
+    # transformers builds the Qwen3-shaped transformer and generates with
+    # it; diffusers holds the skin tokenizer's model classes.
+    "transformers==4.57.3",
+    "diffusers==0.35.2",
+    "lightning==2.6.6",
+    "omegaconf==2.4.0",
+    "einops==0.8.2",
+    # Blender as a module: it reads the GLB and writes the skinned one.
+    "bpy==5.0.1",
+    "numpy==1.26.4",
+    "scipy==1.17.1",
+    "trimesh==5.2.1",
+    # The voxel grid `voxel_skin` finds a mesh's parts on.
+    "open3d==0.20.0",
+    "huggingface-hub==0.36.2",
+    "safetensors",
+    "pyyaml",
+    "tqdm",
+    # Imported at the top of SkinTokens' data module, for the bpy server
+    # the child does not use.
+    "requests",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }

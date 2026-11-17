@@ -27,7 +27,8 @@ through a single job queue.
   (faster-whisper + pyannote); text to speech (Kokoro); speaker voiceprints
   (ECAPA-TDNN); OCR (Unlimited-OCR, GLM-OCR); depth (Depth Anything V2);
   text to music (ACE-Step 1.5); image to textured 3D mesh (Pixal3D, the
-  opt-in `giq-3d` plugin).
+  opt-in `giq-3d` plugin); a mesh skinned to a skeleton (SkinTokens, the
+  opt-in `giq-rig` plugin).
 - **Recipes, not code.** Every model giq serves is a recipe: one YAML file
   naming its weights, the engine that runs them, the engine's parameters and
   a measured VRAM figure. Clients ask for a recipe by name; your own files

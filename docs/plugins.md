@@ -43,6 +43,7 @@ version.
 | `giq-music` | engine `acestep`; modality `text2music`; its sandbox panel | its own interpreter (`envs/acestep`) |
 | `giq-defaults` | all of the above | |
 | `giq-3d` | engine `pixal3d`; modality `image2mesh` | its own interpreter (`envs/pixal3d`) and a build step (`giq prepare pixal3d`); not in `giq-defaults` |
+| `giq-rig` | engine `skintokens`; modality `mesh2rig` | its own interpreter (`envs/skintokens`) and the engine's checkout (`giq prepare skintokens`), which giq does not ship because part of it is GPL-3.0; not in `giq-defaults` |
 
 Each brings its own built-in recipes, so a recipe appears in the Add page
 once its plugin is installed (see [Getting a recipe's

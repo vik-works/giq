@@ -50,6 +50,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
 | `acestep` | `ace-step-1.5-turbo`, `ace-step-1.5-xl-sft`, `ace-step-1.5-xl-base` (text to music) | `envs/acestep` (giq-music) |
+| `skintokens` | `skintokens` (a mesh to a rig) | `envs/skintokens` (giq-rig) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
 The old spelling `sdcpp` is still accepted wherever an engine is named and
@@ -189,6 +190,59 @@ with everything resident the card is full. 1536 adds about 4% faces to the
 generated mesh. Loading takes about 45 s; the export after generation takes
 about 50 s at full detail and 70 s for a game-ready asset, mostly on the CPU
 (`docs/api.md`, Image2Mesh).
+
+## skintokens
+
+SkinTokens gives a mesh a skeleton and skin weights: TokenRig, a
+transformer of Qwen3-0.6B's shape, generates both as one token sequence,
+the weights as tokens of a learned codebook. It is a checkout rather than a
+package, set up in three steps:
+
+```bash
+cd envs/skintokens && uv sync   # torch 2.10 (CUDA 12.8), a prebuilt flash-attn, Blender's bpy 5.0
+giq prepare skintokens          # the checkout at a pinned commit, and an import check
+giq add skintokens              # the weights: 1.6 GB of checkpoints, and the transformer's config
+```
+
+Nothing is compiled: flash-attn comes as a wheel built for this torch and
+CUDA, and bpy, Blender as a Python module, from PyPI. Both are built for
+Python 3.11, which the environment is. The import check runs without a
+card. `GIQ_SKINTOKENS_SOURCE` names a checkout elsewhere; the step leaves
+one at another commit alone and says so.
+
+SkinTokens' code and weights are MIT. Its repository also carries a copy of
+Michelangelo's shape encoder (`src/model/michelangelo/`), whose upstream
+licence is GPL-3.0, so giq neither includes nor passes on SkinTokens' code:
+`giq prepare skintokens` fetches it onto the machine that runs it. The
+model was trained on ArticulationXL 2.0 (rigged models curated from
+Objaverse), VRoid Hub characters and models from The Models Resource, which
+collects models extracted from commercial games; the MIT grant on the
+weights says nothing about the terms of those assets. The checkpoints are
+pickled training states, which run code as they load, so the recipe pins
+the revision they come from. Only the config of Qwen3-0.6B (Apache-2.0) is
+fetched (`weights.parts.llm`): TokenRig's checkpoint holds all of its
+weights.
+
+Three things run differently from upstream's command line:
+
+| Upstream | giq | Why |
+|----------|-----|-----|
+| bpy in a server process of its own on a fixed port (59876, all interfaces), sent pickles over HTTP | bpy in the child, on its main thread, with no data-loader workers | Nothing listens. A pickle endpoint runs whatever is sent to it, and a fixed port lets only one rigger run on a machine. |
+| The model in training mode: the shape encoder samples the mesh's points from an unseeded generator | Eval mode, without gradients | A task's `seed` picks the skeleton: the same seed on the same card gives the same bones, across restarts. The skin weights agree to within a few hundredths on most vertices, not to the bit, and another card's kernels can draw another skeleton for the same seed. |
+| The skin tokenizer and the transformer's config at paths relative to the checkout | The recipe's `weights.path` and `weights.parts.llm` | The weights live in the model store, the code in its checkout. |
+
+| Parameter | Meaning |
+|-----------|---------|
+| `checkpoint` | The TokenRig checkpoint, a path inside `weights.path` (default `experiments/articulation_xl_quantization_256_token_4/grpo_1400.ckpt`, the GRPO-refined one upstream recommends). The skin tokenizer it was trained with is named inside it, relative to the same root. |
+
+Measured through the queue, the child's own peak is 4,248 MiB on an RTX
+5090 and 3,770 MiB on an RTX 5060 Ti, over game characters of 3,000 to
+4,000 vertices, a 15,000-vertex giraffe and a batch of three. Upstream
+asks for a 14 GB card; a 16 GB card has room to spare. A rig takes 5-9 s
+warm on the 5090 and 11-16 s on the 5060 Ti; a cold start, the model load
+included, takes about 30 s on either. The rig itself is computed on the
+card; reading the mesh and writing the skinned one is Blender's, on the
+CPU.
 
 ## Chat templates
 

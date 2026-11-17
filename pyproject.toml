@@ -111,6 +111,7 @@ giq-depth = { workspace = true }
 giq-imajev = { workspace = true }
 giq-music = { workspace = true }
 giq-3d = { workspace = true }
+giq-rig = { workspace = true }
 giq-defaults = { workspace = true }
 
 # uv installs this group by default, so `uv sync` gives a dev-ready checkout:
@@ -121,6 +122,9 @@ dev = [
     # Curated, but not a default: its engine takes a build step and its
     # encoder a licence the operator accepts (plugins/giq-3d).
     "giq-3d",
+    # Curated, but not a default: its engine is a checkout `giq prepare
+    # skintokens` fetches, part of it GPL-3.0 (plugins/giq-rig).
+    "giq-rig",
     "httpx>=0.28.1",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",

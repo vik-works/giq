@@ -155,6 +155,21 @@
         "trellis2-parts"
       ],
       "needs": "its own interpreter, set up once: cd envs/pixal3d && uv sync, then giq prepare pixal3d"
+    },
+    {
+      "name": "giq-rig",
+      "package": "giq-rig",
+      "summary": "A 3D mesh skinned to a skeleton with SkinTokens",
+      "engines": [
+        "skintokens"
+      ],
+      "modalities": [
+        "mesh2rig"
+      ],
+      "recipes": [
+        "skintokens"
+      ],
+      "needs": "its own interpreter, set up once: cd envs/skintokens && uv sync, then giq prepare skintokens"
     }
   ]
 }

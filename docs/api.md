@@ -366,6 +366,11 @@ jq -n --rawfile img <(base64 -w0 cannon.png) '{modality:"image2mesh",
 - Recipes: `skintokens` (SkinTokens, MIT: a mesh to a skeleton and its skin
   weights, generated as one sequence); from the `giq-rig` plugin, which
   `giq-defaults` does not install
+
+![A plain figure in an A-pose; the same figure see-through with the skeleton skintokens gave it, spine, arms, hands and legs; and the figure posed through that skeleton, one arm raised and one knee lifted](images/rig-mannequin.png)
+
+*A figure modelled for this picture, rigged by `skintokens` with the default seed: the mesh as sent, the 28 bones it came back with, and a pose set on those bones in Blender afterwards.*
+
 - Task: `{id, glb_b64, seed?, keep_skeleton?, voxel_skin?, num_beams?,
   temperature?, top_k?, top_p?, repetition_penalty?}`
 - Result: `{id, glb_b64, format, bones, seed}`

@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "giq-env-mosssfx"
+version = "0.1.0"
+description = "Interpreter for giq's text2sfx child: MOSS-SoundEffect v2 (DiT + DAC VAE + Qwen3)"
+# moss-soundeffect-v2 declares 3.12 and up.
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # Not on PyPI, so pinned to a commit: the last one that touched the
+    # package. It pins its own transformers (4.57.1), diffusers (0.37.1) and
+    # numpy (1.26.4), which is why it gets an interpreter of its own rather
+    # than giq's venv.
+    "moss-soundeffect-v2 @ git+https://github.com/OpenMOSS/MOSS-TTS@4cf2dab88fc8711aef93089b3b75c0ae07373e47#subdirectory=moss_soundeffect_v2",
+    # The torch its torch-cu128 extra names; torch 2.9 on CUDA 12.8 runs RTX
+    # 50 cards. Named here rather than through the extra, which also pulls in
+    # torchvision and torchcodec for its fine-tuning code.
+    "torch==2.9.0",
+    # The DAC VAE's audiotools imports it.
+    "torchaudio==2.9.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+# The package lists gradio for its demo app; nothing the child imports uses
+# it, and it is the largest tree of the lot. A marker no platform matches
+# leaves it out.
+override-dependencies = ["gradio ; sys_platform == 'never'"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }

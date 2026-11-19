@@ -80,7 +80,7 @@ jobs:
           uv pip install -e . pillow numpy pypdfium2 pytest pytest-asyncio ruff
           uv pip install --no-deps -e plugins/giq-vllm -e plugins/giq-sdcpp \
             -e plugins/giq-speech -e plugins/giq-ocr -e plugins/giq-depth \
-            -e plugins/giq-imajev -e plugins/giq-music -e plugins/giq-3d \
+            -e plugins/giq-imajev -e plugins/giq-music -e plugins/giq-sfx -e plugins/giq-3d \
             -e plugins/giq-rig
       - name: Tests (CPU)
         run: .venv/bin/python -m pytest -q --ignore=tests/test_dirty_workers_integration.py
@@ -169,7 +169,7 @@ jobs:
         run: |
           for f in "giq-$VERSION-py3-none-any.whl" "giq-$VERSION.tar.gz" "giq-ui-$VERSION.tar.gz" \
                    "giq-$VERSION.spdx" \
-                   giq_{vllm,sdcpp,speech,ocr,depth,imajev,music,3d,defaults}-"$VERSION"-py3-none-any.whl; do
+                   giq_{vllm,sdcpp,speech,ocr,depth,imajev,music,sfx,3d,defaults}-"$VERSION"-py3-none-any.whl; do
             [ -f "$f" ] || { echo "::error::$f is missing from the build's artifacts"; exit 1; }
           done
           sha256sum -- *.whl *.tar.gz *.spdx >SHA256SUMS

@@ -35,7 +35,10 @@ The decide child (giq-imajev) runs on its own interpreter, `imajev`
 `GIQ_IMAJEV_PYTHON` points elsewhere). The text2music child (giq-music) runs
 on `acestep` (`envs/acestep`, ACE-Step 1.5 at a pinned commit with the torch
 and transformers it pins; set up once with `cd envs/acestep && uv sync`;
-`GIQ_ACESTEP_PYTHON` points elsewhere).
+`GIQ_ACESTEP_PYTHON` points elsewhere). The text2sfx child (giq-sfx) runs
+on `moss-sfx` (`envs/mosssfx`, MOSS-SoundEffect v2 at a pinned commit with
+the transformers, diffusers and numpy it pins; set up once with
+`cd envs/mosssfx && uv sync`; `GIQ_MOSSSFX_PYTHON` points elsewhere).
 
 ## Engine names
 
@@ -50,6 +53,7 @@ Each engine has one name, used alike in recipe files (`engine:`),
 | `transformers` | Unlimited-OCR, GLM-OCR, depth | `python` |
 | `imajev` | decide (typed photo+record decisions) | `envs/imajev` (giq-imajev) |
 | `acestep` | `ace-step-1.5-turbo`, `ace-step-1.5-xl-sft`, `ace-step-1.5-xl-base` (text to music) | `envs/acestep` (giq-music) |
+| `moss-sfx` | `moss-soundeffect-v2` (text to sound effects) | `envs/mosssfx` (giq-sfx) |
 | `skintokens` | `skintokens` (a mesh to a rig) | `envs/skintokens` (giq-rig) |
 | `faster-whisper`, `faster-whisper+pyannote`, `speechbrain`, `kokoro` | speech to text, the audio stack, voiceprints, text to speech | `python` |
 
@@ -105,6 +109,36 @@ model code on load. The child keeps it from doing either to the model store:
 it loads from a scratch root of links over `weights.path`, with the DiT's
 code copied there, checks every folder before ACE-Step does, and runs with
 the Hugging Face hub offline.
+
+## moss-sfx
+
+A moss-sfx recipe's `weights.path` is MOSS-SoundEffect's diffusers-style
+layout — the `OpenMOSS-Team/MOSS-SoundEffect-v2.0` repository as it is:
+`model_index.json`, `transformer/`, `vae/`, `text_encoder/`, `tokenizer/`
+and `scheduler/`. The child checks every file it reads before it loads
+anything and runs with the Hugging Face hub offline. The parameters are a
+task's defaults and how the DiT runs:
+
+| Parameter | Meaning |
+|-----------|---------|
+| `steps` | Flow-matching steps a task gets unless it names its own, 1-200 (default 100, MOSS's own). |
+| `guidance` | Classifier-free guidance a task gets unless it names its own, 1-20 (default 4): how strictly the sound follows the prompt. 1 turns it off and halves the DiT passes. |
+| `shift` | The flow-match schedule's shift, MOSS's `sigma_shift` (default 5): higher spends more of the steps on the noisy end. |
+| `compile` | `torch.compile` with CUDA graphs over the DiT, as upstream ships it (default `false`). |
+
+MOSS always denoises a full 30 s latent and crops it to the length a task
+asks for, so a sound costs the same whatever its length, and a batch's
+tasks render one after another.
+
+`compile` is off because the recipe loads on demand and is evicted: each
+load would compile the DiT again, minutes on a cold cache, and the CUDA
+graphs hold memory of their own. With `compile: true` the child compiles at
+load, with a two-step warm-up render, so no task waits on it; the start may
+then take up to 20 minutes, and its kernels are cached under
+`$XDG_CACHE_HOME/torchinductor` (the giq cache directory, when there is one)
+so the next load finds them. It pays where the recipe is kept warm and
+renders many sounds. A compiled recipe's VRAM figure needs measuring with
+`compile: true`.
 
 ## pixal3d
 

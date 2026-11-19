@@ -1,0 +1,35 @@
+{
+  "field": {
+    "duration": "Length (s)",
+    "fromRecipe": "recipe's",
+    "guidance": "Guidance",
+    "model": "Model",
+    "prompt": "Description",
+    "seed": "Seed",
+    "seedRandom": "random",
+    "steps": "Steps"
+  },
+  "out": {
+    "download": "Download {{format}}",
+    "duration": "length {{value}}",
+    "guidance": "guidance {{value}}",
+    "latency": "latency {{value}}",
+    "seed": "seed {{seed}}",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps"
+  },
+  "run": {
+    "rendering": "Rendering…",
+    "sfx": "Render"
+  },
+  "sfx": {
+    "costHint": "Up to 30 s. Every sound costs as much as 30 s would: the model renders the full length and cuts it. Fewer steps are faster and rougher; guidance 1 halves the work and follows the prompt more loosely.",
+    "defaultPrompt": "A heavy wooden door creaks open slowly in a stone hallway, then shuts with a dull thud",
+    "evicts": "Rendering evicts resident instances — the first sound takes a while, then they reload.",
+    "none": "No text-to-sound-effects model fits on these cards.",
+    "promptHint": "Describe the sound, where it happens and how it moves — in English or Chinese, the two languages the model understands."
+  },
+  "tab": {
+    "sfx": "Text → sound effects"
+  }
+}

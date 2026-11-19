@@ -1,0 +1,18 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.pl-giq-sfx-prompt { min-height: 5rem; }
+
+/* Wide enough for "random" and a seed of nine digits, no wider. */
+.pl-giq-sfx-number { width: 8rem; }
+
+.pl-giq-sfx-audio { width: 100%; }
+
+.pl-giq-sfx-below {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}

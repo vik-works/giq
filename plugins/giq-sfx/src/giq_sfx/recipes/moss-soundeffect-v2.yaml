@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# MOSS-SoundEffect v2.0 (Apache-2.0;
+# https://huggingface.co/OpenMOSS-Team/MOSS-SoundEffect-v2.0): a 1.3B DiT
+# trained with flow matching that renders up to 30 s of 48 kHz mono sound
+# from a prompt in English or Chinese — footsteps, doors, weather, machines,
+# creatures, impacts — decoded by a DAC VAE and conditioned through
+# Qwen3-1.7B. Sleepy model: loads on demand, evictable.
+#
+# The repository is MOSS's diffusers-style layout (model_index.json,
+# transformer/, vae/vae_128d_48k.pth, text_encoder/, tokenizer/,
+# scheduler/), 11.2 GB, loaded as it is.
+name: moss-soundeffect-v2
+label: MOSS-SoundEffect v2
+modalities: [text2sfx]
+engine: moss-sfx
+detail: "text → sound effect · up to 30 s · 48 kHz mono · English, Chinese"
+weights:
+  path: OpenMOSS-Team-MOSS-SoundEffect-v2.0
+  source: hf:OpenMOSS-Team/MOSS-SoundEffect-v2.0
+  revision: e35df4d82fbe87fcd5d14e5d100e349c0c3c076d
+  format: safetensors
+  licence: apache-2.0
+# MOSS's own defaults: 100 steps, guidance 4, shift 5. Uncompiled: see
+# giq_sfx.params for why a sleepy model does without the compile.
+params:
+  steps: 100
+  guidance: 4.0
+  shift: 5.0
+  compile: false
+vram:
+  # Measured on an RTX 5090, the child's own peak: 18,702 MiB, uncompiled,
+  # the same for a 5 s and an 8 s sound since the DiT always denoises the
+  # full 30 s latent. The weights are 11.2 GB of it (the DiT in float32);
+  # the rest is activations and the VAE's float32 decode. ~8 s per sound at
+  # 100 steps, warm; ~17 s to load. Too big for a 16 GB card with the margin.
+  gb: 18.5
+  measured: true
+# One sound per task; a batch renders them one after another, each at the
+# cost of the full 30 s latent.
+max_batch: 4

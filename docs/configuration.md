@@ -60,6 +60,7 @@ Environment variables:
 | `GIQ_SDCPP_BINARY` | `sd-server` on PATH | stable-diffusion.cpp server binary |
 | `GIQ_IMAJEV_PYTHON` | `envs/imajev/.venv/bin/python` | The decide child's interpreter (giq-imajev) |
 | `GIQ_ACESTEP_PYTHON` | `envs/acestep/.venv/bin/python` | The ACE-Step child's interpreter (giq-music) |
+| `GIQ_MOSSSFX_PYTHON` | `envs/mosssfx/.venv/bin/python` | The MOSS-SoundEffect child's interpreter (giq-sfx) |
 | `GIQ_PIXAL3D_PYTHON` | `envs/pixal3d/.venv/bin/python` | The Pixal3D child's interpreter (giq-3d) |
 | `GIQ_PIXAL3D_SOURCE` | `envs/pixal3d/Pixal3D` | The Pixal3D checkout the child imports, which `giq prepare pixal3d` clones |
 | `GIQ_TRELLIS2_SOURCE` | `envs/pixal3d/TRELLIS.2` | The TRELLIS.2 checkout the child imports for a `trellis2` recipe, cloned by the same step |

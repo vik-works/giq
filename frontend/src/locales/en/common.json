@@ -97,7 +97,8 @@
     "embed": "Voiceprint",
     "ocr": "Document OCR",
     "depth": "Depth",
-    "text2music": "Text to music"
+    "text2music": "Text to music",
+    "text2sfx": "Text to sound effects"
   },
   "policy": {
     "pinned": "keep warm",

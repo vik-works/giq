@@ -289,6 +289,30 @@ jq -n --rawfile beat <(base64 -w0 beat.wav) '{modality:"text2music",
   | jq -r '.results[0].audio_b64' | base64 -d > with-guitar.flac
 ```
 
+### Text2Sfx (`text2sfx`)
+- Recipes: `moss-soundeffect-v2` (MOSS-SoundEffect v2.0, Apache-2.0: a 1.3B
+  DiT with a DAC VAE, conditioned through Qwen3-1.7B; 48 kHz mono, up to
+  30 s, prompts in English or Chinese)
+- Task: `{id, prompt, negative_prompt?, duration?, steps?, guidance?, seed?,
+  format?}`
+- Result: `{id, audio_b64, format, sample_rate, duration, seed, steps,
+  guidance}`
+- `prompt` describes the sound — its source, the space it is in, how it
+  moves ("heavy rain on a tin roof, distant thunder rolling"). `duration` is
+  0.5-30 s (default 10), in tenths of a second; the model renders 30 s and
+  cuts the sound to it, so a short one is no faster. `steps` (1-200) and
+  `guidance` (1-20) default to the recipe's, 100 and 4; `negative_prompt`
+  names what to steer away from. `seed` makes a sound reproducible on the
+  same card; without one the result carries the seed it drew. `format`:
+  `flac` (default), `wav`, `mp3`.
+
+```bash
+curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' \
+  -d '{"modality":"text2sfx","model":"moss-soundeffect-v2",
+       "tasks":[{"id":"1","prompt":"a heavy wooden door creaks open slowly","duration":5}]}' \
+  | jq -r '.results[0].audio_b64' | base64 -d > door.flac
+```
+
 
 ### Image2Mesh (`image2mesh`)
 - Recipes: `pixal3d` (Pixal3D, MIT: one image to a textured mesh with PBR

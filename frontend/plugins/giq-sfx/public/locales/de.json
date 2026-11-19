@@ -1,0 +1,35 @@
+{
+  "field": {
+    "duration": "Länge (s)",
+    "fromRecipe": "vom Rezept",
+    "guidance": "Guidance",
+    "model": "Modell",
+    "prompt": "Beschreibung",
+    "seed": "Seed",
+    "seedRandom": "zufällig",
+    "steps": "Schritte"
+  },
+  "out": {
+    "download": "{{format}} herunterladen",
+    "duration": "Länge {{value}}",
+    "guidance": "Guidance {{value}}",
+    "latency": "Latenz {{value}}",
+    "seed": "Seed {{seed}}",
+    "steps_one": "{{count}} Schritt",
+    "steps_other": "{{count}} Schritte"
+  },
+  "run": {
+    "rendering": "Rendere…",
+    "sfx": "Rendern"
+  },
+  "sfx": {
+    "costHint": "Bis zu 30 s. Jeder Sound kostet so viel wie 30 s: Das Modell rendert die volle Länge und schneidet sie zu. Weniger Schritte sind schneller und gröber; Guidance 1 halbiert die Arbeit und folgt dem Prompt lockerer.",
+    "defaultPrompt": "A heavy wooden door creaks open slowly in a stone hallway, then shuts with a dull thud",
+    "evicts": "Rendern verdrängt vorgehaltene Instanzen — der erste Sound dauert, danach laden sie neu.",
+    "none": "Kein Text-zu-Soundeffekt-Modell passt auf diese Karten.",
+    "promptHint": "Den Sound beschreiben, wo er entsteht und wie er sich bewegt — auf Englisch oder Chinesisch: Das Modell versteht nur diese beiden Sprachen."
+  },
+  "tab": {
+    "sfx": "Text → Soundeffekte"
+  }
+}

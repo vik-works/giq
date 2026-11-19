@@ -541,6 +541,23 @@ BUILTIN_SPECS = [
         "vram_gb": 4.5,
         "worker": "mesh2rig",
     },
+    {
+        "aliases": (),
+        "backend": "moss-sfx",
+        "detail": "text → sound effect · up to 30 s · 48 kHz mono · English, Chinese",
+        "engine": None,
+        "label": "MOSS-SoundEffect v2",
+        "lane_width": None,
+        "max_batch": 4,
+        "measured": True,
+        "mmproj": None,
+        "model": "moss-soundeffect-v2",
+        "resident_priority": None,
+        "vision": False,
+        "voices": (),
+        "vram_gb": 18.5,
+        "worker": "text2sfx",
+    },
 ]
 
 LLM_TABLES = {

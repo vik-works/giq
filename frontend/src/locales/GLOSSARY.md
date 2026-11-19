@@ -87,6 +87,7 @@ The six domain terms are ADR-003's; use them in no other sense.
 | Document OCR | Dokument-OCR |
 | Depth | Tiefe |
 | Text to music | Text zu Musik |
+| Text to sound effects | Text zu Soundeffekten |
 | vision (capability) | Bildverständnis |
 
 ## Serving and queue
@@ -158,6 +159,10 @@ The six domain terms are ADR-003's; use them in no other sense.
 | backing vocals | Backgroundgesang | |
 | planner (text to music) | Planer | the LM that fills in tempo, key, length |
 | compose | komponieren | "Komponiere…" while running |
+| sound effect | Soundeffekt | "a sound" alone → "Sound" |
+| render (a sound) | rendern | "Rendere…" while running |
+| guidance (diffusion) | Guidance | how strictly the output follows the prompt |
+| steps (diffusion) | Schritte | |
 | key (music) | Tonart | |
 | negative prompt | Negativ-Prompt | what the output should avoid |
 | time signature | Takt | "4/4-Takt" |

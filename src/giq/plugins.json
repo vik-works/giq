@@ -139,6 +139,21 @@
       "needs": "its own interpreter, set up once: cd envs/acestep && uv sync"
     },
     {
+      "name": "giq-sfx",
+      "package": "giq-sfx",
+      "summary": "Text to sound effects with MOSS-SoundEffect v2",
+      "engines": [
+        "moss-sfx"
+      ],
+      "modalities": [
+        "text2sfx"
+      ],
+      "recipes": [
+        "moss-soundeffect-v2"
+      ],
+      "needs": "its own interpreter, set up once: cd envs/mosssfx && uv sync"
+    },
+    {
       "name": "giq-3d",
       "package": "giq-3d",
       "summary": "Image to textured 3D mesh with Pixal3D and TRELLIS.2",

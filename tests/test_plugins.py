@@ -29,6 +29,7 @@ BUILTIN_MODALITIES = {
     "depth",
     "decide",
     "text2music",
+    "text2sfx",
     "image2mesh",
     "mesh2rig",
 }
@@ -89,6 +90,7 @@ def test_the_builtins_register_through_the_contract():
         "transformers",
         "imajev",
         "acestep",
+        "moss-sfx",
         "pixal3d",
         "skintokens",
     } <= set(plugins.engines())
@@ -96,6 +98,7 @@ def test_the_builtins_register_through_the_contract():
     assert plugins.engines_for("ocr") == {"transformers"}
     assert plugins.engines_for("decide") == {"imajev"}
     assert plugins.engines_for("text2music") == {"acestep"}
+    assert plugins.engines_for("text2sfx") == {"moss-sfx"}
     assert plugins.engines_for("image2mesh") == {"pixal3d"}
     assert plugins.engines_for("mesh2rig") == {"skintokens"}
     assert plugins.engine("sdcpp").name == "sd.cpp", "old spellings resolve"
@@ -109,6 +112,7 @@ def test_the_builtins_register_through_the_contract():
         "giq-depth",
         "giq-imajev",
         "giq-music",
+        "giq-sfx",
         "giq-3d",
         "giq-rig",
     } <= (loaded)

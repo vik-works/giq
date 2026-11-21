@@ -159,8 +159,6 @@
     "cancelHelp": "Stops the fetch. What arrived stays, so fetching again resumes.",
     "cancelFailed": "Stopping the fetch failed",
     "operator": "The service may not write where the weights go. Run this on the server as the operator:",
-    "copy": "Copy",
-    "copied": "Copied",
     "pluginRecipes": "Brings {{recipes}}",
     "pluginNeeds": "Needs {{needs}}",
     "pluginRestart": "Install it on the server, then restart giq.",

@@ -204,6 +204,16 @@ def stats_db() -> Path:
     return _from_env("GIQ_STATS_DB") or state_dir() / "stats.db"
 
 
+def apps_file() -> Path:
+    """The apps list (ADR-006): ``$GIQ_APPS_FILE``, else config.yaml's
+    ``paths: apps:``, else ``<state_dir>/apps.yaml``.
+
+    State rather than beside config.yaml: giq writes it, and under the
+    hardened unit the state directory is where the service may write.
+    """
+    return _from_env("GIQ_APPS_FILE") or _from_config("apps") or state_dir() / "apps.yaml"
+
+
 def inflight_log() -> Path:
     """The in-flight job log: ``$GIQ_INFLIGHT_LOG``, else ``<state_dir>/inflight.log``."""
     return _from_env("GIQ_INFLIGHT_LOG") or state_dir() / "inflight.log"

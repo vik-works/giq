@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from giq import paths as giq_paths
 from giq import recipes
 from giq.api.dependencies import get_orchestrator
+from giq.apps import UNKNOWN
 from giq.gpus import get_gpus
 from giq.models import JobRequest
 from giq.policy import get_policy_store
@@ -217,13 +218,18 @@ async def stats_usage(
     gpu: str | None = Query(default=None, description="Restrict to one GPU uuid"),
     since: str | None = Query(default=None, description="Range start: epoch or ISO 8601"),
     until: str | None = Query(default=None, description="Range end: epoch or ISO 8601"),
+    app: str | None = Query(
+        default=None, description="Restrict to one app; 'unknown' means jobs from before apps"
+    ),
 ) -> dict:
-    """Token/call rollups per model, plus a bucketed series for the chart.
+    """Token/call rollups per model and per app, plus a bucketed series for the chart.
 
     Windows: day = since local midnight (hourly buckets), week = 7d, month = 30d
     (daily buckets), all = everything (monthly buckets). An explicit
     since/until pair overrides `period` for the range but still uses its
-    bucket size; `gpu` restricts every figure to one card.
+    bucket size; `gpu` restricts every figure to one card, `app` to one app
+    (ADR-006). `apps` is the same rollup by app and recipe; jobs recorded
+    before apps existed carry app null, shown as unknown.
     """
     window, bucket_fmt = _USAGE_PERIODS[period]
     lo, hi = _parse_bound(since), _parse_bound(until)
@@ -245,6 +251,11 @@ async def stats_usage(
     if gpu:
         where += " AND gpu_uuid = ?"
         params.append(gpu)
+    if app == UNKNOWN:
+        where += " AND app IS NULL"
+    elif app:
+        where += " AND app = ?"
+        params.append(app)
 
     models = await get_stats().fetch(
         f"""
@@ -264,9 +275,22 @@ async def stats_usage(
         """,
         tuple(params),
     )
+    by_app = await get_stats().fetch(
+        f"""
+        SELECT app, modality, recipe, COUNT(*),
+               SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END),
+               SUM(tokens_in), SUM(tokens_out), SUM(run_ms), MAX(ts),
+               SUM(gpu_ms), SUM(energy_wh), MAX(energy_measured = 0)
+        FROM jobs WHERE {where} GROUP BY app, modality, recipe
+        ORDER BY app, COUNT(*) DESC
+        """,
+        tuple(params),
+    )
+    energy = await _energy_split(lo, hi, gpu, app, by_app)
     return {
         "period": period,
         "gpu": gpu,
+        "app": app,
         "since": lo,
         "until": hi,
         "totals": {
@@ -274,6 +298,8 @@ async def stats_usage(
             "failed": sum(r[3] or 0 for r in models),
             "tokens_in": sum(r[5] or 0 for r in models),
             "tokens_out": sum(r[6] or 0 for r in models),
+            "gpu_ms": sum(r[9] or 0 for r in by_app),
+            "energy_wh": sum(r[10] or 0.0 for r in by_app),
         },
         "recipes": [
             {
@@ -292,6 +318,89 @@ async def stats_usage(
             {"b": b, "modality": w, "recipe": m, "jobs": n, "tokens_in": tin, "tokens_out": tout}
             for (b, w, m, n, tin, tout) in series
         ],
+        "apps": [
+            {
+                "app": a,
+                "modality": w,
+                "recipe": m,
+                "jobs": n,
+                "failed": failed or 0,
+                "tokens_in": tin,
+                "tokens_out": tout,
+                "run_ms": run_ms,
+                "last_ts": last,
+                "gpu_ms": gpu_ms,
+                "energy_wh": wh,
+                "energy_estimated": bool(est),
+            }
+            for (a, w, m, n, failed, tin, tout, run_ms, last, gpu_ms, wh, est) in by_app
+        ],
+        "energy": energy,
+    }
+
+
+async def _energy_split(lo, hi, gpu, app, by_app) -> dict:
+    """Attributed energy per card, the idle/residency line and the
+    loading/unloading line (ADR-006 D5).
+
+    Idle and load energy belong to nobody, so a view restricted to one app
+    has neither.
+    Its hours are whole hours: a range that starts or ends mid-hour counts
+    the idle energy of the hours it touches.
+    """
+    attributed = sum(r[10] or 0.0 for r in by_app)
+    estimated = any(r[11] for r in by_app)
+    if app:
+        return {
+            "attributed_wh": attributed,
+            "idle_wh": None,
+            "load_wh": None,
+            "estimated": estimated,
+            "cards": [],
+        }
+    where, params = "hour >= ?", [lo // 3600 * 3600]
+    if hi is not None:
+        where += " AND hour < ?"
+        params.append(hi)
+    if gpu:
+        where += " AND gpu_uuid = ?"
+        params.append(gpu)
+    idle = await get_stats().fetch(
+        f"SELECT gpu_uuid, SUM(idle_wh), SUM(load_wh), MAX(estimated) FROM card_energy"
+        f" WHERE {where}"
+        " GROUP BY gpu_uuid",
+        tuple(params),
+    )
+    jwhere, jparams = "ts >= ? AND energy_wh IS NOT NULL", [lo]
+    if hi is not None:
+        jwhere += " AND ts < ?"
+        jparams.append(hi)
+    if gpu:
+        jwhere += " AND gpu_uuid = ?"
+        jparams.append(gpu)
+    per_card = await get_stats().fetch(
+        f"SELECT gpu_uuid, SUM(energy_wh) FROM jobs WHERE {jwhere} GROUP BY gpu_uuid",
+        tuple(jparams),
+    )
+    cards: dict[str, dict] = {}
+
+    def card(uuid):
+        return cards.setdefault(
+            uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0, "load_wh": 0.0}
+        )
+
+    for uuid, wh in per_card:
+        card(uuid)["attributed_wh"] = wh or 0.0
+    for uuid, wh, load, est in idle:
+        card(uuid)["idle_wh"] = wh or 0.0
+        card(uuid)["load_wh"] = load or 0.0
+        estimated = estimated or bool(est)
+    return {
+        "attributed_wh": attributed,
+        "idle_wh": sum(c["idle_wh"] for c in cards.values()),
+        "load_wh": sum(c["load_wh"] for c in cards.values()),
+        "estimated": estimated,
+        "cards": sorted(cards.values(), key=lambda c: c["gpu_uuid"] or ""),
     }
 
 

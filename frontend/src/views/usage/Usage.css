@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Filters: the period seg and the card select sit in the page header's action slot. */
+/* Filters: the period seg and the card and app selects sit in the page header's action slot. */
 .us-filters { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .us-gpu { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 12px; color: var(--text-muted); }
 .us-gpu-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
@@ -18,6 +18,13 @@
 .us-kpi-failed .kpi-value { color: var(--critical); }
 
 .us-stale { opacity: 0.55; transition: opacity 120ms; }
+
+/* The by-app table and the energy split side by side where there is room;
+   the table takes the width, as it has eight columns. */
+.us-split { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1280px) {
+  .us-split { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+}
 
 /* Tables: dense, numbers aligned (base .num), names never wrap. */
 .us-table { font-size: 12.5px; }

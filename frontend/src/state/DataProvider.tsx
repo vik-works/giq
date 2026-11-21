@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from "react";
 import { setModalities } from "../lib/modalities";
 import { setPluginUis } from "../plugins/panels";
 import {
+  AppsProvider,
   CapabilitiesProvider,
   DownloadsProvider,
   EnginesProvider,
@@ -32,8 +33,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
                   <DownloadsProvider>
                     <PluginsProvider>
                       <CapabilitiesProvider>
-                        <ModalitySync />
-                        {children}
+                        <AppsProvider>
+                          <ModalitySync />
+                          {children}
+                        </AppsProvider>
                       </CapabilitiesProvider>
                     </PluginsProvider>
                   </DownloadsProvider>

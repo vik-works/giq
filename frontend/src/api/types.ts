@@ -565,13 +565,54 @@ export interface GpuErasResponse {
 
 export type UsagePeriod = "day" | "week" | "month" | "all";
 
-/** GET /stats/usage?period=&gpu=&since=&until= */
+/** One row of /stats/usage `apps`: an app's jobs on one recipe (ADR-006). */
+export interface UsageAppRow {
+  /** The app's name, "anonymous" for callers without a key, null for jobs recorded before apps. */
+  app: string | null;
+  modality: Modality;
+  recipe: string;
+  jobs: number;
+  failed: number;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  run_ms: number | null;
+  last_ts: number | null;
+  /** Run time split by overlap with the card's other jobs; null for jobs recorded before it was. */
+  gpu_ms: number | null;
+  energy_wh: number | null;
+  /** Some of the energy comes from power samples, not a card's counter. */
+  energy_estimated: boolean;
+}
+
+/** /stats/usage `energy`: what jobs drew, and the two lines nobody did:
+    idle/residency and loading/unloading instances. */
+export interface UsageEnergy {
+  attributed_wh: number;
+  /** Null when filtered to one app: idle energy belongs to nobody. */
+  idle_wh: number | null;
+  /** Null when filtered to one app, like idle; absent from an older giq. */
+  load_wh?: number | null;
+  estimated: boolean;
+  /** Per card; empty when filtered to one app. */
+  cards: { gpu_uuid: string | null; attributed_wh: number; idle_wh: number; load_wh?: number }[];
+}
+
+/** GET /stats/usage?period=&gpu=&since=&until=&app= */
 export interface StatsUsage {
   period: UsagePeriod;
   gpu: string | null;
+  /** The app filter as sent; "unknown" means jobs from before apps. */
+  app: string | null;
   since: number;
   until: number | null;
-  totals: { jobs: number; failed: number; tokens_in: number; tokens_out: number };
+  totals: {
+    jobs: number;
+    failed: number;
+    tokens_in: number;
+    tokens_out: number;
+    gpu_ms: number;
+    energy_wh: number;
+  };
   recipes: {
     modality: Modality;
     recipe: string;
@@ -591,6 +632,27 @@ export interface StatsUsage {
     tokens_in: number | null;
     tokens_out: number | null;
   }[];
+  apps: UsageAppRow[];
+  energy: UsageEnergy;
+}
+
+/** GET /apps: an app as the API shows it, without its key (ADR-006). */
+export interface AppEntry {
+  name: string;
+  description: string | null;
+  /** ISO 8601, UTC. */
+  created: string;
+  /** ISO 8601 when revoked, else null. */
+  revoked: string | null;
+}
+
+export interface AppsResponse {
+  apps: AppEntry[];
+}
+
+/** POST /apps: the new app and its key, which no other response carries. */
+export interface AppCreated extends AppEntry {
+  key: string;
 }
 
 /** GET /stats/jobs?limit=&gpu= — newest first. */

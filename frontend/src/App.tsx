@@ -23,6 +23,7 @@ function view(ns: Namespace, load: () => Promise<{ default: ComponentType }>): L
 const VIEWS: Record<View, LazyExoticComponent<ComponentType>> = {
   overview: view("overview", () => import("./views/overview")),
   usage: view("usage", () => import("./views/usage")),
+  apps: view("apps", () => import("./views/apps")),
   recipes: view("recipes", () => import("./views/recipes")),
   inventory: view("inventory", () => import("./views/inventory")),
   sandbox: view("sandbox", () => import("./views/sandbox")),

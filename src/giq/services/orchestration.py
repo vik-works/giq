@@ -8,6 +8,7 @@ import uuid
 
 from fastapi import HTTPException
 
+from giq.apps import current_app
 from giq.models import JobRequest, JobStatus
 from giq.queue import Job, JobStream, get_queue
 
@@ -99,7 +100,7 @@ class Orchestrator:
         self._resolve_recipe(request)
         self._reject_if_disabled(request)
         job_id = str(uuid.uuid4())[:8]
-        job = Job(job_id=job_id, request=request)
+        job = Job(job_id=job_id, request=request, app=current_app.get())
         position = await self.queue.add(job)
         return job_id, position
 
@@ -117,7 +118,7 @@ class Orchestrator:
         self._reject_if_disabled(request)
         job_id = str(uuid.uuid4())[:8]
         stream = JobStream()
-        job = Job(job_id=job_id, request=request, stream=stream)
+        job = Job(job_id=job_id, request=request, stream=stream, app=current_app.get())
         position = await self.queue.add(job)
         return job_id, position, stream
 

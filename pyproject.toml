@@ -24,6 +24,9 @@ dependencies = [
     "python-multipart>=0.0.22",
     # Fetching a recipe's weights (ADR-005).
     "huggingface-hub>=1.30.0",
+    # Each card's energy counter, for energy per job (ADR-006 D5): NVML's
+    # own bindings, a pure-Python wrapper over the driver's libnvidia-ml.
+    "nvidia-ml-py>=13",
 ]
 
 [project.urls]

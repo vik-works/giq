@@ -16,6 +16,7 @@ from typing import Any, Protocol
 
 from giq import plugins
 from giq.adapters.engine import ServedLLM, context_size
+from giq.energy import get_meter
 from giq.models import JobRequest, JobStatus
 from giq.paths import inflight_log
 from giq.plugin import AdapterContext
@@ -767,7 +768,7 @@ class Runner:
             for key in list(self._residents):
                 res = self._residents[key]
                 try:
-                    await res.adapter.stop()
+                    await self._housekeeping(res.device, res.adapter.stop)
                     self._residents.pop(key, None)
                 except Exception as e:
                     logger.error(f"Failed to stop resident {key} for pause: {e}")
@@ -882,7 +883,7 @@ class Runner:
             for key in list(self._residents):
                 res = self._residents.pop(key)
                 try:
-                    await res.adapter.stop()
+                    await self._housekeeping(res.device, res.adapter.stop)
                 except Exception as e:
                     logger.error(f"Failed to stop resident {key}: {e}")
         logger.info("Runner stopped")
@@ -963,7 +964,12 @@ class Runner:
                 task.add_done_callback(self._on_demand_jobs.discard)
                 handed_off = True
             elif adapter:
-                await self._run_on(adapter, job)
+                meter = get_meter()
+                try:
+                    await meter.begin(job, device)
+                    await self._run_on(adapter, job)
+                finally:
+                    await meter.end(job)
             else:
                 job.status = JobStatus.failed
                 job.error = f"Failed to load adapter: {job.request.modality}"
@@ -1027,6 +1033,12 @@ class Runner:
                 return adapter, slot
             slot.lane.release()
 
+    async def _housekeeping(self, device: str | None, op) -> None:
+        """Start or stop an instance, its energy on the card's load line
+        (``giq.energy``): no job is charged for it."""
+        async with get_meter().housekeeping(device):
+            await op()
+
     async def _run_on(self, adapter: Adapter, job: Job) -> None:
         """Run ``job`` on a loaded adapter and store its results.
 
@@ -1066,9 +1078,14 @@ class Runner:
         """
         cancelled = False
         try:
+            meter = get_meter()
             try:
+                # Inside the try: a pause cancelling the job during the read
+                # must still give the lane back.
+                await meter.begin(job, slot.device)
                 await self._run_on(slot.adapter, job)
             finally:
+                await meter.end(job)
                 slot.active_count -= 1
                 slot.last_active = monotonic()
                 slot.lane.release()
@@ -1194,9 +1211,12 @@ class Runner:
             try:
                 res.active_count += 1
                 res.last_active = monotonic()
+                meter = get_meter()
                 try:
+                    await meter.begin(job, res.device)
                     await self._run_on(res.adapter, job)
                 finally:
+                    await meter.end(job)
                     res.active_count -= 1
                     res.last_active = monotonic()
             finally:
@@ -1357,7 +1377,7 @@ class Runner:
                     if self._residents.get(key) is not res:
                         continue
                     logger.info(f"unloading {key} — {why}")
-                    await res.adapter.stop()
+                    await self._housekeeping(res.device, res.adapter.stop)
                     self._residents.pop(key, None)
                     await get_stats().record_event("unload", f"{key} ({why})")
             except Exception as e:
@@ -1381,7 +1401,7 @@ class Runner:
             if res:
                 # Loaded-but-dead (child crashed): reap before respawning.
                 try:
-                    await res.adapter.stop()
+                    await self._housekeeping(res.device, res.adapter.stop)
                 except Exception as e:
                     logger.error(f"Failed to reap dead resident {key}: {e}")
                     return
@@ -1405,7 +1425,7 @@ class Runner:
             resident = Instance(adapter, model, device, residency=RESIDENT, width=width)
             self._residents[key] = resident
             try:
-                await adapter.start()
+                await self._housekeeping(device, adapter.start)
             except BaseException:
                 if not getattr(adapter, "is_running", False):
                     self._residents.pop(key, None)
@@ -1460,7 +1480,7 @@ class Runner:
                     if self._residents.get(key) is not res:
                         continue
                     logger.info(f"evicting resident {key} for {model}")
-                    await res.adapter.stop()
+                    await self._housekeeping(res.device, res.adapter.stop)
                     self._residents.pop(key, None)
                     await get_stats().record_event("evict", f"{key} for {model}")
             finally:
@@ -1612,7 +1632,7 @@ class Runner:
                 adapter, model, device, residency=ON_DEMAND, width=_lane_width(model, adapter)
             )
             try:
-                await adapter.start()
+                await self._housekeeping(device, adapter.start)
             except BaseException:
                 # start() already attempts its own stop(). If the process is
                 # still alive (SIGKILL-stuck CUDA), keep the reference so a
@@ -1636,7 +1656,7 @@ class Runner:
             slot = self._slots.get(dev)
             if slot is None:
                 continue
-            await slot.adapter.stop()  # raises RuntimeError if unkillable
+            await self._housekeeping(slot.device, slot.adapter.stop)  # raises if unkillable
             self._slots.pop(dev, None)
 
     async def _cleanup_finished_jobs(self, max_age_seconds: float = 300) -> None:

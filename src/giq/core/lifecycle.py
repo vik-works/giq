@@ -32,6 +32,7 @@ async def _audio_cache_cleanup_loop():
 
 async def _vram_sampler_loop(runner):
     """Periodic VRAM + per-GPU telemetry samples for the dashboard timelines."""
+    from giq.energy import get_meter
     from giq.gpus import get_gpus
     from giq.stats import VRAM_SAMPLE_INTERVAL_SECONDS, get_stats
     from giq.vram import get_vram_status
@@ -41,6 +42,10 @@ async def _vram_sampler_loop(runner):
         try:
             await asyncio.sleep(VRAM_SAMPLE_INTERVAL_SECONDS)
             await sample_once(runner, stats, get_vram_status, get_gpus)
+            # Read every card's energy counter too: what no job drew since the
+            # last tick is the idle/residency line (ADR-006 D5), and the reads
+            # keep long jobs' shares current.
+            await stats.record_idle(await get_meter().tick())
         except asyncio.CancelledError:
             raise
         except Exception as e:

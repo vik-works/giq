@@ -19,7 +19,7 @@ export const LANGUAGES = [
 
 export type LanguageCode = (typeof LANGUAGES)[number]["code"];
 
-export const NAMESPACES = ["common", "overview", "usage", "recipes", "inventory", "sandbox"] as const;
+export const NAMESPACES = ["common", "overview", "usage", "apps", "recipes", "inventory", "sandbox"] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 export const LANG_STORAGE_KEY = "giq-lang";

@@ -1,0 +1,51 @@
+{
+  "intro": "Eine App ist ein Name und ein Schlüssel, damit die Nutzung zeigen kann, welche App welche Rezepte wie lange und mit wie viel Energie genutzt hat. Sie ist ein Etikett zum Zählen, kein Konto: ein Schlüssel lässt genau das zu, was das gemeinsame Token zulässt. Aufrufe ohne gültigen Schlüssel zählen als anonym.",
+  "list": {
+    "kicker": "Apps",
+    "meta_one": "{{count}} App",
+    "meta_other": "{{count}} Apps",
+    "name": "Name",
+    "description": "Beschreibung",
+    "created": "Angelegt",
+    "status": "Status",
+    "actions": "Aktionen",
+    "usage": "Nutzung",
+    "empty": "Noch keine Apps. Eine anlegen, um ihre Aufrufe getrennt zu zählen.",
+    "hint": "Widerrufen sperrt den Schlüssel und hält den Namen belegt. Löschen gibt den Namen frei: der Verlauf der App bleibt in der Nutzung, und eine neue App unter demselben Namen zählt dazu."
+  },
+  "status": {
+    "active": "aktiv",
+    "revoked": "widerrufen"
+  },
+  "create": {
+    "kicker": "Neue App",
+    "name": "Name",
+    "nameHint": "Kleinbuchstaben, Ziffern, - und _.",
+    "namePlaceholder": "meine-app",
+    "description": "Beschreibung (optional)",
+    "descriptionPlaceholder": "wofür sie da ist",
+    "submit": "App anlegen",
+    "creating": "Lege an…"
+  },
+  "key": {
+    "kicker": "Schlüssel für {{name}}",
+    "once": "Den Schlüssel jetzt kopieren: er wird nur einmal angezeigt. giq speichert nur seinen Hash und kann ihn nicht erneut zeigen.",
+    "copy": "Schlüssel kopieren",
+    "howTo": "Die App sendet ihn dort, wo ein API-Schlüssel hingehört: api_key in den OpenAI-SDKs, die ihn als Authorization: Bearer senden. X-Giq-Token oder ?token= gehen auch.",
+    "done": "Fertig, gespeichert"
+  },
+  "revoke": {
+    "action": "Widerrufen",
+    "confirmTitle": "{{name}} widerrufen?",
+    "confirmBody": "Der Schlüssel funktioniert sofort nicht mehr. Der Verlauf bleibt, und der Name bleibt belegt, sodass die App darunter nicht neu angelegt werden kann.",
+    "confirm": "Widerrufen",
+    "failed": "Widerrufen fehlgeschlagen"
+  },
+  "delete": {
+    "action": "Löschen",
+    "confirmTitle": "{{name}} löschen?",
+    "confirmBody": "Der Eintrag und sein Schlüssel werden entfernt. Der Verlauf bleibt unter dem Namen in der Nutzung, und eine neue App unter demselben Namen zählt zu diesem Verlauf dazu.",
+    "confirm": "Löschen",
+    "failed": "Löschen fehlgeschlagen"
+  }
+}

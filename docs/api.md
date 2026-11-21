@@ -91,7 +91,10 @@ curl -X POST http://localhost:8084/control/resume   # residents reload in ~15s
 | `/plugins` | GET | Installed plugins, and the curated ones that are not, each with what it adds, what it needs beyond Python, and its install command (run by the operator; the dashboard does not install plugins) |
 | `/control/pause` | POST | Stop serving, unload everything, free VRAM |
 | `/control/resume` | POST | Resume serving; residents reload |
-| `/stats/summary`, `/stats/timeline`, `/stats/usage`, `/stats/jobs` | GET | Job history (see [Privacy](access-and-privacy.md#privacy) for what is recorded) |
+| `/stats/summary`, `/stats/timeline`, `/stats/usage`, `/stats/jobs` | GET | Job history (see [Privacy](access-and-privacy.md#privacy) for what is recorded); `/stats/usage` also rolls up per app (`apps`: run time, GPU time and energy) and takes `?app=` (`unknown`: jobs from before apps); its `energy` splits the cards' energy into what jobs drew (`attributed_wh`), the idle/residency line (`idle_wh`) and loading/unloading instances (`load_wh`), per card; the last two are charged to no app and are `null` under `?app=`; `estimated` when any of it is not from a card's counter |
+| `/apps` | GET, POST | Apps, without keys; POST `{"name", "description"?}` creates one and returns its key, once — see [Apps](access-and-privacy.md#apps) |
+| `/apps/{name}/revoke` | POST | Stop the app's key working; its history stays and its name stays taken |
+| `/apps/{name}` | DELETE | Remove the entry; its jobs stay in the stats, and a new app under the name adds to them |
 | `/stats/gpus`, `/stats/vram`, `/stats/gpus/eras` | GET | GPU telemetry history and per-card job totals |
 | `/storage` | GET | Per-mount disk usage, the resolved directories and the operator's recipe files — see [Storage](#storage) |
 | `/recipes` | GET | Every recipe: modalities, engine, installed, availability (`ready`, `fetchable`, `manual`, `unfit`) with the checks behind it, residency, card, fit, the instance running it, weights ids; per-card pinned budgets; reload order |

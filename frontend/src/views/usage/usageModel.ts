@@ -2,13 +2,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import type { GpuEra, StatsUsage, UsagePeriod } from "../../api/types";
+import type { AppEntry, GpuEra, StatsUsage, UsageAppRow, UsageEnergy, UsagePeriod } from "../../api/types";
 import type { BarBucket } from "../../components/charts";
 import { assignSeriesColors } from "../../lib/series";
 
 /* The usage view's arithmetic, kept free of React so it can be tested
-   without a DOM: the chart's x-domain, its bucket labels, the stacks, and
-   which card era is the current one. */
+   without a DOM: the chart's x-domain, its bucket labels, the stacks,
+   which card era is the current one, and the per-app rollup and energy
+   split (ADR-006). */
 
 type Row = { modality: string; recipe: string };
 
@@ -161,3 +162,183 @@ export const erasNewestFirst = (eras: GpuEra[]): GpuEra[] =>
 /** Tokens of an era, or null when none were recorded (it predates accounting). */
 export const eraTokens = (e: GpuEra): number | null =>
   e.tokens_in == null && e.tokens_out == null ? null : tokens(e);
+
+// --- apps (ADR-006) ----------------------------------------------------------
+
+/** The bucket for callers without a valid key; a name like any app's. */
+export const ANONYMOUS = "anonymous";
+/** The filter value for jobs recorded before apps existed (their app is null). */
+export const UNKNOWN = "unknown";
+
+/** The `?app=` value that selects a row's app: null (before apps) is "unknown". */
+export const appFilterValue = (app: string | null): string => app ?? UNKNOWN;
+
+/** The app a link asked for (#/usage?app=…), or "" for every app. */
+export function appFromHash(hash: string): string {
+  const query = hash.split("?")[1];
+  return (query ? new URLSearchParams(query).get("app") : null) ?? "";
+}
+
+/* A sum that stays null when every part is: a recipe without token
+   accounting, or jobs from before GPU time was recorded, show a dash, not a
+   zero that claims nothing was used. */
+const addNullable = (a: number | null, b: number | null): number | null =>
+  a == null && b == null ? null : (a ?? 0) + (b ?? 0);
+
+export interface AppRollup {
+  /** The app as the server names it; null for jobs from before apps. */
+  app: string | null;
+  jobs: number;
+  failed: number;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  run_ms: number | null;
+  gpu_ms: number | null;
+  energy_wh: number | null;
+  energy_estimated: boolean;
+  last_ts: number | null;
+  /** The app's rows, one per modality and recipe, most calls first. */
+  recipes: UsageAppRow[];
+}
+
+/* One row per app over its recipes. Ordered by what it cost the rig:
+   energy, then GPU time, then calls, so the app worth asking about is on
+   top; the name breaks ties so the order holds still between polls. */
+export function rollupApps(rows: UsageAppRow[]): AppRollup[] {
+  const by = new Map<string, AppRollup>();
+  for (const r of rows) {
+    const k = appFilterValue(r.app);
+    let a = by.get(k);
+    if (!a) {
+      a = {
+        app: r.app,
+        jobs: 0,
+        failed: 0,
+        tokens_in: null,
+        tokens_out: null,
+        run_ms: null,
+        gpu_ms: null,
+        energy_wh: null,
+        energy_estimated: false,
+        last_ts: null,
+        recipes: [],
+      };
+      by.set(k, a);
+    }
+    a.jobs += r.jobs;
+    a.failed += r.failed;
+    a.tokens_in = addNullable(a.tokens_in, r.tokens_in);
+    a.tokens_out = addNullable(a.tokens_out, r.tokens_out);
+    a.run_ms = addNullable(a.run_ms, r.run_ms);
+    a.gpu_ms = addNullable(a.gpu_ms, r.gpu_ms);
+    a.energy_wh = addNullable(a.energy_wh, r.energy_wh);
+    a.energy_estimated ||= r.energy_estimated;
+    a.last_ts = r.last_ts == null ? a.last_ts : Math.max(a.last_ts ?? 0, r.last_ts);
+    a.recipes.push(r);
+  }
+  for (const a of by.values()) a.recipes.sort((x, y) => y.jobs - x.jobs);
+  return [...by.values()].sort(
+    (x, y) =>
+      (y.energy_wh ?? 0) - (x.energy_wh ?? 0) ||
+      (y.gpu_ms ?? 0) - (x.gpu_ms ?? 0) ||
+      y.jobs - x.jobs ||
+      appFilterValue(x.app).localeCompare(appFilterValue(y.app)),
+  );
+}
+
+export interface AppFilterOption {
+  value: string;
+  kind: "app" | "anonymous" | "unknown";
+  /** A registered app whose key no longer works. */
+  revoked: boolean;
+  /** False for a name only the history knows: an app deleted since. */
+  registered: boolean;
+}
+
+/* The app filter's choices: the registered apps by name, then names the
+   window's history carries that are no longer registered (deleted apps
+   keep their jobs), then the two buckets that are not apps. The current
+   value is always among them, so the select never holds a value it cannot
+   show. */
+export function appFilterOptions(
+  registered: AppEntry[] | undefined,
+  seen: (string | null)[],
+  current: string,
+): AppFilterOption[] {
+  const reserved = new Set([ANONYMOUS, UNKNOWN]);
+  const named = new Map<string, AppFilterOption>();
+  for (const a of registered ?? []) {
+    named.set(a.name, { value: a.name, kind: "app", revoked: !!a.revoked, registered: true });
+  }
+  for (const name of [...seen, current]) {
+    if (!name || reserved.has(name) || named.has(name)) continue;
+    named.set(name, { value: name, kind: "app", revoked: false, registered: false });
+  }
+  const apps = [...named.values()].sort(
+    (a, b) => Number(b.registered) - Number(a.registered) || a.value.localeCompare(b.value),
+  );
+  return [
+    ...apps,
+    { value: ANONYMOUS, kind: "anonymous", revoked: false, registered: false },
+    { value: UNKNOWN, kind: "unknown", revoked: false, registered: false },
+  ];
+}
+
+export interface CardEnergy {
+  gpu_uuid: string | null;
+  attributed: number;
+  idle: number;
+  load: number;
+  total: number;
+}
+
+export interface EnergySplit {
+  attributed: number;
+  /** Null when filtered to one app: idle energy belongs to nobody. */
+  idle: number | null;
+  /** Loading and unloading instances; null with idle, for the same reason. */
+  load: number | null;
+  /** Attributed, idle and load; null with idle. */
+  total: number | null;
+  /** The attributed share of the total, 0–100; null without a total or with a zero one. */
+  attributedPct: number | null;
+  /** The load share of the total, 0–100; null like attributedPct. */
+  loadPct: number | null;
+  estimated: boolean;
+  /** Per card, only when there is more than one: with one card it repeats the totals. */
+  cards: CardEnergy[];
+}
+
+/** What the cards drew in the window: what jobs did, the idle/residency line
+    and the loading/unloading line. */
+export function energySplit(e: UsageEnergy | undefined): EnergySplit | null {
+  if (!e) return null;
+  const load = e.idle_wh == null ? null : (e.load_wh ?? 0);
+  const total = e.idle_wh == null ? null : e.attributed_wh + e.idle_wh + (load ?? 0);
+  const cards =
+    e.cards.length > 1
+      ? e.cards.map((c) => ({
+          gpu_uuid: c.gpu_uuid,
+          attributed: c.attributed_wh,
+          idle: c.idle_wh,
+          load: c.load_wh ?? 0,
+          total: c.attributed_wh + c.idle_wh + (c.load_wh ?? 0),
+        }))
+      : [];
+  return {
+    attributed: e.attributed_wh,
+    idle: e.idle_wh,
+    load,
+    total,
+    attributedPct: total ? (e.attributed_wh / total) * 100 : null,
+    loadPct: total ? ((load ?? 0) / total) * 100 : null,
+    estimated: e.estimated,
+    cards,
+  };
+}
+
+/** The card a uuid names, from the era list, or null when no era knows it. */
+export function cardNameFor(uuid: string | null, eras: GpuEra[] | undefined): string | null {
+  if (!uuid) return null;
+  return eras?.find((e) => e.uuid === uuid)?.name ?? null;
+}

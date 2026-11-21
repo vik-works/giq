@@ -6,6 +6,7 @@ import {
   ChartBarIcon,
   FlaskIcon,
   HardDrivesIcon,
+  KeyIcon,
   PulseIcon,
   StackIcon,
   type Icon as PhosphorIcon,
@@ -25,6 +26,7 @@ const NAV: { view: View; icon: PhosphorIcon }[] = [
   { view: "recipes", icon: StackIcon },
   { view: "inventory", icon: HardDrivesIcon },
   { view: "usage", icon: ChartBarIcon },
+  { view: "apps", icon: KeyIcon },
   { view: "sandbox", icon: FlaskIcon },
 ];
 

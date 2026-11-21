@@ -135,6 +135,23 @@ The six domain terms are ADR-003's; use them in no other sense.
 | day / week / month / all | Tag / Woche / Monat / Gesamt | |
 | recent jobs | letzte Jobs | |
 | evictions | Verdrängungen | |
+| GPU time | GPU-Zeit | run time split among jobs sharing a card (ADR-006) |
+| energy | Energie | in Wh / kWh |
+| idle and residency (energy) | Leerlauf und Vorhaltung | the cards' energy no job drew |
+| loading and unloading (energy) | Laden und Entladen | instances starting and stopping; charged to no app |
+| estimate (energy) | geschätzt | from power samples, not a card's counter |
+
+## Apps
+
+| English | German | Notes |
+| --- | --- | --- |
+| app | App | plural "Apps"; a name and a key, for counting (ADR-006) |
+| key (an app's) | Schlüssel | "API-Schlüssel" for the SDKs' api_key; the shared `access.token` stays "Token" |
+| create (an app) | anlegen | "App anlegen" |
+| revoke / revoked | widerrufen / widerrufen | the key stops working, the name stays taken |
+| anonymous | anonym | calls without a valid key |
+| unknown (before apps) | unbekannt (vor Apps) | jobs recorded before apps existed |
+| active | aktiv | an app status |
 
 ## Sandbox
 

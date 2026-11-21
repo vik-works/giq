@@ -15,7 +15,9 @@ life of the request and are not written anywhere.
 What is persisted:
 
 - `data/stats.db` — timestamps, modality, recipe, status, queue wait, duration,
-  task count, token counts in/out, GPU. There is no column a prompt could go
+  task count, token counts in/out, the card it ran on with its share of that
+  card's time and energy, and the [app](#apps) the job is counted under; per
+  card and hour, the energy drawn with no job running and while instances load and unload. The OpenAI `user` field is not recorded. There is no column a prompt could go
   in, and a test asserts that.
 - The in-flight log (`GIQ_INFLIGHT_LOG`) — one line per job start
   and end, so a hard power cut can be traced to the job that was running. It
@@ -108,3 +110,41 @@ This is deliberately a shared secret, not a credential: everything on the LAN
 carries the same one, and it identifies nobody. Per-client identity, roles and
 an audit trail belong to the enterprise overlay. Calling this that would be
 worse than being plain about what it is.
+
+## Apps
+
+An app is a name and a key, so the Usage view can say which app used which
+recipes, when and how much ([ADR-006](ADR-006-apps.md)). It is a label for
+counting, not an identity: no roles, no scopes, no audit trail.
+
+```bash
+giq apps create photo-sorter -d "sorts the photo library"   # prints the key, once
+giq apps list
+giq apps revoke photo-sorter
+```
+
+or the dashboard's **Apps** page, or `POST /apps {"name": "photo-sorter"}`,
+whose response is the only place the key appears. giq keeps its SHA-256 in `apps.yaml` (`GIQ_APPS_FILE`, default
+in the state directory, mode 0600) and rereads the file when it changes, so a
+hand edit needs no restart.
+
+The app sends its key where an API key goes — `api_key` in the OpenAI SDKs,
+which is `Authorization: Bearer giq-…` — or as `X-Giq-Token` or `?token=`.
+Nothing about it is giq's own: the same app runs against any
+OpenAI-compatible server by changing the base URL and the key.
+
+| The caller sends | No token set | Token set |
+|---|---|---|
+| nothing | served, counted as `anonymous` | 401 |
+| the shared token | served, counted as `anonymous` | served, counted as `anonymous` |
+| a valid app key | served, counted as the app | served, counted as the app |
+| a revoked or unknown key | served, counted as `anonymous` | 401 |
+
+So with a token set, an app key admits a caller on its own, and admits it to
+exactly what the shared token does, `/apps` included. Every response carries
+`X-Giq-App`, the bucket it was counted under: without a token, that is how a
+mistyped key shows up, and a key that never reached the client (an
+environment file the process was started without) looks just the same, so
+an app whose usage lands in `anonymous` is worth checking for that first.
+Jobs recorded before apps existed have no app and show
+as `unknown`, never folded into `anonymous`.

@@ -4,14 +4,14 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-/* Hash routes: #/, #/recipes, #/inventory, #/usage, #/sandbox.
+/* Hash routes: #/, #/recipes, #/inventory, #/usage, #/apps, #/sandbox.
    #/sandbox/<tab> additionally deep-links a sandbox tab, and #/recipes/add
    is the page that adds recipes to this machine (ADR-005). #/models — the
    Recipes view's address before ADR-003 — still lands there, so bookmarks
-   keep working. Anything else is the overview. No router library: five
+   keep working. Anything else is the overview. No router library: six
    views do not need one. */
 
-export const VIEWS = ["overview", "recipes", "inventory", "usage", "sandbox"] as const;
+export const VIEWS = ["overview", "recipes", "inventory", "usage", "apps", "sandbox"] as const;
 export type View = (typeof VIEWS)[number];
 
 export interface Route {
@@ -23,7 +23,7 @@ export interface Route {
 export function parseHash(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split(/[?#]/)[0]!.split("/").filter(Boolean);
   const head = parts[0];
-  if (head === "usage" || head === "inventory") return { view: head, sub: null };
+  if (head === "usage" || head === "inventory" || head === "apps") return { view: head, sub: null };
   if (head === "recipes") return { view: "recipes", sub: parts[1] === "add" ? "add" : null };
   if (head === "models") return { view: "recipes", sub: null };
   if (head === "sandbox") return { view: "sandbox", sub: parts[1] ? decodeURIComponent(parts[1]) : null };

@@ -7,7 +7,11 @@
 import sqlite3
 from pathlib import Path
 
-from giq.stats import StatsRecorder, _sum_tokens
+from giq.stats import JOB_COLUMNS, StatsRecorder, _sum_tokens
+
+
+def _record(rec, values):
+    rec._record_job_sync(dict(zip(JOB_COLUMNS, values, strict=False)))
 
 
 def test_sum_tokens_llmresult_shape():
@@ -51,7 +55,7 @@ def test_migration_adds_token_columns(tmp_path: Path):
     conn.close()
 
     rec = StatsRecorder(db_path=db)
-    rec._record_job_sync((2.0, "j1", "llm", "gemma", "completed", 5, 100, 1, None, 30, 10, None))
+    _record(rec, (2.0, "j1", "llm", "gemma", "completed", 5, 100, 1, None, 30, 10, None, None))
     rows = rec.query("SELECT tokens_in, tokens_out FROM jobs ORDER BY ts")
     # ADR-003: the old worker/model columns are the modality and recipe now,
     # renamed in place with their history.
@@ -70,20 +74,40 @@ async def test_stats_usage_endpoint(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(stats_mod, "_recorder", StatsRecorder(db_path=tmp_path / "u.db"))
     rec = stats_mod.get_stats()
     now = time.time()
-    rec._record_job_sync(
-        (now, "j1", "llm", "gemma-4-12b", "completed", 5, 100, 1, None, 200, 50, None)
+    _record(
+        rec, (now, "j1", "llm", "gemma-4-12b", "completed", 5, 100, 1, None, 200, 50, None, None)
     )
-    rec._record_job_sync(
-        (now, "j2", "llm", "gemma-4-12b", "failed", 5, 100, 1, "boom", None, None, None)
+    _record(
+        rec, (now, "j2", "llm", "gemma-4-12b", "failed", 5, 100, 1, "boom", None, None, None, None)
     )
-    rec._record_job_sync(
-        (now, "j3", "audio", "whisper-large-v3", "completed", 5, 100, 1, None, None, None, None)
+    _record(
+        rec,
+        (
+            now,
+            "j3",
+            "audio",
+            "whisper-large-v3",
+            "completed",
+            5,
+            100,
+            1,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
     )
 
-    d = await stats_usage(period="week", gpu=None, since=None, until=None)
+    d = await stats_usage(app=None, period="week", gpu=None, since=None, until=None)
     rec.close()
 
-    assert d["totals"] == {"jobs": 3, "failed": 1, "tokens_in": 200, "tokens_out": 50}
+    assert {k: d["totals"][k] for k in ("jobs", "failed", "tokens_in", "tokens_out")} == {
+        "jobs": 3,
+        "failed": 1,
+        "tokens_in": 200,
+        "tokens_out": 50,
+    }
     by_model = {m["recipe"]: m for m in d["recipes"]}
     assert by_model["gemma-4-12b"]["tokens_in"] == 200
     assert by_model["gemma-4-12b"]["jobs"] == 2
@@ -97,7 +121,7 @@ async def test_stats_usage_endpoint(tmp_path: Path, monkeypatch):
 
 
 def _rec(rec, ts, uuid=None, worker="llm", model="m", status="completed"):
-    rec._record_job_sync((ts, "j", worker, model, status, 0, 100, 1, None, 10, 5, uuid))
+    _record(rec, (ts, "j", worker, model, status, 0, 100, 1, None, 10, 5, uuid, None))
 
 
 def test_note_gpus_keeps_first_seen_and_tracks_primary(tmp_path: Path):
@@ -123,21 +147,21 @@ async def test_usage_gpu_filter_and_explicit_range(tmp_path: Path, monkeypatch):
     _rec(rec, base + 86400, uuid="GPU-b", model="new-model")
     rec._note_gpus_sync([("GPU-b", "card B", 16.0)])
 
-    everything = await stats_usage(period="all", gpu=None, since=None, until=None)
+    everything = await stats_usage(app=None, period="all", gpu=None, since=None, until=None)
     assert everything["totals"]["jobs"] == 2
 
-    only_a = await stats_usage(period="all", gpu="GPU-a", since=None, until=None)
+    only_a = await stats_usage(app=None, period="all", gpu="GPU-a", since=None, until=None)
     assert only_a["totals"]["jobs"] == 1
     assert only_a["recipes"][0]["recipe"] == "old-model"
     assert only_a["gpu"] == "GPU-a"
 
     windowed = await stats_usage(
-        period="all", gpu=None, since=str(base + 100), until=str(base + 200000)
+        app=None, period="all", gpu=None, since=str(base + 100), until=str(base + 200000)
     )
     assert windowed["totals"]["jobs"] == 1
     assert windowed["recipes"][0]["recipe"] == "new-model"
 
-    iso = await stats_usage(period="all", gpu=None, since="2026-01-01", until=None)
+    iso = await stats_usage(app=None, period="all", gpu=None, since="2026-01-01", until=None)
     assert iso["totals"]["jobs"] == 2
 
     eras = await gpu_eras()
@@ -158,7 +182,7 @@ async def test_usage_rejects_bad_bounds(tmp_path: Path, monkeypatch):
         {"since": "1783000000", "until": "1782000000"},
     ):
         try:
-            await stats_usage(period="all", gpu=None, **kwargs)
+            await stats_usage(app=None, period="all", gpu=None, **kwargs)
         except HTTPException as e:
             assert e.status_code == 400
         else:

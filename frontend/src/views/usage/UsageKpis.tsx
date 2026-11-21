@@ -9,8 +9,17 @@ import { useFormat } from "../../lib/useFormat";
 import "./Usage.css";
 
 /* The window's totals. Token figures are compact (1,2 Mio.), so the exact
-   count rides in the tile's title; failed calls carry their share. */
-export function UsageKpis({ totals }: { totals: StatsUsage["totals"] | undefined }) {
+   count rides in the tile's title; failed calls carry their share. GPU time
+   and energy are what jobs were attributed (ADR-006 D5): the idle line is
+   the energy card's, not part of these. */
+export function UsageKpis({
+  totals,
+  estimated,
+}: {
+  totals: StatsUsage["totals"] | undefined;
+  /** Some of the energy is from power samples rather than a card's counter. */
+  estimated?: boolean;
+}) {
   const { t } = useTranslation("usage");
   const f = useFormat();
   const exact = (n: number | undefined) =>
@@ -30,6 +39,10 @@ export function UsageKpis({ totals }: { totals: StatsUsage["totals"] | undefined
         className={totals?.failed ? "us-kpi-failed" : undefined}
       >
         {failShare}
+      </KpiTile>
+      <KpiTile label={t("kpi.gpuTime")} value={f.span(totals?.gpu_ms)} title={t("kpi.gpuTimeTitle")} />
+      <KpiTile label={t("kpi.energy")} value={f.energy(totals?.energy_wh)} title={t("kpi.energyTitle")}>
+        {estimated ? t("energy.estimate") : undefined}
       </KpiTile>
     </div>
   );

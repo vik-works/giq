@@ -161,7 +161,8 @@
         "pixal3d"
       ],
       "modalities": [
-        "image2mesh"
+        "image2mesh",
+        "mesh2texture"
       ],
       "recipes": [
         "pixal3d",

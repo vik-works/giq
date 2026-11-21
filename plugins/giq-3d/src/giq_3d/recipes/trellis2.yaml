@@ -16,9 +16,15 @@
 # are `pixal3d`'s, less the camera estimator it does not use, plus:
 #   structure  TRELLIS-image-large (MIT), the first TRELLIS, whose sparse
 #              structure decoder TRELLIS.2's pipeline loads by name.
+#
+# It makes the shape first and paints it second, and serves both halves:
+# an image2mesh task with `texture: false` stops at the shape and returns
+# its latent, and mesh2texture paints a mesh the client brings, on that
+# latent or on its own geometry, with the shape encoder from the same
+# weights (TRELLIS.2's texturing pipeline). Both run in the one instance.
 name: trellis2
 label: TRELLIS.2
-modalities: [image2mesh]
+modalities: [image2mesh, mesh2texture]
 engine: pixal3d
 detail: "image → textured mesh · upright · PBR · GLB · full detail or game-ready low-poly"
 weights:
@@ -56,5 +62,15 @@ vram:
   # its surface. 45-85 s to generate; about 55 s to load.
   gb: 13.5
   measured: true
+  # The stages apart, measured on an RTX 5090 on one A-pose character
+  # (1024, low-VRAM, seed 42), the child's own peak and the job's time:
+  # shape-only at full detail 8,030 MiB (80 s, the load included),
+  # shape-only game cage at 4,000 faces 5,280 MiB (57 s); a paint of that
+  # cage on its latent 6,900 MiB (40 s), the same cage encoded afresh
+  # 5,380 MiB (37 s), an 18k-face mesh on the latent 7,340 MiB (44 s); the
+  # whole job for the same picture 7,540 MiB (102 s). A shape leaves out
+  # the texture flow model and the bake; a paint leaves out the structure
+  # and shape flow models. All stay under the figure above, which the
+  # crate's whole job sets.
 # One asset per task; a batch generates them one after another.
 max_batch: 2

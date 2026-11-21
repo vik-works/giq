@@ -225,6 +225,77 @@ generated mesh. Loading takes about 45 s; the export after generation takes
 about 50 s at full detail and 70 s for a game-ready asset, mostly on the CPU
 (`docs/api.md`, Image2Mesh).
 
+### Shape, then paint
+
+TRELLIS.2 makes an asset in two stages, the shape and then its texture,
+and a `trellis2` recipe serves them apart as well as together. The default
+`image2mesh` task runs both in one, the steps in the order upstream's own
+`run` takes them; `texture: false` stops after the shape and returns the
+geometry with its shape latent; `mesh2texture` paints a mesh the client
+brings (`docs/api.md`, Mesh2Texture). The two share the recipe's one
+instance, and a paint loads only TRELLIS.2's shape encoder (0.7 GB, from
+the same weights' `texturing_pipeline.json`) beside the models the
+generator already holds.
+
+- **The shape latent.** A sparse set of voxels on a 64 grid (96 at 1536),
+  32 values each: what the shape decoder turns into the surface and the
+  texture model is conditioned on. It goes to the client as `shape_b64`
+  (coordinates as u16, values as f32, zlib, with a header naming the recipe
+  and shape decoder and a SHA-256 of the payload) rather than into a store
+  on the server: giq keeps no payloads between jobs, and an on-demand
+  instance is evicted whenever another recipe needs the card, which is what
+  happens while a client checks and heals a shape between the two jobs.
+  134 bytes a voxel before base64, a few MB for an object.
+- **Painting on a given shape.** The texture latent is sampled on the
+  latent, both are decoded together as in a whole job, and each texel of
+  the client's mesh reads the decoded surface behind it: the colour there,
+  and its normal as a tangent-space normal map, exactly as the game export
+  bakes its cage. The mesh is taken to be in the frame the shape job
+  returned it in, the generator's cube turned Y up.
+- **Painting on the mesh itself.** TRELLIS.2's texturing pipeline: the mesh
+  is centred on its bounding box, scaled so its longest side is just under
+  1, turned Z up, voxelised on a 1024 grid and encoded into a shape latent;
+  the texture is sampled on that, decoded, and read where each texel lies.
+  There is no more detailed surface to bake from, so no normal map.
+- **The vertices stay the client's.** Only a copy goes into the model's
+  frame; the GLB is written from the vertices, faces and UVs as read. The
+  texture goes through the mesh's own atlas, or one xatlas makes (as for
+  the cage) when it has none, which splits the vertices on its seams and
+  says which is which (`vertex_map`). Upstream's texturing pipeline would
+  return the mesh in its own cube and unwrap with CuMesh; giq does neither.
+
+Measured on an RTX 5090 for one A-pose character with a 4,000-face game
+cage, the child's own peak and the job's time: a shape-only job 7.8 GiB at
+full detail (80 s with the load) and 5.2 GiB for the cage (57 s); a paint
+of the cage on its latent 6.7 GiB (40 s), the cage encoded afresh 5.3 GiB
+(37 s); the whole job 7.4 GiB (102 s). Shape, then paint, takes about as
+long as the whole job, and neither half needs more VRAM than the recipe's
+figure. The whole job comes out as before the stages were split: the same
+vertices, faces and UVs, and textures equal up to the GPU's float atomics
+(a few levels on the normal map). A paint on the latent bakes the face's
+detail into the normal map as the whole job does; a paint on the encoded
+mesh has the colours but no normal map, and its surface reads smoother.
+
+The paint takes the mesh's faces to be wound outward, all of them: each
+texel looks inward along the surface's normal for what lies behind it. A
+mesh with faces wound both ways (a vertex-clustered copy whose thin parts
+folded over, say) paints in speckles, its inward-facing faces reading the
+inside of the object.
+
+`plugins/giq-3d/scripts/smoke_shape_paint.py` measures the stages against
+the one-job path on one picture: a client of a running giq, for a window
+in which that giq serves nobody else.
+
+```bash
+uv run python plugins/giq-3d/scripts/smoke_shape_paint.py \
+    --url http://127.0.0.1:8085 --image character.png --out /tmp/shape-paint --faces 4000
+```
+
+It writes the GLBs, `summary.json` and `summary.md`: per step, the seconds,
+the child's peak VRAM sampled from `nvidia-smi` every 100 ms (`--gpu`, the
+card the recipe is bound to), faces, vertices, size, and whether each paint
+gave back the vertices and faces it was sent.
+
 ## skintokens
 
 SkinTokens gives a mesh a skeleton and skin weights: TokenRig, a

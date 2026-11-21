@@ -32,6 +32,7 @@ BUILTIN_MODALITIES = {
     "text2sfx",
     "image2mesh",
     "mesh2rig",
+    "mesh2texture",
 }
 
 

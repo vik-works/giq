@@ -159,8 +159,6 @@
     "cancelHelp": "Stoppt den Download. Was angekommen ist, bleibt; erneut herunterladen setzt fort.",
     "cancelFailed": "Stoppen des Downloads fehlgeschlagen",
     "operator": "Der Dienst darf dort, wo die Gewichte hingehören, nicht schreiben. Auf dem Server als Betreiber ausführen:",
-    "copy": "Kopieren",
-    "copied": "Kopiert",
     "pluginRecipes": "Bringt {{recipes}}",
     "pluginNeeds": "Braucht {{needs}}",
     "pluginRestart": "Auf dem Server installieren, dann giq neu starten.",

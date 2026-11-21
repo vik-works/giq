@@ -13,7 +13,54 @@
     "current": "{{name}} · aktuell",
     "past": "{{name}} · {{from}} – {{to}}"
   },
+  "appFilter": {
+    "label": "App",
+    "all": "Alle Apps",
+    "unknown": "unbekannt (vor Apps)",
+    "revoked": "{{name}} · widerrufen",
+    "deleted": "{{name}} · gelöscht"
+  },
+  "app": {
+    "anonymous": "anonym",
+    "unknown": "unbekannt",
+    "unknownTitle": "Aufrufe aus der Zeit, bevor giq Apps zählte"
+  },
+  "apps": {
+    "kicker": "Pro App",
+    "manage": "Apps verwalten",
+    "app": "App",
+    "calls": "Aufrufe",
+    "failed": "Fehlgeschl.",
+    "tokens": "Token",
+    "run": "Laufzeit",
+    "gpu": "GPU-Zeit",
+    "energy": "Energie",
+    "lastUsed": "Zuletzt genutzt",
+    "recipes_one": "{{count}} Rezept",
+    "recipes_other": "{{count}} Rezepte",
+    "empty": "Keine Aufrufe in diesem Zeitraum"
+  },
+  "energy": {
+    "kicker": "Energie",
+    "attributed": "Jobs",
+    "idle": "Leerlauf und Vorhaltung",
+    "total": "Karten gesamt",
+    "idleShort": "Leerlauf",
+    "totalShort": "Gesamt",
+    "card": "Karte",
+    "unknownCard": "unbekannte Karte",
+    "estimate": "geschätzt",
+    "estimateTitle": "Teils aus Leistungsmessungen geschätzt: nicht jede Karte meldet einen Energiezähler.",
+    "appOnly": "Energie für Leerlauf und Vorhaltung gehört keiner App und zählt daher nicht zum Wert einer einzelnen App.",
+    "rule": "Der Anteil eines Jobs ist die Energie der Karte während seiner Laufzeit, aufgeteilt auf die gleichzeitig laufenden Jobs.",
+    "barAria": "Jobs {{attributed}}, Leerlauf und Vorhaltung {{idle}}",
+    "empty": "Keine Energie in diesem Zeitraum erfasst"
+  },
   "kpi": {
+    "gpuTime": "GPU-Zeit",
+    "gpuTimeTitle": "Laufzeit, aufgeteilt auf die gleichzeitig auf einer Karte laufenden Jobs",
+    "energy": "Energie · Jobs",
+    "energyTitle": "Die den Jobs zugeordnete Energie der Karten; Leerlauf und Vorhaltung sind nicht enthalten",
     "calls": "Aufrufe",
     "tokensIn": "Token · Prompt",
     "tokensOut": "Token · generiert",
@@ -70,6 +117,7 @@
   "wall": {
     "kicker": "Letzte Aufrufe",
     "meta": "die letzten {{count}}",
+    "metaAllApps": "die letzten {{count}}, alle Apps",
     "when": "Wann",
     "model": "Rezept",
     "status": "Status",

@@ -9,9 +9,11 @@ import {
   fmtAgo,
   fmtBytes,
   fmtDur,
+  fmtEnergy,
   fmtGB,
   fmtNum,
   fmtPct,
+  fmtSpan,
   fmtTemp,
   fmtTok,
   fmtUptime,
@@ -83,5 +85,24 @@ describe("format", () => {
   it("shortens GPU names and long labels", () => {
     expect(ellipsize("abcdefghij", 5)).toBe("abcd…");
     expect(ellipsize("abc", 5)).toBe("abc");
+  });
+});
+
+describe("energy and long spans", () => {
+  it("writes watt-hours, kilowatt-hours from 1000", () => {
+    expect(fmtEnergy(null, "en")).toBe(DASH);
+    expect(fmtEnergy(0, "en")).toBe("0 Wh");
+    expect(fmtEnergy(0.046, "en")).toBe("0.05 Wh");
+    expect(fmtEnergy(4.25, "de")).toBe("4,3 Wh");
+    expect(fmtEnergy(812.4, "en")).toBe("812 Wh");
+    expect(fmtEnergy(1234, "de")).toBe("1,23 kWh");
+    expect(fmtEnergy(123_456, "en")).toBe("123.5 kWh");
+  });
+
+  it("switches to hours past ninety minutes", () => {
+    expect(fmtSpan(30_000, "en")).toBe(fmtDur(30_000, "en"));
+    expect(n(fmtSpan(3_600_000, "en"))).toMatch(/^60 min/);
+    expect(n(fmtSpan(2.5 * 3_600_000, "en"))).toBe("2.5 hr");
+    expect(n(fmtSpan(1234 * 3_600_000, "de"))).toBe("1.234 Std.");
   });
 });

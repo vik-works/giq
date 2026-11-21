@@ -1,0 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.ap-create { display: flex; flex-direction: column; gap: var(--space-3); }
+.ap-create .input { width: 100%; }
+.ap-create-actions { display: flex; justify-content: flex-end; }

@@ -1,0 +1,51 @@
+{
+  "intro": "An app is a name and a key, so Usage can show which app used which recipes, how long and at what energy. It is a label for counting, not an account: a key admits exactly what the shared token does. Calls without a valid key are counted as anonymous.",
+  "list": {
+    "kicker": "Apps",
+    "meta_one": "{{count}} app",
+    "meta_other": "{{count}} apps",
+    "name": "Name",
+    "description": "Description",
+    "created": "Created",
+    "status": "Status",
+    "actions": "Actions",
+    "usage": "Usage",
+    "empty": "No apps yet. Create one to count its calls apart.",
+    "hint": "Revoke stops the key and keeps the name taken. Delete frees the name: the app's history stays in Usage, and a new app under the same name adds to it."
+  },
+  "status": {
+    "active": "active",
+    "revoked": "revoked"
+  },
+  "create": {
+    "kicker": "New app",
+    "name": "Name",
+    "nameHint": "Lowercase letters, digits, - and _.",
+    "namePlaceholder": "my-app",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "what it is for",
+    "submit": "Create app",
+    "creating": "Creating…"
+  },
+  "key": {
+    "kicker": "Key for {{name}}",
+    "once": "Copy the key now: it is shown only once. giq keeps only its hash, so it cannot be shown again.",
+    "copy": "Copy key",
+    "howTo": "The app sends it where an API key goes: api_key in the OpenAI SDKs, which they send as Authorization: Bearer. X-Giq-Token or ?token= work too.",
+    "done": "Done, I have saved it"
+  },
+  "revoke": {
+    "action": "Revoke",
+    "confirmTitle": "Revoke {{name}}?",
+    "confirmBody": "Its key stops working at once. Its history stays, and the name stays taken, so the app cannot be created again under it.",
+    "confirm": "Revoke",
+    "failed": "Revoking failed"
+  },
+  "delete": {
+    "action": "Delete",
+    "confirmTitle": "Delete {{name}}?",
+    "confirmBody": "The entry and its key are removed. Its history stays in Usage under the name, and a new app created under the same name adds to that history.",
+    "confirm": "Delete",
+    "failed": "Deleting failed"
+  }
+}

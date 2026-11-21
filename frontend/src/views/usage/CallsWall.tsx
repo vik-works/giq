@@ -13,11 +13,13 @@ import "./Usage.css";
    the columns stay named as the reader scrolls. A failed call's error is
    server text: it shows as the row's native tooltip (a title attribute,
    escaped like any other text) rather than widening the table. */
-export function CallsWall({ jobs }: { jobs: JobRecord[] | undefined }) {
+export function CallsWall({ jobs, appFiltered }: { jobs: JobRecord[] | undefined; appFiltered?: boolean }) {
   const { t } = useTranslation("usage");
   const f = useFormat();
+  // The call log is not kept per app, so under an app filter it says so.
+  const meta = t(appFiltered ? "wall.metaAllApps" : "wall.meta", { count: WALL_LIMIT });
   return (
-    <Card kicker={t("wall.kicker")} actions={t("wall.meta", { count: WALL_LIMIT })}>
+    <Card kicker={t("wall.kicker")} actions={meta}>
       {!jobs ? (
         <EmptyState compact>{t("common:empty.loading")}</EmptyState>
       ) : jobs.length === 0 ? (

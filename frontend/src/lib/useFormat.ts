@@ -17,6 +17,8 @@ export function useFormat() {
       bytes: (b: number | null | undefined) => f.fmtBytes(b, lang),
       gb: (gb: number | null | undefined, digits?: number) => f.fmtGB(gb, lang, digits),
       dur: (ms: number | null | undefined) => f.fmtDur(ms, lang),
+      span: (ms: number | null | undefined) => f.fmtSpan(ms, lang),
+      energy: (wh: number | null | undefined) => f.fmtEnergy(wh, lang),
       ago: (t: number | null | undefined) => f.fmtAgo(t, lang),
       tok: (n: number | null | undefined) => f.fmtTok(n, lang),
       pct: (v: number | null | undefined, digits?: number) => f.fmtPct(v, lang, digits),

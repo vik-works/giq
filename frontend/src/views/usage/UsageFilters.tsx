@@ -7,6 +7,7 @@ import type { GpuEra, UsagePeriod } from "../../api/types";
 import { SegmentedControl, type SegmentOption } from "../../components";
 import { shortGpuName } from "../../lib/cards";
 import { useFormat } from "../../lib/useFormat";
+import type { AppFilterOption } from "./usageModel";
 import "./Usage.css";
 
 export const PERIODS: readonly UsagePeriod[] = ["day", "week", "month", "all"];
@@ -18,12 +19,16 @@ export interface UsageFiltersProps {
   onGpu: (uuid: string) => void;
   /** Newest first, each with whether its card is installed now. */
   eras: { era: GpuEra; current: boolean }[];
+  /** "" for every app; an app's name, "anonymous" or "unknown". */
+  app: string;
+  onApp: (app: string) => void;
+  apps: AppFilterOption[];
 }
 
-/* The period and the card the whole view is filtered to. Two eras can share
-   a name (a card replaced by the same model), so a past era's option carries
-   its dates; the installed card is marked current instead. */
-export function UsageFilters({ period, onPeriod, gpu, onGpu, eras }: UsageFiltersProps) {
+/* The period, the card and the app the view is filtered to. Two eras can
+   share a name (a card replaced by the same model), so a past era's option
+   carries its dates; the installed card is marked current instead. */
+export function UsageFilters({ period, onPeriod, gpu, onGpu, eras, app, onApp, apps }: UsageFiltersProps) {
   const { t } = useTranslation("usage");
   const f = useFormat();
   const options: SegmentOption<UsagePeriod>[] = PERIODS.map((p) => ({
@@ -61,6 +66,25 @@ export function UsageFilters({ period, onPeriod, gpu, onGpu, eras }: UsageFilter
               </option>
             );
           })}
+        </select>
+      </label>
+      <label className="us-gpu">
+        <span className="us-gpu-label">{t("appFilter.label")}</span>
+        <select className="input us-gpu-select" value={app} onChange={(e) => onApp(e.target.value)}>
+          <option value="">{t("appFilter.all")}</option>
+          {apps.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.kind === "anonymous"
+                ? t("app.anonymous")
+                : o.kind === "unknown"
+                  ? t("appFilter.unknown")
+                  : o.revoked
+                    ? t("appFilter.revoked", { name: o.value })
+                    : !o.registered
+                      ? t("appFilter.deleted", { name: o.value })
+                      : o.value}
+            </option>
+          ))}
         </select>
       </label>
     </div>

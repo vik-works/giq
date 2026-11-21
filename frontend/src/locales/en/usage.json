@@ -13,7 +13,54 @@
     "current": "{{name}} · current",
     "past": "{{name}} · {{from}} – {{to}}"
   },
+  "appFilter": {
+    "label": "App",
+    "all": "All apps",
+    "unknown": "unknown (before apps)",
+    "revoked": "{{name}} · revoked",
+    "deleted": "{{name}} · deleted"
+  },
+  "app": {
+    "anonymous": "anonymous",
+    "unknown": "unknown",
+    "unknownTitle": "Calls recorded before giq counted apps"
+  },
+  "apps": {
+    "kicker": "Per app",
+    "manage": "Manage apps",
+    "app": "App",
+    "calls": "Calls",
+    "failed": "Failed",
+    "tokens": "Tokens",
+    "run": "Run time",
+    "gpu": "GPU time",
+    "energy": "Energy",
+    "lastUsed": "Last used",
+    "recipes_one": "{{count}} recipe",
+    "recipes_other": "{{count}} recipes",
+    "empty": "No calls in this window"
+  },
+  "energy": {
+    "kicker": "Energy",
+    "attributed": "Jobs",
+    "idle": "Idle and residency",
+    "total": "Cards in total",
+    "idleShort": "Idle",
+    "totalShort": "Total",
+    "card": "Card",
+    "unknownCard": "unknown card",
+    "estimate": "estimate",
+    "estimateTitle": "Partly estimated from power samples: not every card reports an energy counter.",
+    "appOnly": "Idle and residency energy belongs to no app, so it is not part of a single app's figure.",
+    "rule": "A job's share is the card's energy while it ran, split among the jobs running at the same time.",
+    "barAria": "Jobs {{attributed}}, idle and residency {{idle}}",
+    "empty": "No energy recorded in this window"
+  },
   "kpi": {
+    "gpuTime": "GPU time",
+    "gpuTimeTitle": "Run time, split among the jobs that ran on a card at the same time",
+    "energy": "Energy · jobs",
+    "energyTitle": "The cards' energy attributed to jobs; idle and residency are not included",
     "calls": "Calls",
     "tokensIn": "Tokens · prompt",
     "tokensOut": "Tokens · generated",
@@ -70,6 +117,7 @@
   "wall": {
     "kicker": "Recent calls",
     "meta": "last {{count}}",
+    "metaAllApps": "last {{count}}, all apps",
     "when": "When",
     "model": "Recipe",
     "status": "Status",

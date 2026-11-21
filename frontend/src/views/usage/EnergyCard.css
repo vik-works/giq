@@ -1,0 +1,24 @@
+/*
+ * SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* The energy split: one bar, jobs filled over the idle line's track. */
+.us-en-body { display: flex; flex-direction: column; gap: var(--space-3); }
+.us-en-bar {
+  height: 10px; border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--series-other);
+}
+.us-en-bar-jobs { display: block; height: 100%; background: var(--chart-seq); }
+.us-en-legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); }
+.us-en-figure { display: inline-flex; align-items: baseline; gap: var(--space-2); }
+.us-en-value { font-size: 16px; font-weight: 500; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.us-en-label { font-size: 12px; color: var(--text-muted); }
+.us-en-swatch { width: 9px; height: 9px; border-radius: 2px; align-self: center; }
+.us-en-swatch-jobs { background: var(--chart-seq); }
+.us-en-swatch-idle { background: var(--series-other); }
+.us-en-estimate {
+  font-size: 11px; color: var(--warning-ink); background: var(--warning-tint);
+  padding: 1px 6px; border-radius: var(--radius-sm); cursor: help;
+}

@@ -6,6 +6,7 @@ export { AccessChip } from "./AccessChip";
 export { AppShell } from "./AppShell";
 export { Card, type CardProps } from "./Card";
 export { ConfirmDialog, type ConfirmDialogProps } from "./ConfirmDialog";
+export { CopyButton } from "./CopyButton";
 export { DialogProvider, useConfirm, useNotify, type ConfirmOptions, type NotifyOptions } from "./DialogProvider";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { FailedCount } from "./FailedCount";

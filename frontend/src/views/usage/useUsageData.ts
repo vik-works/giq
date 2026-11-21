@@ -19,14 +19,16 @@ const gpuParam = (gpu: string) => (gpu ? `&gpu=${encodeURIComponent(gpu)}` : "")
    router unmounts a view it leaves, which stops the timers): usage figures
    move by the minute, and nobody else reads them. A filter change fetches
    at once (usePathPoll), and `stale` says the figures on screen still
-   answer the previous filter. */
-export function useUsageData(period: UsagePeriod, gpu: string, enabled = true) {
+   answer the previous filter. The app filter narrows the usage rollup only:
+   /stats/jobs takes no app, so the call wall stays the machine's. */
+export function useUsageData(period: UsagePeriod, gpu: string, app = "", enabled = true) {
   const opts = { intervalMs: SLOW_POLL_MS, enabled };
   const eras = usePoll(
     useCallback((signal: AbortSignal) => getJSON<GpuErasResponse>("/stats/gpus/eras", { signal }), []),
     opts,
   );
-  const usagePath = `/stats/usage?period=${period}${gpuParam(gpu)}`;
+  const appParam = app ? `&app=${encodeURIComponent(app)}` : "";
+  const usagePath = `/stats/usage?period=${period}${gpuParam(gpu)}${appParam}`;
   const jobsPath = `/stats/jobs?limit=${WALL_LIMIT}${gpuParam(gpu)}`;
   const usage = usePathPoll<StatsUsage>(usagePath, opts);
   const jobs = usePathPoll<JobRecord[]>(jobsPath, opts);

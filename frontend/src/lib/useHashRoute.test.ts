@@ -10,6 +10,8 @@ describe("parseHash", () => {
     expect(parseHash("")).toEqual({ view: "overview", sub: null });
     expect(parseHash("#/")).toEqual({ view: "overview", sub: null });
     expect(parseHash("#/usage")).toEqual({ view: "usage", sub: null });
+    expect(parseHash("#/usage?app=kw")).toEqual({ view: "usage", sub: null });
+    expect(parseHash("#/apps")).toEqual({ view: "apps", sub: null });
     expect(parseHash("#/recipes")).toEqual({ view: "recipes", sub: null });
     expect(parseHash("#/recipes/add")).toEqual({ view: "recipes", sub: "add" });
     expect(parseHash("#/recipes/other")).toEqual({ view: "recipes", sub: null });

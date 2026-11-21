@@ -66,6 +66,31 @@ export function fmtDur(ms: Num, lang: string): string {
   return unit("minute", ms / 60_000, 1);
 }
 
+/* A long total (GPU time over a month): fmtDur's minutes stop being readable
+   past an hour and a half, so hours take over there. */
+/** A total duration in milliseconds: like fmtDur, and hours from 90 minutes on. */
+export function fmtSpan(ms: Num, lang: string): string {
+  if (ms == null || ms < 5_400_000) return fmtDur(ms, lang);
+  const d = ms < 36_000_000 ? 1 : 0;
+  return nf(lang, { style: "unit", unit: "hour", unitDisplay: "short", ...GROUP, maximumFractionDigits: d }).format(
+    ms / 3_600_000,
+  );
+}
+
+/* Energy per job is fractions of a watt-hour, a month of a rig is kilowatt-
+   hours. Intl has no watt-hour unit, so the symbol is appended as for watts;
+   the precision shrinks as the figure grows, so a column stays narrow. */
+/** Watt-hours: Wh below 1000, kWh from there. */
+export function fmtEnergy(wh: Num, lang: string): string {
+  if (wh == null) return DASH;
+  if (wh >= 1000) {
+    const kwh = wh / 1000;
+    return `${nf(lang, { ...GROUP, ...fixed(kwh < 100 ? 2 : 1) }).format(kwh)} kWh`;
+  }
+  const digits = wh === 0 ? 0 : wh < 1 ? 2 : wh < 10 ? 1 : 0;
+  return `${nf(lang, { ...GROUP, ...fixed(digits) }).format(wh)} Wh`;
+}
+
 /** "5 s ago" / "vor 5 s" for an epoch-seconds timestamp. */
 export function fmtAgo(t: Num, lang: string, nowMs: number = Date.now()): string {
   if (t == null) return DASH;

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type {
+  AppsResponse,
   Capabilities,
   DownloadsResponse,
   EnginesResponse,
@@ -75,6 +76,9 @@ export const [PluginsProvider, usePlugins] = createPolledResource<PluginsRespons
   "/plugins",
   0,
 );
+
+/** GET /apps every 60 s: the registered apps, without keys (ADR-006). Call refresh() after changing one. */
+export const [AppsProvider, useApps] = createPolledResource<AppsResponse>("Apps", "/apps", SLOW_POLL_MS);
 
 /** GET /capabilities every 60 s: the registered modalities, their labels and icons, what runs. */
 export const [CapabilitiesProvider, useCapabilities] = createPolledResource<Capabilities>(

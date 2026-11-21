@@ -11,6 +11,7 @@
     "recipes": "Rezepte",
     "inventory": "Bestand",
     "usage": "Nutzung",
+    "apps": "Apps",
     "sandbox": "Sandbox",
     "openMenu": "Navigation öffnen",
     "closeMenu": "Navigation schließen"
@@ -140,7 +141,9 @@
     "refresh": "Aktualisieren",
     "delete": "Löschen",
     "more": "Weitere Aktionen",
-    "dismiss": "Ausblenden"
+    "dismiss": "Ausblenden",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
   },
   "range": {
     "label": "Zeitraum",

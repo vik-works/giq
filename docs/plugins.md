@@ -70,7 +70,7 @@ recipe.
 
   ```bash
   uv pip install --python /opt/giq/.venv/bin/python \
-    https://github.com/vik-works/giq/releases/download/v0.11.0/giq_sdcpp-0.11.0-py3-none-any.whl
+    https://github.com/vik-works/giq/releases/download/v0.12.0/giq_sdcpp-0.12.0-py3-none-any.whl
   sudo systemctl restart giq
   ```
 

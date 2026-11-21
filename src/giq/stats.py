@@ -156,13 +156,15 @@ CREATE TABLE IF NOT EXISTS recipe_policy (
 );
 
 -- Energy a card drew with no job running (ADR-006 D5), per hour: recipes kept
--- resident and idle. Attributed to nobody, reported on its own line. Never
+-- resident and idle, and, as load_wh, instances loading and unloading.
+-- Attributed to nobody, each reported on its own line. Never
 -- purged: a row per card per hour is small, and the usage view's `all`
 -- period needs it.
 CREATE TABLE IF NOT EXISTS card_energy (
     hour REAL NOT NULL,            -- start of the hour (unix epoch)
     gpu_uuid TEXT NOT NULL,
     idle_wh REAL NOT NULL,
+    load_wh REAL NOT NULL DEFAULT 0,
     estimated INTEGER NOT NULL,    -- 1 when any of it is a power estimate
     PRIMARY KEY (hour, gpu_uuid)
 );
@@ -250,6 +252,9 @@ class StatsRecorder:
             # Device bindings were added after the policy table, and existing
             # DBs have rows in it, so add the column rather than relying on
             # CREATE IF NOT EXISTS.
+            energy_cols = {row[1] for row in conn.execute("PRAGMA table_info(card_energy)")}
+            if "load_wh" not in energy_cols:
+                conn.execute("ALTER TABLE card_energy ADD COLUMN load_wh REAL NOT NULL DEFAULT 0")
             policy_cols = {row[1] for row in conn.execute("PRAGMA table_info(model_policy)")}
             if "device" not in policy_cols:
                 conn.execute("ALTER TABLE model_policy ADD COLUMN device TEXT")
@@ -370,13 +375,15 @@ class StatsRecorder:
             )
             conn.commit()
 
-    def _record_idle_sync(self, rows: list[tuple[float, str, float, int]]) -> None:
+    def _record_idle_sync(self, rows: list[tuple[float, str, float, float, int]]) -> None:
         with self._lock:
             conn = self._connect()
             conn.executemany(
-                "INSERT INTO card_energy (hour, gpu_uuid, idle_wh, estimated) VALUES (?,?,?,?)"
+                "INSERT INTO card_energy (hour, gpu_uuid, idle_wh, load_wh, estimated)"
+                " VALUES (?,?,?,?,?)"
                 " ON CONFLICT (hour, gpu_uuid) DO UPDATE SET"
                 " idle_wh = idle_wh + excluded.idle_wh,"
+                " load_wh = load_wh + excluded.load_wh,"
                 " estimated = MAX(estimated, excluded.estimated)",
                 rows,
             )
@@ -550,12 +557,15 @@ class StatsRecorder:
             logger.warning(f"stats record_job failed: {e}")
 
     async def record_idle(self, idle: list) -> None:
-        """Add a sampler tick's idle energy (giq.energy.Idle) to its hour."""
+        """Add a sampler tick's idle and load energy (giq.energy.Idle) to its hour."""
         if not idle:
             return
         try:
             hour = time.time() // 3600 * 3600
-            rows = [(hour, i.gpu_uuid, i.wh, 0 if i.measured else 1) for i in idle]
+            rows = [
+                (hour, i.gpu_uuid, i.wh, getattr(i, "load_wh", 0.0), 0 if i.measured else 1)
+                for i in idle
+            ]
             await asyncio.to_thread(self._record_idle_sync, rows)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"stats record_idle failed: {e}")

@@ -20,6 +20,14 @@ with no job running, by recipes kept resident and idle, belongs to nobody;
 it is collected per card as *idle* and reported on its own line, never
 spread over the apps.
 
+Loading and unloading an instance is housekeeping: the time between an
+adapter's ``start()`` or ``stop()`` being called and returning is a share of
+its own on the card, like a job's, and what it drew is collected per card as
+*load*, on another line of its own. It is not charged to the job whose
+request caused the load: a loaded instance serves every job after it, often
+from other apps, and which job happened to arrive first says nothing about
+who the load was for.
+
 Every read and the bookkeeping after it run together under one lock in a
 worker thread: the event loop never waits on the driver, and two reads of a
 card are applied in the order they were taken, so an interval is never
@@ -29,6 +37,8 @@ counted backwards.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import itertools
 import logging
 import threading
 import time
@@ -117,16 +127,21 @@ class _Card:
     last_t: float | None = None
     last_mj: int | None = None
     last_power: float | None = None
-    active: dict[int, _Share] = field(default_factory=dict)
+    active: dict[object, _Share] = field(default_factory=dict)
     idle_j: float = 0.0
     idle_measured: bool = True
+    load_j: float = 0.0
+    load_measured: bool = True
 
 
 @dataclass
 class Idle:
+    """A card's energy since the last tick that no job drew."""
+
     gpu_uuid: str
-    wh: float
-    measured: bool
+    wh: float  # nothing running
+    measured: bool  # both lines are from the counter
+    load_wh: float = 0.0  # loading and unloading instances
 
 
 class EnergyMeter:
@@ -139,7 +154,10 @@ class EnergyMeter:
         # while its begin was still reading in a worker thread. The begin,
         # when it lands, must not leave a share behind that never ends and
         # takes half the card from every later job.
-        self._ended_early: set[int] = set()
+        self._ended_early: set[object] = set()
+        # Housekeeping shares get keys of their own, which can never equal a
+        # job's id().
+        self._housekeeping_keys = itertools.count()
 
     # --- the bookkeeping (under the lock) ------------------------------------
 
@@ -175,18 +193,22 @@ class EnergyMeter:
         card.last_power = reading.power_w
         return card
 
-    def _begin_sync(self, key: int, uuid: str) -> None:
+    def _begin_sync(self, key: object, uuid: str) -> None:
         with self._lock:
             if key in self._ended_early:
                 self._ended_early.discard(key)
                 return
             self._advance(uuid).active[key] = _Share()
 
-    def _end_sync(self, key: int, uuid: str) -> _Share | None:
+    def _end_sync(self, key: object, uuid: str, housekeeping: bool = False) -> _Share | None:
         with self._lock:
-            share = self._advance(uuid).active.pop(key, None)
+            card = self._advance(uuid)
+            share = card.active.pop(key, None)
             if share is None:
                 self._ended_early.add(key)
+            elif housekeeping:
+                card.load_j += share.joules
+                card.load_measured = card.load_measured and share.measured
             return share
 
     def _tick_sync(self) -> list[Idle]:
@@ -195,10 +217,17 @@ class EnergyMeter:
                 self._advance(uuid)
             out = []
             for uuid, card in self._cards.items():
-                if card.idle_j > 0:
-                    out.append(Idle(uuid, card.idle_j / 3600.0, card.idle_measured))
-                card.idle_j = 0.0
-                card.idle_measured = True
+                if card.idle_j > 0 or card.load_j > 0:
+                    out.append(
+                        Idle(
+                            uuid,
+                            card.idle_j / 3600.0,
+                            card.idle_measured and card.load_measured,
+                            card.load_j / 3600.0,
+                        )
+                    )
+                card.idle_j = card.load_j = 0.0
+                card.idle_measured = card.load_measured = True
             return out
 
     # --- the async face: never raises, never blocks the loop -----------------
@@ -232,6 +261,30 @@ class EnergyMeter:
         job.gpu_ms = (job.gpu_ms or 0) + int(round(share.seconds * 1000))
         job.energy_wh = (job.energy_wh or 0.0) + share.joules / 3600.0
         job.energy_measured = share.measured and job.energy_measured is not False
+
+    @contextlib.asynccontextmanager
+    async def housekeeping(self, uuid: str | None):
+        """Load or unload an instance on card ``uuid`` inside this block.
+
+        The begin sits inside the ``try`` for the same reason as a job's: a
+        cancellation during its read still runs the end, and the end that
+        overtakes it leaves no share behind.
+        """
+        if not uuid:
+            yield
+            return
+        key = ("housekeeping", next(self._housekeeping_keys))
+        try:
+            try:
+                await asyncio.to_thread(self._begin_sync, key, uuid)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"energy: housekeeping begin failed: {e}")
+            yield
+        finally:
+            try:
+                await asyncio.to_thread(self._end_sync, key, uuid, True)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"energy: housekeeping end failed: {e}")
 
     async def tick(self) -> list[Idle]:
         """Read every card; return the idle energy since the last tick."""

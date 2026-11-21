@@ -149,6 +149,17 @@ Each job records the card it ran on (fixing `jobs.gpu_uuid`), its
   hour in `card_energy`. Usage reports them as their own line,
   *idle/residency*, and a view of one app has none. Spreading it over the
   apps would charge an app for recipes it never asked to keep loaded.
+- **Loading and unloading.** Starting and stopping an instance (an
+  on-demand swap, a modality switch, a resident reloading or evicted) is
+  housekeeping. From the adapter's `start()` or `stop()` being called to its
+  return, the instance holds a share of the card like a job does, and what
+  that share drew lands per card and hour in `card_energy.load_wh`, reported
+  as its own line, *loading/unloading*, which a view of one app also lacks.
+  It is not charged to the job whose request caused the load: a loaded
+  instance serves every later job, often from other apps, and which job
+  arrived first says nothing about who the load was for. Waiting for VRAM to
+  drain between an unload and the next load stays idle: no instance is
+  running then.
 - **GPU time** is split the same way: a job's `gpu_ms` is its share of the
   card's time, next to `run_ms`, its wall clock.
 

@@ -255,8 +255,15 @@ describe("energySplit", () => {
     )!;
     expect(two.cards.map((c) => c.total)).toEqual([50, 70]);
   });
+  it("counts loading and unloading on a line of its own, in the total", () => {
+    const split = energySplit(energy({ load_wh: 80, cards: [] }))!;
+    expect(split).toMatchObject({ attributed: 30, idle: 90, load: 80, total: 200, attributedPct: 15, loadPct: 40 });
+  });
+  it("reads a giq from before the load line as no load", () => {
+    expect(energySplit(energy({}))).toMatchObject({ load: 0, loadPct: 0 });
+  });
   it("has no idle line or share for one app, and none for an empty window", () => {
-    expect(energySplit(energy({ idle_wh: null, cards: [] }))).toMatchObject({ idle: null, total: null, attributedPct: null });
+    expect(energySplit(energy({ idle_wh: null, cards: [] }))).toMatchObject({ idle: null, load: null, total: null, attributedPct: null });
     expect(energySplit(energy({ attributed_wh: 0, idle_wh: 0, cards: [] }))!.attributedPct).toBeNull();
     expect(energySplit(undefined)).toBeNull();
   });

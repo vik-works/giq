@@ -138,6 +138,7 @@ The six domain terms are ADR-003's; use them in no other sense.
 | GPU time | GPU-Zeit | run time split among jobs sharing a card (ADR-006) |
 | energy | Energie | in Wh / kWh |
 | idle and residency (energy) | Leerlauf und Vorhaltung | the cards' energy no job drew |
+| loading and unloading (energy) | Laden und Entladen | instances starting and stopping; charged to no app |
 | estimate (energy) | geschätzt | from power samples, not a card's counter |
 
 ## Apps

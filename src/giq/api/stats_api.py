@@ -340,16 +340,24 @@ async def stats_usage(
 
 
 async def _energy_split(lo, hi, gpu, app, by_app) -> dict:
-    """Attributed energy per card and the idle/residency line (ADR-006 D5).
+    """Attributed energy per card, the idle/residency line and the
+    loading/unloading line (ADR-006 D5).
 
-    Idle energy belongs to nobody, so a view restricted to one app has none.
+    Idle and load energy belong to nobody, so a view restricted to one app
+    has neither.
     Its hours are whole hours: a range that starts or ends mid-hour counts
     the idle energy of the hours it touches.
     """
     attributed = sum(r[10] or 0.0 for r in by_app)
     estimated = any(r[11] for r in by_app)
     if app:
-        return {"attributed_wh": attributed, "idle_wh": None, "estimated": estimated, "cards": []}
+        return {
+            "attributed_wh": attributed,
+            "idle_wh": None,
+            "load_wh": None,
+            "estimated": estimated,
+            "cards": [],
+        }
     where, params = "hour >= ?", [lo // 3600 * 3600]
     if hi is not None:
         where += " AND hour < ?"
@@ -358,7 +366,8 @@ async def _energy_split(lo, hi, gpu, app, by_app) -> dict:
         where += " AND gpu_uuid = ?"
         params.append(gpu)
     idle = await get_stats().fetch(
-        f"SELECT gpu_uuid, SUM(idle_wh), MAX(estimated) FROM card_energy WHERE {where}"
+        f"SELECT gpu_uuid, SUM(idle_wh), SUM(load_wh), MAX(estimated) FROM card_energy"
+        f" WHERE {where}"
         " GROUP BY gpu_uuid",
         tuple(params),
     )
@@ -374,16 +383,22 @@ async def _energy_split(lo, hi, gpu, app, by_app) -> dict:
         tuple(jparams),
     )
     cards: dict[str, dict] = {}
+
+    def card(uuid):
+        return cards.setdefault(
+            uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0, "load_wh": 0.0}
+        )
+
     for uuid, wh in per_card:
-        cards.setdefault(uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0})
-        cards[uuid]["attributed_wh"] = wh or 0.0
-    for uuid, wh, est in idle:
-        cards.setdefault(uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0})
-        cards[uuid]["idle_wh"] = wh or 0.0
+        card(uuid)["attributed_wh"] = wh or 0.0
+    for uuid, wh, load, est in idle:
+        card(uuid)["idle_wh"] = wh or 0.0
+        card(uuid)["load_wh"] = load or 0.0
         estimated = estimated or bool(est)
     return {
         "attributed_wh": attributed,
         "idle_wh": sum(c["idle_wh"] for c in cards.values()),
+        "load_wh": sum(c["load_wh"] for c in cards.values()),
         "estimated": estimated,
         "cards": sorted(cards.values(), key=lambda c: c["gpu_uuid"] or ""),
     }

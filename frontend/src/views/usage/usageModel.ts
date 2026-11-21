@@ -288,6 +288,7 @@ export interface CardEnergy {
   gpu_uuid: string | null;
   attributed: number;
   idle: number;
+  load: number;
   total: number;
 }
 
@@ -295,33 +296,42 @@ export interface EnergySplit {
   attributed: number;
   /** Null when filtered to one app: idle energy belongs to nobody. */
   idle: number | null;
-  /** Attributed plus idle; null with idle. */
+  /** Loading and unloading instances; null with idle, for the same reason. */
+  load: number | null;
+  /** Attributed, idle and load; null with idle. */
   total: number | null;
   /** The attributed share of the total, 0–100; null without a total or with a zero one. */
   attributedPct: number | null;
+  /** The load share of the total, 0–100; null like attributedPct. */
+  loadPct: number | null;
   estimated: boolean;
   /** Per card, only when there is more than one: with one card it repeats the totals. */
   cards: CardEnergy[];
 }
 
-/** What the cards drew in the window: what jobs did, and the idle/residency line. */
+/** What the cards drew in the window: what jobs did, the idle/residency line
+    and the loading/unloading line. */
 export function energySplit(e: UsageEnergy | undefined): EnergySplit | null {
   if (!e) return null;
-  const total = e.idle_wh == null ? null : e.attributed_wh + e.idle_wh;
+  const load = e.idle_wh == null ? null : (e.load_wh ?? 0);
+  const total = e.idle_wh == null ? null : e.attributed_wh + e.idle_wh + (load ?? 0);
   const cards =
     e.cards.length > 1
       ? e.cards.map((c) => ({
           gpu_uuid: c.gpu_uuid,
           attributed: c.attributed_wh,
           idle: c.idle_wh,
-          total: c.attributed_wh + c.idle_wh,
+          load: c.load_wh ?? 0,
+          total: c.attributed_wh + c.idle_wh + (c.load_wh ?? 0),
         }))
       : [];
   return {
     attributed: e.attributed_wh,
     idle: e.idle_wh,
+    load,
     total,
     attributedPct: total ? (e.attributed_wh / total) * 100 : null,
+    loadPct: total ? ((load ?? 0) / total) * 100 : null,
     estimated: e.estimated,
     cards,
   };

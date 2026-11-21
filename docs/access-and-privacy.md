@@ -17,7 +17,7 @@ What is persisted:
 - `data/stats.db` — timestamps, modality, recipe, status, queue wait, duration,
   task count, token counts in/out, the card it ran on with its share of that
   card's time and energy, and the [app](#apps) the job is counted under; per
-  card and hour, the energy drawn with no job running. The OpenAI `user` field is not recorded. There is no column a prompt could go
+  card and hour, the energy drawn with no job running and while instances load and unload. The OpenAI `user` field is not recorded. There is no column a prompt could go
   in, and a test asserts that.
 - The in-flight log (`GIQ_INFLIGHT_LOG`) — one line per job start
   and end, so a hard power cut can be traced to the job that was running. It

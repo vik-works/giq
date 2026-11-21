@@ -584,14 +584,17 @@ export interface UsageAppRow {
   energy_estimated: boolean;
 }
 
-/** /stats/usage `energy`: what jobs drew, and the idle/residency line nobody did. */
+/** /stats/usage `energy`: what jobs drew, and the two lines nobody did:
+    idle/residency and loading/unloading instances. */
 export interface UsageEnergy {
   attributed_wh: number;
   /** Null when filtered to one app: idle energy belongs to nobody. */
   idle_wh: number | null;
+  /** Null when filtered to one app, like idle; absent from an older giq. */
+  load_wh?: number | null;
   estimated: boolean;
   /** Per card; empty when filtered to one app. */
-  cards: { gpu_uuid: string | null; attributed_wh: number; idle_wh: number }[];
+  cards: { gpu_uuid: string | null; attributed_wh: number; idle_wh: number; load_wh?: number }[];
 }
 
 /** GET /stats/usage?period=&gpu=&since=&until=&app= */

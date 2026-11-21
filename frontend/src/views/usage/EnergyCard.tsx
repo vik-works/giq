@@ -11,9 +11,10 @@ import { cardNameFor, energySplit } from "./usageModel";
 import "./EnergyCard.css";
 
 /* What the cards drew in the window, in two parts (ADR-006 D5): what jobs
-   drew, split among the jobs that ran at the same time, and the idle and
-   residency line, which belongs to nobody. Filtered to one app there is no
-   idle line, and the card says why instead of showing a zero. One bar for
+   drew, split among the jobs that ran at the same time, and two lines that
+   belong to nobody: idle and residency, and loading and unloading
+   instances. Filtered to one app there are neither, and the card says why
+   instead of showing a zero. One bar for
    the split; a table per card only when there is more than one card, as
    with one it would repeat the bar. */
 export function EnergyCard({ energy, eras }: { energy: UsageEnergy | undefined; eras: GpuEra[] | undefined }) {
@@ -55,9 +56,11 @@ export function EnergyCard({ energy, eras }: { energy: UsageEnergy | undefined; 
             aria-label={t("energy.barAria", {
               attributed: f.energy(split.attributed),
               idle: f.energy(split.idle),
+              load: f.energy(split.load),
             })}
           >
             <span className="us-en-bar-jobs" style={{ width: `${split.attributedPct ?? 0}%` }} />
+            <span className="us-en-bar-load" style={{ width: `${split.loadPct ?? 0}%` }} />
           </div>
           <div className="us-en-legend">
             <div className="us-en-figure">
@@ -72,6 +75,11 @@ export function EnergyCard({ energy, eras }: { energy: UsageEnergy | undefined; 
               <span className="us-en-value">{f.energy(split.idle)}</span>
               <span className="us-en-label">{t("energy.idle")}</span>
             </div>
+            <div className="us-en-figure" title={t("energy.loadTitle")}>
+              <span className="us-en-swatch us-en-swatch-load" aria-hidden />
+              <span className="us-en-value">{f.energy(split.load)}</span>
+              <span className="us-en-label">{t("energy.load")}</span>
+            </div>
             <div className="us-en-figure">
               <span className="us-en-value">{f.energy(split.total)}</span>
               <span className="us-en-label">{t("energy.total")}</span>
@@ -85,6 +93,7 @@ export function EnergyCard({ energy, eras }: { energy: UsageEnergy | undefined; 
                     <th>{t("energy.card")}</th>
                     <th className="num">{t("energy.attributed")}</th>
                     <th className="num">{t("energy.idleShort")}</th>
+                    <th className="num">{t("energy.loadShort")}</th>
                     <th className="num">{t("energy.totalShort")}</th>
                   </tr>
                 </thead>
@@ -94,6 +103,7 @@ export function EnergyCard({ energy, eras }: { energy: UsageEnergy | undefined; 
                       <td title={c.gpu_uuid ?? undefined}>{name(c.gpu_uuid)}</td>
                       <td className="num">{f.energy(c.attributed)}</td>
                       <td className="num">{f.energy(c.idle)}</td>
+                      <td className="num">{f.energy(c.load)}</td>
                       <td className="num">{f.energy(c.total)}</td>
                     </tr>
                   ))}

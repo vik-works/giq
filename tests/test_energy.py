@@ -161,6 +161,57 @@ def test_an_end_that_overtakes_its_begin_leaves_no_ghost():
 
 
 @pytest.mark.asyncio
+async def test_loading_and_unloading_is_the_load_line_not_idle_or_a_job():
+    card = FakeCard()
+    m = meter_for(card)
+    await m.tick()  # the baseline
+    async with m.housekeeping(CARD):  # a load
+        card.run(36, 200)  # 7200 J
+    card.run(36, 50)  # 1800 J idle
+    j = job()
+    await m.begin(j, CARD)
+    card.run(36, 100)
+    await m.end(j)
+    async with m.housekeeping(CARD):  # the unload
+        card.run(18, 200)  # 3600 J
+
+    [line] = await m.tick()
+
+    assert (round(line.load_wh, 6), round(line.wh, 6), line.measured) == (3.0, 0.5, True)
+    assert j.energy_wh == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_a_load_next_to_a_running_job_shares_the_card_with_it():
+    """A resident loading while a job runs on another instance of the card:
+    the overlap is split, as between two jobs."""
+    card = FakeCard()
+    m = meter_for(card)
+    j = job()
+    await m.begin(j, CARD)
+    async with m.housekeeping(CARD):
+        card.run(10, 720)  # 7200 J, shared
+    await m.end(j)
+
+    [line] = await m.tick()
+    assert line.load_wh == pytest.approx(1.0)
+    assert j.energy_wh == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_a_failing_load_still_ends_its_share():
+    card = FakeCard()
+    m = meter_for(card)
+    with pytest.raises(RuntimeError):
+        async with m.housekeeping(CARD):
+            card.run(36, 100)
+            raise RuntimeError("engine died")
+    assert m._cards[CARD].active == {}
+    [line] = await m.tick()
+    assert line.load_wh == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
 async def test_no_card_no_figures():
     m = meter_for(FakeCard())
     j = job()
@@ -216,7 +267,7 @@ async def test_usage_reports_attributed_and_idle_energy(tmp_path, monkeypatch):
                 "energy_measured": measured,
             }
         )
-    await rec.record_idle([Idle(CARD, 0.5, True)])
+    await rec.record_idle([Idle(CARD, 0.5, True, load_wh=2.0)])
     await rec.record_idle([Idle(CARD, 0.25, True)])  # same hour: added up
 
     everything = await stats_usage(app=None, period="day", gpu=None, since=None, until=None)
@@ -227,13 +278,15 @@ async def test_usage_reports_attributed_and_idle_energy(tmp_path, monkeypatch):
     assert e["attributed_wh"] == pytest.approx(3.0)
     assert e["idle_wh"] == pytest.approx(0.75)
     assert e["estimated"] is True  # j2 was an estimate
-    assert e["cards"] == [{"gpu_uuid": CARD, "attributed_wh": 3.0, "idle_wh": 0.75}]
+    assert e["load_wh"] == pytest.approx(2.0)
+    assert e["cards"] == [{"gpu_uuid": CARD, "attributed_wh": 3.0, "idle_wh": 0.75, "load_wh": 2.0}]
     by_app = {r["app"]: r for r in everything["apps"]}
     assert by_app["kompost"]["energy_wh"] == 2.0
     assert by_app["kompost"]["energy_estimated"] is False
     assert everything["totals"]["energy_wh"] == pytest.approx(3.0)
     # idle belongs to nobody, so one app's view has none
     assert one_app["energy"]["idle_wh"] is None
+    assert one_app["energy"]["load_wh"] is None
     assert one_app["energy"]["attributed_wh"] == pytest.approx(2.0)
 
 
@@ -257,3 +310,24 @@ async def test_a_job_records_the_card_it_ran_on(tmp_path):
     rows = rec.query("SELECT job_id, gpu_uuid, energy_wh, energy_measured FROM jobs ORDER BY id")
     rec.close()
     assert rows == [("a", CARD, 0.5, 1), ("b", "GPU-primary", None, None)]
+
+
+def test_a_stats_db_from_before_the_load_line_gains_it(tmp_path):
+    import sqlite3
+
+    from giq.stats import StatsRecorder
+
+    db = tmp_path / "old.db"
+    old = sqlite3.connect(db)
+    old.execute(
+        "CREATE TABLE card_energy (hour REAL NOT NULL, gpu_uuid TEXT NOT NULL,"
+        " idle_wh REAL NOT NULL, estimated INTEGER NOT NULL, PRIMARY KEY (hour, gpu_uuid))"
+    )
+    old.execute("INSERT INTO card_energy VALUES (0, ?, 1.5, 0)", (CARD,))
+    old.commit()
+    old.close()
+
+    rec = StatsRecorder(db_path=db)
+    rows = rec.query("SELECT idle_wh, load_wh FROM card_energy")
+    rec.close()
+    assert rows == [(1.5, 0.0)]

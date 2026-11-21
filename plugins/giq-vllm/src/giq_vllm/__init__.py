@@ -20,7 +20,7 @@ from typing import Any
 from giq.paths import env_python
 from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Plugin
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 
 def _vllm(ctx: AdapterContext):

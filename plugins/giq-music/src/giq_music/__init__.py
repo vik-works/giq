@@ -18,7 +18,7 @@ from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Pl
 from giq.plugins import curated_ui
 from giq_music.params import AceStepParams
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 
 def _music(ctx: AdapterContext):

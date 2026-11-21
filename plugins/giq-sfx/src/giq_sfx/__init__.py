@@ -19,7 +19,7 @@ from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Pl
 from giq.plugins import curated_ui
 from giq_sfx.params import MossSfxParams
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 
 def _sfx(ctx: AdapterContext):

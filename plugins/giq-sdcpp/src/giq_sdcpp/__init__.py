@@ -18,7 +18,7 @@ from giq.plugin import API_VERSION, AdapterContext, Binary, Engine, Modality, Pl
 from giq.plugins import curated_ui
 from giq_sdcpp.params import SdCppParams
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 _IMAGE_PARTS = frozenset({"diffusion", "text_encoder", "vae", "lora", "llm_vision", "lora_camera"})
 

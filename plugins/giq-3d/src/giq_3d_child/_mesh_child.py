@@ -42,6 +42,16 @@ upright and squared to the axes. Either way it is exported as GLB by
   ``full``            Pixal3D's own export: the generated mesh simplified to
                       ``faces``, base colour, metallic and roughness only.
 
+A trellis2 recipe does it in two stages, which a task may take apart.
+``texture: false`` stops after the shape: no texture latent, no unwrap, no
+bake, and the GLB is geometry only (``full``, the default for a shape, or
+the ``game`` cage), returned with the shape latent (``shape_b64``, see
+``shape_latent``). A task that carries ``mesh_b64`` is a paint
+(``mesh2texture``): the texture latent is sampled for a mesh the client
+brings, on the latent it hands back or on its mesh encoded afresh, and
+baked onto that mesh's own vertices and faces (see ``paint``). The default
+task is the two stages in one, as TRELLIS.2's own ``run`` composes them.
+
 A recipe that carries a segmenter also takes ``parts``: the asset is cut
 into the rigid pieces it is made of, and the GLB holds one mesh a piece,
 each a game-ready export of its own (see ``_parts``). What moves and how is
@@ -92,6 +102,23 @@ MAX_TOKENS = 49152
 # The turn Pixal3D gives its export so the asset faces the viewer it was drawn for.
 ROTATION = ((-1, 0, 0, 0), (0, 0, -1, 0), (0, -1, 0, 0), (0, 0, 0, 1))
 MAX_IMAGE_BYTES = 40 * 1024 * 1024
+# A mesh to paint: what mesh2rig takes, which fits the parent-child pipe.
+MAX_MESH_BYTES = 64 * 1024 * 1024
+# What a paint is baked at when the task does not say.
+PAINT_TEXTURE_SIZE = 2048
+# Keys of an image2mesh task that mean nothing to a paint, which keeps the
+# mesh's own faces and makes no export of its own.
+NOT_PAINTS = (
+    "mode",
+    "faces",
+    "close",
+    "shell",
+    "parts",
+    "part_seeds",
+    "texture",
+    "fov",
+    "views_b64",
+)
 # How many times a segmentation is drawn when the task does not say, and
 # the most it may ask for: each is about 10 s, and past a handful the cuts
 # repeat one another.
@@ -141,7 +168,12 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
             raise ValueError("task needs an 'image_b64' of the object")
         data = _picture(task["image_b64"], "'image_b64'")
 
-    mode = task.get("mode", "game")
+    texture = task.get("texture", True)
+    if not isinstance(texture, bool):
+        raise ValueError("'texture' is true or false")
+    # A shape is judged by its geometry, so a shape-only task is the
+    # generated mesh unless it asks for the cage.
+    mode = task.get("mode", "game" if texture else "full")
     if mode not in MODES:
         raise ValueError(f"'mode' must be one of {', '.join(MODES)}, got {mode!r}")
     default, low, high = FACES[mode]
@@ -149,6 +181,8 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
     if not low <= faces <= high:
         raise ValueError(f"'faces' must be {low}-{high} for a {mode} export, got {faces}")
     size = task.get("texture_size")
+    if not texture and size is not None:
+        raise ValueError("'texture_size' is a painted export's: a shape has no texture")
     size = TEXTURE_SIZE[mode] if size is None else _integer(size, "texture_size")
     if size not in TEXTURE_SIZES:
         raise ValueError(f"'texture_size' must be one of {TEXTURE_SIZES}, got {size}")
@@ -173,21 +207,69 @@ def task_inputs(task: dict, multi: bool = False) -> dict:
         raise ValueError("'parts' is true or false")
     if parts and mode != "game":
         raise ValueError("'parts' is a game export's: each piece is a low-poly cage of its own")
+    if parts and not texture:
+        raise ValueError("'parts' are painted pieces: a shape-only task takes no 'parts'")
     seeds = task.get("part_seeds")
     seeds = PART_SEEDS if seeds is None else _integer(seeds, "part_seeds")
     if not 1 <= seeds <= MAX_PART_SEEDS:
         raise ValueError(f"'part_seeds' must be 1-{MAX_PART_SEEDS}, got {seeds}")
     return {
+        "texture": texture,
         "parts": parts,
         "part_seeds": seeds,
         "views" if multi else "image": data,
         "mode": mode,
         "faces": faces,
-        "texture_size": size,
+        "texture_size": size if texture else None,
         "close": close,
         "shell": shell,
         "seed": seed,
         "fov": fov,
+    }
+
+
+def paint_inputs(task: dict) -> dict:
+    """A paint task's request, checked. Raises ValueError naming the field that is wrong.
+
+    The mesh and the shape are only decoded from base64 here; whether they
+    are a mesh and a shape this recipe made is the paint's to find out.
+    """
+    from giq_3d_child import shape_latent
+
+    mesh = task.get("mesh_b64")
+    if not isinstance(mesh, str) or not mesh:
+        raise ValueError("a paint needs a 'mesh_b64': the mesh to paint, as GLB or OBJ")
+    try:
+        mesh = base64.b64decode(mesh.split(",", 1)[-1], validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError("'mesh_b64' is not base64") from None
+    if len(mesh) > MAX_MESH_BYTES:
+        raise ValueError(f"'mesh_b64' is larger than {MAX_MESH_BYTES // 2**20} MB")
+    if task.get("image_b64") is None or task.get("image_b64") == "":
+        raise ValueError("a paint needs an 'image_b64': the picture to paint the mesh from")
+    image = _picture(task["image_b64"], "'image_b64'")
+    for key in NOT_PAINTS:
+        if task.get(key) is not None:
+            raise ValueError(f"'{key}' is image2mesh's: a paint keeps the mesh it is given")
+    shape = task.get("shape_b64")
+    shape = None if shape is None else shape_latent.decode(shape)
+    size = task.get("texture_size")
+    size = PAINT_TEXTURE_SIZE if size is None else _integer(size, "texture_size")
+    if size not in TEXTURE_SIZES:
+        raise ValueError(f"'texture_size' must be one of {TEXTURE_SIZES}, got {size}")
+    seed = 42 if task.get("seed") is None else _integer(task["seed"], "seed")
+    if not 0 <= seed < 2**32:
+        raise ValueError("'seed' must be 0 to 4294967295")
+    unwrap = task.get("unwrap", False)
+    if not isinstance(unwrap, bool):
+        raise ValueError("'unwrap' is true or false")
+    return {
+        "mesh": mesh,
+        "image": image,
+        "shape": shape,
+        "texture_size": size,
+        "seed": seed,
+        "unwrap": unwrap,
     }
 
 
@@ -423,20 +505,336 @@ def _generate_multi(px, pipeline, args, inputs: dict):
     )
 
 
+def _trellis2_shape(pipeline, args, picture, seed: int):
+    """TRELLIS.2's first stage: the sparse structure and the shape latent.
+
+    The steps and their order are those of the pipeline's own ``run`` for a
+    cascade, so a seed draws the same shape whether the texture follows in
+    the same task or not. Returns the picture's 1024 conditioning (the
+    texture stage's), the shape latent and the resolution it decodes at,
+    which the cascade lowers when the object has more tokens than it takes.
+    """
+    import torch
+
+    models = pipeline.models
+    with torch.no_grad():
+        image = pipeline.preprocess_image(picture)
+        torch.manual_seed(seed)
+        cond_512 = pipeline.get_cond([image], 512)
+        cond_1024 = pipeline.get_cond([image], 1024)
+        coords = pipeline.sample_sparse_structure(cond_512, 32, 1, {})
+        shape, resolution = pipeline.sample_shape_slat_cascade(
+            cond_512,
+            cond_1024,
+            models["shape_slat_flow_model_512"],
+            models["shape_slat_flow_model_1024"],
+            512,
+            args.resolution,
+            coords,
+            {},
+            MAX_TOKENS,
+        )
+    return cond_1024, shape, resolution
+
+
+def _trellis2_texture(pipeline, cond_1024, shape):
+    """TRELLIS.2's second stage: the texture latent, sampled on a shape latent."""
+    import torch
+
+    with torch.no_grad():
+        return pipeline.sample_tex_slat(
+            cond_1024, pipeline.models["tex_slat_flow_model_1024"], shape, {}
+        )
+
+
+def _decoded(pipeline, shape, texture, resolution: int):
+    """The two latents decoded: the mesh with its PBR volume, as ``run`` returns it."""
+    import torch
+
+    torch.cuda.empty_cache()
+    with torch.no_grad():
+        return pipeline.decode_latent(shape, texture, resolution)[0]
+
+
 def _generate_trellis2(pipeline, args, inputs: dict):
-    """One picture to TRELLIS.2's mesh. It needs no camera: it does not keep
-    the picture's pose, and stands the object upright in a frame of its own."""
+    """One picture to TRELLIS.2's mesh: both stages, as its own ``run``
+    composes them. It needs no camera: it does not keep the picture's pose,
+    and stands the object upright in a frame of its own."""
     if inputs["fov"] is not None:
         raise ValueError("'fov' is not TRELLIS.2's: it does not model the picture's camera")
-    mesh = pipeline.run(
-        _open(inputs["image"], "'image_b64'"),
+    cond, shape, resolution = _trellis2_shape(
+        pipeline, args, _open(inputs["image"], "'image_b64'"), inputs["seed"]
+    )
+    texture = _trellis2_texture(pipeline, cond, shape)
+    mesh = _decoded(pipeline, shape, texture, resolution)
+    return mesh, mesh.layout, resolution
+
+
+def _decoder_name(args) -> str:
+    """What a shape latent is tied to: the shape decoder the recipe loads,
+    by its checkpoint's name and size, so new weights refuse old shapes."""
+    import json
+
+    with open(os.path.join(args.weights, "pipeline.json")) as f:
+        name = json.load(f)["args"]["models"]["shape_slat_decoder"]
+    path = os.path.join(args.weights, name + ".safetensors")
+    size = os.path.getsize(path) if os.path.exists(path) else 0
+    return f"{name}:{size}"
+
+
+def _shape_only(pipeline, args, task: dict, inputs: dict) -> dict:
+    """The shape and nothing after it: geometry, and the latent to paint it from."""
+    import numpy as np
+    import torch
+    import trimesh
+
+    from giq_3d_child import lowpoly, shape_latent
+
+    if inputs["fov"] is not None:
+        raise ValueError("'fov' is not TRELLIS.2's: it does not model the picture's camera")
+    _cond, shape, resolution = _trellis2_shape(
+        pipeline, args, _open(inputs["image"], "'image_b64'"), inputs["seed"]
+    )
+    with torch.no_grad():
+        meshes, _subs = pipeline.decode_shape_slat(shape, resolution)
+    mesh = meshes[0]
+    # As decode_latent does before an export.
+    mesh.fill_holes()
+    if inputs["mode"] == "game":
+        sv, sf = lowpoly.skin(mesh.vertices.cuda(), inputs["close"], shell=inputs["shell"])
+        v, f = lowpoly.simplify(sv, sf, inputs["faces"])
+    else:
+        v, f = _full_geometry(mesh.vertices, mesh.faces, resolution, inputs["faces"])
+    glb = trimesh.Trimesh(vertices=lowpoly.glb_axes(v), faces=np.asarray(f), process=False)
+    data = glb.export(file_type="glb")
+    assert isinstance(data, bytes)
+    packed = shape_latent.pack(
+        shape.coords[:, 1:].cpu().numpy(),
+        shape.feats.float().cpu().numpy(),
+        recipe=args.model,
+        decoder=_decoder_name(args),
+        resolution=resolution,
         seed=inputs["seed"],
-        pipeline_type=f"{args.resolution}_cascade",
-        max_num_tokens=MAX_TOKENS,
-    )[0]
-    voxel = mesh.voxel_size
-    voxel = float(voxel.flatten()[0]) if hasattr(voxel, "flatten") else float(voxel)
-    return mesh, mesh.layout, int(round(1.0 / voxel))
+    )
+    del meshes, mesh, shape
+    torch.cuda.empty_cache()
+    return {
+        "id": task.get("id", "unknown"),
+        "glb_b64": base64.b64encode(data).decode("ascii"),
+        "format": "glb",
+        "mode": inputs["mode"],
+        "texture": False,
+        "faces": int(len(glb.faces)),
+        "vertices": int(len(glb.vertices)),
+        "seed": inputs["seed"],
+        "shape_b64": shape_latent.encode(packed),
+    }
+
+
+def _full_geometry(vertices, faces, grid: int, target: int):
+    """The stock full export's geometry, without its unwrap and bake: holes
+    filled, remeshed on the generator's grid, simplified to ``target``."""
+    import cumesh
+    import torch
+
+    box = torch.tensor([[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]], device="cuda")
+    mesh = cumesh.CuMesh()
+    mesh.init(vertices.cuda(), faces.cuda())
+    mesh.fill_holes(max_hole_perimeter=3e-2)
+    vertices, faces = mesh.read()
+    bvh = cumesh.cuBVH(vertices, faces)
+    band = 1
+    mesh.init(
+        *cumesh.remeshing.remesh_narrow_band_dc(
+            vertices,
+            faces,
+            center=box.mean(dim=0),
+            scale=(grid + 3 * band) / grid * float((box[1] - box[0]).max()),
+            resolution=grid,
+            band=band,
+            project_back=0,
+            verbose=False,
+            bvh=bvh,
+        )
+    )
+    mesh.simplify(target, verbose=False)
+    vertices, faces = mesh.read()
+    return vertices.cpu().numpy(), faces.cpu().numpy()
+
+
+_texturer: list = []
+
+
+def _texturing(pipeline, args):
+    """TRELLIS.2's texturing pipeline on the generator's own models.
+
+    It wants a shape encoder and the texture flow models and decoder the
+    generator already holds; only the encoder (0.7 GB) is loaded, on first
+    use, and the rest is shared rather than loaded a second time.
+    """
+    if _texturer:
+        return _texturer[0]
+    import json
+
+    from trellis2 import models
+    from trellis2.pipelines import Trellis2TexturingPipeline
+
+    config = os.path.join(args.weights, "texturing_pipeline.json")
+    if not os.path.isfile(config):
+        raise FileNotFoundError(f"the texturing pipeline's config is missing: {config}")
+    with open(config) as f:
+        names = json.load(f)["args"]["models"]
+    shared = ("tex_slat_decoder", "tex_slat_flow_model_512", "tex_slat_flow_model_1024")
+    texturer = Trellis2TexturingPipeline(
+        models={
+            "shape_slat_encoder": models.from_pretrained(
+                os.path.join(args.weights, names["shape_slat_encoder"])
+            ),
+            **{name: pipeline.models[name] for name in shared},
+        },
+        tex_slat_sampler=pipeline.tex_slat_sampler,
+        tex_slat_sampler_params=pipeline.tex_slat_sampler_params,
+        shape_slat_normalization=pipeline.shape_slat_normalization,
+        tex_slat_normalization=pipeline.tex_slat_normalization,
+        image_cond_model=pipeline.image_cond_model,
+        rembg_model=pipeline.rembg_model,
+        low_vram=args.low_vram,
+    )
+    texturer.cuda()
+    _texturer.append(texturer)
+    return texturer
+
+
+# Where a paint's bake runs; giq's suite runs the wrapper on the CPU.
+DEVICE = "cuda"
+# The PBR channels TRELLIS.2's texture decoder writes, in its order.
+PBR_LAYOUT = {
+    "base_color": slice(0, 3),
+    "metallic": slice(3, 4),
+    "roughness": slice(4, 5),
+    "alpha": slice(5, 6),
+}
+
+
+def _paint(models, args, task: dict) -> dict:
+    """A mesh the client brings, painted from a picture (see ``paint``).
+
+    Everything but the model is here: the request, the mesh read and
+    checked, the bake onto its own vertices and the GLB. The model is
+    ``_sampler``'s.
+    """
+    import numpy as np
+    import torch
+
+    from giq_3d_child import paint, shape_latent
+
+    if args.pipeline != "trellis2":
+        raise ValueError("painting a mesh is a trellis2 recipe's: Pixal3D has no texturing stage")
+    inputs = paint_inputs(task)
+    mesh = paint.read(inputs["mesh"])
+    shape = None
+    if inputs["shape"] is not None:
+        # Before the model runs: a stale shape is the client's to make again.
+        shape = shape_latent.unpack(inputs["shape"], recipe=args.model, decoder=_decoder_name(args))
+    picture = _open(inputs["image"], "'image_b64'")
+    frame, sample = _sampler(models, args, mesh, picture, shape, inputs["seed"])
+    glb, info = paint.paint(
+        mesh,
+        frame,
+        inputs["texture_size"],
+        sample,
+        PBR_LAYOUT,
+        unwrap=inputs["unwrap"],
+        device=DEVICE,
+    )
+    data = glb.export(file_type="glb", extension_webp=True)
+    torch.cuda.empty_cache()
+    return {
+        "id": task.get("id", "unknown"),
+        "glb_b64": base64.b64encode(data).decode("ascii"),
+        "format": "glb",
+        "faces": int(len(glb.faces)),
+        "vertices": int(len(np.asarray(glb.vertices))),
+        "texture_size": inputs["texture_size"],
+        "seed": inputs["seed"],
+        "shape": "given" if shape is not None else "encoded",
+        **info,
+    }
+
+
+def _sampler(models, args, mesh, picture, shape, seed: int):
+    """The model's half of a paint: the frame the mesh is painted in, and
+    what colour lies at a point of it (see ``paint.paint``).
+
+    Given a shape latent, the texture is sampled on it and decoded with the
+    generated surface, and each texel reads what lies behind it there, its
+    normal included, as the game export bakes. Without one, the mesh itself
+    is encoded into a shape latent first (TRELLIS.2's texturing pipeline),
+    and each texel reads the texture where it is.
+    """
+    import torch
+
+    from giq_3d_child import lowpoly, paint
+
+    _px, pipeline = models
+    if shape is not None:
+        from trellis2.modules.sparse import SparseTensor
+
+        head, coords, feats = shape
+        latent = SparseTensor(
+            feats=torch.from_numpy(feats).cuda(),
+            coords=torch.cat(
+                [torch.zeros(len(coords), 1, dtype=torch.int32), torch.from_numpy(coords)], 1
+            ).cuda(),
+        )
+        with torch.no_grad():
+            cond = pipeline.get_cond([pipeline.preprocess_image(picture)], 1024)
+        torch.manual_seed(seed)
+        texture = _trellis2_texture(pipeline, cond, latent)
+        full = _decoded(pipeline, latent, texture, head["resolution"])
+        grid = head["resolution"]
+        aabb = torch.tensor([[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]], device="cuda")
+        high_v, high_f = full.vertices.cuda(), full.faces.cuda()
+        attrs, coords = full.attrs.cuda(), full.coords.cuda()
+
+        def behind(P, Ns):
+            return lowpoly.lookup(high_v, high_f, attrs, coords, grid, aabb, P, Ns)
+
+        return "generator", behind
+
+    texturer = _texturing(pipeline, args)
+    canonical = paint.to_model(mesh.vertices, "canonical")
+    with torch.no_grad():
+        cond = texturer.get_cond([texturer.preprocess_image(picture)], 1024)
+        torch.manual_seed(seed)
+        encoded = texturer.encode_shape_slat(_Shape(canonical, mesh.faces), resolution=1024)
+        texture = texturer.sample_tex_slat(
+            cond, texturer.models["tex_slat_flow_model_1024"], encoded, {}
+        )
+        voxels = texturer.decode_tex_slat(texture)
+
+    from flex_gemm.ops.grid_sample import grid_sample_3d
+
+    def at(P, Ns):
+        # The texture voxels sit on the mesh's own surface: read them where
+        # each texel is, as upstream's texturing pipeline does.
+        values = grid_sample_3d(
+            voxels.feats,
+            voxels.coords,
+            shape=torch.Size([*voxels.shape, *voxels.spatial_shape]),
+            grid=((P + 0.5) * 1024).reshape(1, -1, 3),
+            mode="trilinear",
+        )
+        return values.reshape(-1, voxels.feats.shape[1]), None
+
+    return "canonical", at
+
+
+class _Shape:
+    """What the texturing pipeline's encoder reads of a mesh: its arrays."""
+
+    def __init__(self, vertices, faces):
+        self.vertices, self.faces = vertices, faces
 
 
 _segmenter: list = []
@@ -555,13 +953,18 @@ def _parts(pipeline, args, mesh, layout, grid: int, picture, inputs: dict):
 
 
 def _run(models, args, task: dict) -> dict:
+    px, pipeline = models
+    multi = args.views == "multi"
+    inputs = task_inputs(task, multi)
+    if not inputs["texture"]:
+        if args.pipeline != "trellis2":
+            raise ValueError("'texture': false is a trellis2 recipe's: Pixal3D runs as one stage")
+        return _shape_only(pipeline, args, task, inputs)
+
     import numpy as np
     import o_voxel
     import torch
 
-    px, pipeline = models
-    multi = args.views == "multi"
-    inputs = task_inputs(task, multi)
     if args.pipeline == "trellis2":
         mesh, layout, grid = _generate_trellis2(pipeline, args, inputs)
         meshes = [mesh]
@@ -628,6 +1031,12 @@ def _run(models, args, task: dict) -> dict:
     return out
 
 
+def handler(task: dict):
+    """What runs a task. One that brings a mesh is a paint (mesh2texture):
+    the job's modality does not reach the child, the task's shape does."""
+    return _paint if "mesh_b64" in task else _run
+
+
 def main() -> None:
     import argparse
 
@@ -661,7 +1070,7 @@ def main() -> None:
         results = []
         for task in tasks:
             try:
-                results.append(_run(models, args, task))
+                results.append(handler(task)(models, args, task))
             except Exception as e:  # noqa: BLE001 — per-task error envelope
                 results.append({"id": task.get("id", "unknown"), "error": str(e)})
         return results

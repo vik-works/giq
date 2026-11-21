@@ -137,4 +137,8 @@ dev = [
     # so a clean checkout could not lint or type-check offline.
     "ruff>=0.15.0",
     "ty>=0.0.74",
+    # giq-3d's paint job reads and writes GLBs through trimesh in the engine's
+    # interpreter; its tests run the same code here, on the CPU, to check that
+    # a mesh comes back with the vertices and faces it went in with.
+    "trimesh>=4.6",
 ]

@@ -55,6 +55,11 @@ class Modality(StrEnum):
     # a mesh as GLB in, the same mesh skinned to a skeleton the model
     # generated out. See giq_rig.adapter.RigResult.
     mesh2rig = "mesh2rig"
+    # A mesh painted from a picture (TRELLIS.2's texture stage, in the
+    # image2mesh child of a trellis2 recipe): a mesh as GLB or OBJ and a
+    # picture in, the same vertices and faces with a PBR texture out. See
+    # giq_3d.adapter.MeshResult.
+    mesh2texture = "mesh2texture"
 
 
 class JobStatus(StrEnum):

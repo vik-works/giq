@@ -6,7 +6,8 @@
 
 Pixal3D on its own interpreter (envs/pixal3d: its torch, and the compiled
 extensions `giq prepare pixal3d` builds) in a child process; the image2mesh
-modality; the sandbox panel; the built-in recipe. Not part of giq-defaults: the engine takes a
+modality, and mesh2texture, which paints a mesh the client brings; the
+sandbox panel; the built-in recipes. Not part of giq-defaults: the engine takes a
 build step, and its encoder comes under Meta's DINOv3 licence, which is the
 operator's to accept.
 """
@@ -80,9 +81,22 @@ def _mesh_plugin() -> Plugin:
                 parts=frozenset({"encoder", "camera", "matting", "structure", "segmenter"}),
                 payload_keys=("image_b64", "views_b64"),
             ),
+            # A mesh the client brings, painted from a picture: TRELLIS.2's
+            # texture stage on its geometry, the vertices and faces kept. It
+            # runs in a trellis2 recipe's image2mesh child, so its parts are
+            # that child's.
+            Modality(
+                "mesh2texture",
+                label="Mesh to texture",
+                icon="cube",
+                job_timeout=900.0,
+                parts=frozenset({"encoder", "matting", "structure", "segmenter"}),
+                payload_keys=("mesh_b64", "image_b64", "shape_b64"),
+            ),
         ),
         adapters={
             ("pixal3d", "image2mesh"): _mesh,
+            ("pixal3d", "mesh2texture"): _mesh,
         },
         recipes=Path(__file__).parent / "recipes",
         ui=curated_ui("giq-3d"),

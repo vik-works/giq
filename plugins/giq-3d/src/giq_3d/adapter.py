@@ -11,6 +11,10 @@ and the background remover from weights.parts (encoder, camera, matting).
 Per task it turns one image, or four views round the object for a recipe
 with ``views: multi``, into a mesh and exports it as GLB: at full detail, or
 as a game-ready low-poly asset with a normal map (``mode``, see the child).
+A trellis2 recipe also serves ``mesh2texture`` from the same child: a mesh
+the client brings, painted from a picture. A recipe's modalities share one
+instance, so painting loads nothing but the shape encoder beside the
+generator.
 
 Pixal3D is a checkout, not a package: its code is imported from the source
 directory ``giq prepare pixal3d`` cloned, which the child is told about.
@@ -81,6 +85,18 @@ class MeshResult(BaseModel):
     # of the surface, and which of them touch, how much and where.
     parts: list[dict] | None = None
     contacts: list[dict] | None = None
+    # A shape-only export (`texture: false`): the GLB is geometry only, and
+    # `shape_b64` the latent a paint job may be handed back to paint this
+    # very shape (giq_3d_child.shape_latent).
+    texture: bool | None = None
+    shape_b64: str | None = None
+    # A paint (mesh2texture): where its shape came from (`given`, the
+    # shape_b64 it was handed; `encoded`, its mesh), whether the mesh's UVs
+    # were `kept` or `unwrapped`, and for unwrapped ones which input vertex
+    # each output vertex copies.
+    shape: str | None = None
+    uv: str | None = None
+    vertex_map: list[int] | None = None
     error: str | None = None
 
 

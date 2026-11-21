@@ -61,8 +61,8 @@ changes, so a hand edit takes effect without a restart.
 
 ```yaml
 apps:
-  kompostwars:
-    description: asset pipeline
+  photo-sorter:
+    description: sorts the photo library
     created: 2026-11-20T10:12:00Z
     key_sha256: 9f2c…
   home-assistant:

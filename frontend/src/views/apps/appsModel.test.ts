@@ -25,7 +25,7 @@ describe("apps", () => {
     expect(isoSeconds("not a date")).toBeNull();
   });
   it("links to the usage view filtered to the app", () => {
-    expect(usageHref("kompost-wars")).toBe("#/usage?app=kompost-wars");
+    expect(usageHref("photo-sorter")).toBe("#/usage?app=photo-sorter");
   });
   it("puts the key where the OpenAI SDKs and curl send it", () => {
     const s = keySnippets("http://rig:8084/", "giq-abc");

@@ -206,7 +206,7 @@ describe("rollupApps", () => {
 
 describe("appFromHash", () => {
   it("reads the app a link filters to", () => {
-    expect(appFromHash("#/usage?app=kompost-wars")).toBe("kompost-wars");
+    expect(appFromHash("#/usage?app=photo-sorter")).toBe("photo-sorter");
     expect(appFromHash("#/usage?app=a%2Fb")).toBe("a/b");
     expect(appFromHash("#/usage")).toBe("");
   });

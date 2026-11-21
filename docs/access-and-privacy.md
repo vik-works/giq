@@ -118,12 +118,12 @@ recipes, when and how much ([ADR-006](ADR-006-apps.md)). It is a label for
 counting, not an identity: no roles, no scopes, no audit trail.
 
 ```bash
-giq apps create kompostwars -d "asset pipeline"   # prints the key, once
+giq apps create photo-sorter -d "sorts the photo library"   # prints the key, once
 giq apps list
-giq apps revoke kompostwars
+giq apps revoke photo-sorter
 ```
 
-or the dashboard's **Apps** page, or `POST /apps {"name": "kompostwars"}`,
+or the dashboard's **Apps** page, or `POST /apps {"name": "photo-sorter"}`,
 whose response is the only place the key appears. giq keeps its SHA-256 in `apps.yaml` (`GIQ_APPS_FILE`, default
 in the state directory, mode 0600) and rereads the file when it changes, so a
 hand edit needs no restart.

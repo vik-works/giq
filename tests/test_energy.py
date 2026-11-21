@@ -250,7 +250,7 @@ async def test_usage_reports_attributed_and_idle_energy(tmp_path, monkeypatch):
     monkeypatch.setattr(stats_mod, "_recorder", StatsRecorder(db_path=tmp_path / "e.db"))
     rec = stats_mod.get_stats()
     now = time.time()
-    for job_id, app, wh, measured in (("j1", "kompost", 2.0, 1), ("j2", "anonymous", 1.0, 0)):
+    for job_id, app, wh, measured in (("j1", "sorter", 2.0, 1), ("j2", "anonymous", 1.0, 0)):
         rec._record_job_sync(
             {
                 "ts": now,
@@ -271,7 +271,7 @@ async def test_usage_reports_attributed_and_idle_energy(tmp_path, monkeypatch):
     await rec.record_idle([Idle(CARD, 0.25, True)])  # same hour: added up
 
     everything = await stats_usage(app=None, period="day", gpu=None, since=None, until=None)
-    one_app = await stats_usage(app="kompost", period="day", gpu=None, since=None, until=None)
+    one_app = await stats_usage(app="sorter", period="day", gpu=None, since=None, until=None)
     rec.close()
 
     e = everything["energy"]
@@ -281,8 +281,8 @@ async def test_usage_reports_attributed_and_idle_energy(tmp_path, monkeypatch):
     assert e["load_wh"] == pytest.approx(2.0)
     assert e["cards"] == [{"gpu_uuid": CARD, "attributed_wh": 3.0, "idle_wh": 0.75, "load_wh": 2.0}]
     by_app = {r["app"]: r for r in everything["apps"]}
-    assert by_app["kompost"]["energy_wh"] == 2.0
-    assert by_app["kompost"]["energy_estimated"] is False
+    assert by_app["sorter"]["energy_wh"] == 2.0
+    assert by_app["sorter"]["energy_estimated"] is False
     assert everything["totals"]["energy_wh"] == pytest.approx(3.0)
     # idle belongs to nobody, so one app's view has none
     assert one_app["energy"]["idle_wh"] is None

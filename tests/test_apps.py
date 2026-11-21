@@ -55,17 +55,17 @@ async def who(headers=None, params=None):
 
 
 def test_a_key_is_shown_once_and_only_its_hash_is_kept(store):
-    app, key = store.create("kompost", "asset pipeline")
+    app, key = store.create("sorter", "sorts the photo library")
 
     assert key.startswith("giq-") and len(key) > 40
     text = store.path.read_text()
     assert key not in text
     assert apps.hash_key(key) in text
     assert oct(os.stat(store.path).st_mode & 0o777) == "0o600"
-    assert store.resolve(key) == "kompost"
+    assert store.resolve(key) == "sorter"
     assert app.public() == {
-        "name": "kompost",
-        "description": "asset pipeline",
+        "name": "sorter",
+        "description": "sorts the photo library",
         "created": app.created,
         "revoked": None,
     }
@@ -131,7 +131,7 @@ async def test_no_key_is_served_as_anonymous(store):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("where", ["bearer", "header", "query"])
 async def test_the_key_is_read_where_keys_already_go(store, where):
-    _, key = store.create("kompost")
+    _, key = store.create("sorter")
     headers, params = {}, {}
     if where == "bearer":
         headers["authorization"] = f"Bearer {key}"  # what the OpenAI SDKs send
@@ -142,13 +142,13 @@ async def test_the_key_is_read_where_keys_already_go(store, where):
 
     r = await who(headers, params)
 
-    assert r.json() == {"app": "kompost"}
-    assert r.headers["x-giq-app"] == "kompost"
+    assert r.json() == {"app": "sorter"}
+    assert r.headers["x-giq-app"] == "sorter"
 
 
 @pytest.mark.asyncio
 async def test_a_mistyped_key_is_served_but_says_so(store):
-    store.create("kompost")
+    store.create("sorter")
     r = await who({"authorization": "Bearer giq-not-the-key"})
     assert r.status_code == 200
     assert r.headers["x-giq-app"] == ANONYMOUS
@@ -162,10 +162,10 @@ def token(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_with_a_token_an_app_key_admits_on_its_own(store, token):
-    _, key = store.create("kompost")
+    _, key = store.create("sorter")
     r = await who({"authorization": f"Bearer {key}"})
     assert r.status_code == 200
-    assert r.json() == {"app": "kompost"}
+    assert r.json() == {"app": "sorter"}
 
 
 @pytest.mark.asyncio
@@ -177,8 +177,8 @@ async def test_with_a_token_the_shared_secret_counts_as_anonymous(store, token):
 
 @pytest.mark.asyncio
 async def test_with_a_token_unknown_and_revoked_keys_are_refused(store, token):
-    _, key = store.create("kompost")
-    store.revoke("kompost")
+    _, key = store.create("sorter")
+    store.revoke("sorter")
     for bad in (key, "giq-not-the-key"):
         r = await who({"authorization": f"Bearer {bad}"})
         assert r.status_code == 401
@@ -207,14 +207,14 @@ async def test_submit_job_stamps_the_requests_app(monkeypatch):
     monkeypatch.setattr(Orchestrator, "_reject_if_disabled", staticmethod(lambda r: None))
     request = JobRequest(modality="llm", model="not-a-recipe", tasks=[{"id": "t", "user": "hi"}])
 
-    token = apps.current_app.set("kompost")
+    token = apps.current_app.set("sorter")
     try:
         await orch.submit_job(request)
     finally:
         apps.current_app.reset(token)
     await orch.submit_job(request)
 
-    assert [j.app for j in added] == ["kompost", ANONYMOUS]
+    assert [j.app for j in added] == ["sorter", ANONYMOUS]
 
 
 # --- the stats --------------------------------------------------------------
@@ -234,19 +234,19 @@ async def test_usage_by_app_keeps_history_from_before_apps_apart(tmp_path, monke
     monkeypatch.setattr(stats_mod, "_recorder", StatsRecorder(db_path=tmp_path / "a.db"))
     rec = stats_mod.get_stats()
     now = time.time()
-    for job_id, app in (("j1", "kompost"), ("j2", "kompost"), ("j3", ANONYMOUS), ("j4", None)):
+    for job_id, app in (("j1", "sorter"), ("j2", "sorter"), ("j3", ANONYMOUS), ("j4", None)):
         _record(
             rec, (now, job_id, "llm", "gemma-4-12b", "completed", 5, 100, 1, None, 10, 2, None, app)
         )
 
     d = await stats_usage(app=None, period="week", gpu=None, since=None, until=None)
-    only = await stats_usage(app="kompost", period="week", gpu=None, since=None, until=None)
+    only = await stats_usage(app="sorter", period="week", gpu=None, since=None, until=None)
     unknown = await stats_usage(app="unknown", period="week", gpu=None, since=None, until=None)
     rec.close()
 
     by_app = {row["app"]: row for row in d["apps"]}
-    assert by_app["kompost"]["jobs"] == 2
-    assert by_app["kompost"]["run_ms"] == 200
+    assert by_app["sorter"]["jobs"] == 2
+    assert by_app["sorter"]["run_ms"] == 200
     assert by_app[ANONYMOUS]["jobs"] == 1
     assert by_app[None]["jobs"] == 1
     assert only["totals"]["jobs"] == 2

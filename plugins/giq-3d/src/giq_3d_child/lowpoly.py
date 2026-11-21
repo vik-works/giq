@@ -236,6 +236,143 @@ def on_triangle(corners: torch.Tensor, point: torch.Tensor) -> torch.Tensor:
     return w / w.sum(1, keepdim=True)
 
 
+def smooth_normals(v: torch.Tensor, f: torch.Tensor) -> torch.Tensor:
+    """Unit vertex normals, each the area-weighted sum of its faces' normals."""
+    fn = torch.linalg.cross(v[f[:, 1]] - v[f[:, 0]], v[f[:, 2]] - v[f[:, 0]])
+    vn = torch.zeros_like(v).index_add_(0, f.reshape(-1), fn.repeat_interleave(3, dim=0))
+    return F.normalize(vn, dim=1)
+
+
+def texels(V, N, UF, UV, size: int):
+    """Which surface point each texel of a ``size`` atlas stands for.
+
+    ``V`` and ``N`` are per UV vertex, ``UF`` the faces over them and ``UV``
+    their atlas coordinates (0..1, v up). Returns the drawn texels' mask
+    [size, size], their triangles, and the point and unit normal there.
+    """
+    pos = torch.cat([UV * 2 - 1, torch.zeros_like(UV[:, :1]), torch.ones_like(UV[:, :1])], dim=1)
+    rast, _ = uvraster.rasterize(None, pos.unsqueeze(0), UF, resolution=[size, size])
+    mask = rast[0, ..., 3] > 0
+    tri = rast[0, ..., 3][mask].long() - 1
+    P = uvraster.interpolate(V.unsqueeze(0), rast, UF)[0][0][mask]
+    Ns = F.normalize(uvraster.interpolate(N.unsqueeze(0), rast, UF)[0][0][mask], dim=1)
+    return mask, tri, P, Ns
+
+
+def tangent_normals(V, UV, UF, tri, Ns, high_normal):
+    """The full mesh's normals in the low surface's tangent space, per texel.
+
+    A normal turned past the horizon of its texel cannot be stored; it is
+    laid just above it.
+    """
+    t, b = tangent_frame(V[UF[tri]], UV[UF[tri]], Ns)
+    return F.normalize(
+        torch.stack(
+            [
+                (high_normal * t).sum(1),
+                (high_normal * b).sum(1),
+                (high_normal * Ns).sum(1).clamp(min=0.05),
+            ],
+            dim=1,
+        ),
+        dim=1,
+    )
+
+
+def glb_axes(x) -> np.ndarray:
+    """Points from the generator's frame (Z up) into the stock export's: swap
+    Y and Z, invert Y, which is glTF's Y up."""
+    x = (x.cpu().numpy() if isinstance(x, torch.Tensor) else np.asarray(x)).copy()
+    x[:, 1], x[:, 2] = x[:, 2].copy(), -x[:, 1].copy()
+    return x
+
+
+def lookup(vertices, faces, attr_volume, coords, grid_size: int, aabb, P, Ns):
+    """What the full mesh holds behind points on a surface over it.
+
+    For each point ``P`` with its outward normal ``Ns``: the point of the
+    full mesh (``vertices``, ``faces``) a ray shot inward from just outside
+    meets first, or the nearest one where the ray finds nothing close; the
+    PBR attributes the generator's volume has there, as the stock export
+    reads them; and the full mesh's normal there, turned to face out.
+    ``aabb`` is the box the volume is read in, a [2, 3] tensor.
+    Returns (attributes [K, C], normals [K, 3]).
+    """
+    import cumesh
+    from flex_gemm.ops.grid_sample import grid_sample_3d
+
+    high = cumesh.CuMesh()
+    high.init(vertices, faces)
+    high.compute_vertex_normals()
+    high_normals = high.read_vertex_normals()
+    bvh = cumesh.cuBVH(vertices, faces)
+    hit, face, depth = bvh.ray_trace(P + Ns * RAY_START, -Ns)
+    found = (face >= 0) & (depth <= RAY_START + RAY_REACH)
+    _, near_face, _ = bvh.unsigned_distance(P, return_uvw=True)
+    face = torch.where(found, face, near_face.long())
+    corner_ids = faces[face].long()
+    corners = vertices[corner_ids]
+    w = on_triangle(corners, torch.where(found.unsqueeze(1), hit, P))
+    Q = (corners * w.unsqueeze(-1)).sum(1)
+    high_normal = F.normalize((high_normals[corner_ids] * w.unsqueeze(-1)).sum(1), dim=1)
+    high_normal = torch.where(
+        (high_normal * Ns).sum(1, keepdim=True) < 0, -high_normal, high_normal
+    )
+
+    grid = torch.tensor([grid_size] * 3, dtype=torch.int32, device=P.device)
+    voxel = (aabb[1] - aabb[0]) / grid
+    attrs = grid_sample_3d(
+        attr_volume,
+        torch.cat([torch.zeros_like(coords[:, :1]), coords], dim=-1),
+        shape=torch.Size([1, attr_volume.shape[1], *grid.tolist()]),
+        grid=((Q - aabb[0]) / voxel).reshape(1, -1, 3),
+        mode="trilinear",
+    ).reshape(-1, attr_volume.shape[1])
+    return attrs, high_normal
+
+
+def textures(attrs, attr_layout: dict, mask, size: int, tangent_normal=None):
+    """The PBR material of a bake: texel values [K, C] at the ``mask``ed
+    texels of a ``size`` square atlas, laid out as ``attr_layout`` says.
+
+    ``tangent_normal`` [K, 3] adds a normal map; without one the material has
+    none, and the surface shades by its own normals.
+    """
+    import cv2
+    from PIL import Image
+    from trimesh.visual.material import PBRMaterial
+
+    def image(values: torch.Tensor, fill: float) -> np.ndarray:
+        """Texel values as an 8-bit image, top row first."""
+        out = torch.full(
+            (size, size, values.shape[1]), float(fill), dtype=torch.float32, device=mask.device
+        )
+        out[mask] = values.float()
+        return (out.flip(0).clamp(0, 1) * 255).round().byte().cpu().numpy()
+
+    def part(name: str) -> torch.Tensor:
+        return attrs[:, attr_layout[name]]
+
+    # Fill the gutters between islands, so filtering at a seam finds colour.
+    gutter = (~mask).flip(0).cpu().numpy().astype(np.uint8)
+    base = cv2.inpaint(image(part("base_color"), 0), gutter, 3, cv2.INPAINT_TELEA)
+    metal = cv2.inpaint(image(part("metallic"), 0), gutter, 1, cv2.INPAINT_TELEA)
+    rough = cv2.inpaint(image(part("roughness"), 0), gutter, 1, cv2.INPAINT_TELEA)
+    normal = None
+    if tangent_normal is not None:
+        normal = cv2.inpaint(image(tangent_normal * 0.5 + 0.5, 0.5), gutter, 3, cv2.INPAINT_TELEA)
+    return PBRMaterial(
+        baseColorTexture=Image.fromarray(base),
+        metallicRoughnessTexture=Image.fromarray(
+            np.stack([np.zeros_like(metal), rough, metal], axis=-1)
+        ),
+        normalTexture=None if normal is None else Image.fromarray(normal),
+        metallicFactor=1.0,
+        roughnessFactor=1.0,
+        doubleSided=False,
+    )
+
+
 def export(
     vertices: torch.Tensor,
     faces: torch.Tensor,
@@ -267,11 +404,8 @@ def export(
     point still reads the voxel it came from. Its skin is cut from points
     on its faces and keeps a shell round them (see ``skin``).
     """
-    import cumesh
-    import cv2
     import trimesh
-    from flex_gemm.ops.grid_sample import grid_sample_3d
-    from PIL import Image
+    from trimesh.visual import TextureVisuals
 
     dev = vertices.device
     size = texture_size
@@ -292,104 +426,18 @@ def export(
     UF, UV = torch.from_numpy(uf).to(dev), torch.from_numpy(uv).to(dev)
 
     # Smooth normals on the welded cage, carried across the UV seams.
-    fn = torch.linalg.cross(
-        cage_v[cage_f[:, 1]] - cage_v[cage_f[:, 0]], cage_v[cage_f[:, 2]] - cage_v[cage_f[:, 0]]
+    V, N = cage_v[vmap_t], smooth_normals(cage_v, cage_f)[vmap_t]
+
+    mask, tri, P, Ns = texels(V, N, UF, UV, size)
+    attrs, high_normal = lookup(vertices, faces, attr_volume, coords, grid_size, aabb, P, Ns)
+    material = textures(
+        attrs, attr_layout, mask, size, tangent_normals(V, UV, UF, tri, Ns, high_normal)
     )
-    vn = torch.zeros_like(cage_v).index_add_(0, cage_f.reshape(-1), fn.repeat_interleave(3, dim=0))
-    V, N = cage_v[vmap_t], F.normalize(vn, dim=1)[vmap_t]
-
-    # Which cage point each texel stands for.
-    pos = torch.cat([UV * 2 - 1, torch.zeros_like(UV[:, :1]), torch.ones_like(UV[:, :1])], dim=1)
-    rast, _ = uvraster.rasterize(None, pos.unsqueeze(0), UF, resolution=[size, size])
-    mask = rast[0, ..., 3] > 0
-    tri = rast[0, ..., 3][mask].long() - 1
-    P = uvraster.interpolate(V.unsqueeze(0), rast, UF)[0][0][mask]
-    Ns = F.normalize(uvraster.interpolate(N.unsqueeze(0), rast, UF)[0][0][mask], dim=1)
-
-    # The point of the full mesh behind it.
-    high = cumesh.CuMesh()
-    high.init(vertices, faces)
-    high.compute_vertex_normals()
-    high_normals = high.read_vertex_normals()
-    bvh = cumesh.cuBVH(vertices, faces)
-    hit, face, depth = bvh.ray_trace(P + Ns * RAY_START, -Ns)
-    found = (face >= 0) & (depth <= RAY_START + RAY_REACH)
-    _, near_face, _ = bvh.unsigned_distance(P, return_uvw=True)
-    face = torch.where(found, face, near_face.long())
-    corner_ids = faces[face].long()
-    corners = vertices[corner_ids]
-    w = on_triangle(corners, torch.where(found.unsqueeze(1), hit, P))
-    Q = (corners * w.unsqueeze(-1)).sum(1)
-    high_normal = F.normalize((high_normals[corner_ids] * w.unsqueeze(-1)).sum(1), dim=1)
-    high_normal = torch.where(
-        (high_normal * Ns).sum(1, keepdim=True) < 0, -high_normal, high_normal
-    )
-
-    # PBR attributes from the generator's volume, as the stock export reads them.
-    grid = torch.tensor([grid_size] * 3, dtype=torch.int32, device=dev)
-    voxel = (aabb[1] - aabb[0]) / grid
-    attrs = grid_sample_3d(
-        attr_volume,
-        torch.cat([torch.zeros_like(coords[:, :1]), coords], dim=-1),
-        shape=torch.Size([1, attr_volume.shape[1], *grid.tolist()]),
-        grid=((Q - aabb[0]) / voxel).reshape(1, -1, 3),
-        mode="trilinear",
-    ).reshape(-1, attr_volume.shape[1])
-
-    # The normal in the cage's tangent space. A normal turned past the
-    # horizon of its texel cannot be stored; it is laid just above it.
-    t, b = tangent_frame(V[UF[tri]], UV[UF[tri]], Ns)
-    tangent_normal = F.normalize(
-        torch.stack(
-            [
-                (high_normal * t).sum(1),
-                (high_normal * b).sum(1),
-                (high_normal * Ns).sum(1).clamp(min=0.05),
-            ],
-            dim=1,
-        ),
-        dim=1,
-    )
-
-    def image(values: torch.Tensor, fill: float) -> np.ndarray:
-        """Texel values as an 8-bit image, top row first."""
-        out = torch.full(
-            (size, size, values.shape[1]), float(fill), dtype=torch.float32, device=dev
-        )
-        out[mask] = values
-        return (out.flip(0).clamp(0, 1) * 255).round().byte().cpu().numpy()
-
-    def part(name: str) -> torch.Tensor:
-        return attrs[:, attr_layout[name]]
-
-    # Fill the gutters between islands, so filtering at a seam finds colour.
-    gutter = (~mask).flip(0).cpu().numpy().astype(np.uint8)
-    base = cv2.inpaint(image(part("base_color"), 0), gutter, 3, cv2.INPAINT_TELEA)
-    metal = cv2.inpaint(image(part("metallic"), 0), gutter, 1, cv2.INPAINT_TELEA)
-    rough = cv2.inpaint(image(part("roughness"), 0), gutter, 1, cv2.INPAINT_TELEA)
-    normal = cv2.inpaint(image(tangent_normal * 0.5 + 0.5, 0.5), gutter, 3, cv2.INPAINT_TELEA)
-
-    material = trimesh.visual.material.PBRMaterial(
-        baseColorTexture=Image.fromarray(base),
-        metallicRoughnessTexture=Image.fromarray(
-            np.stack([np.zeros_like(metal), rough, metal], axis=-1)
-        ),
-        normalTexture=Image.fromarray(normal),
-        metallicFactor=1.0,
-        roughnessFactor=1.0,
-        doubleSided=False,
-    )
-
-    def glb_axes(x: torch.Tensor) -> np.ndarray:
-        # The stock export's axes: swap Y and Z, invert Y.
-        x = x.cpu().numpy().copy()
-        x[:, 1], x[:, 2] = x[:, 2].copy(), -x[:, 1].copy()
-        return x
 
     return trimesh.Trimesh(
         vertices=glb_axes(V / grow + middle),
         faces=UF.cpu().numpy(),
         vertex_normals=glb_axes(N),
-        visual=trimesh.visual.TextureVisuals(uv=UV.cpu().numpy(), material=material),
+        visual=TextureVisuals(uv=UV.cpu().numpy(), material=material),
         process=False,
     )

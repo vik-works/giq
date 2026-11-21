@@ -192,6 +192,7 @@ a fair split, not a meter reading per job.
 - `docs/configuration.md` gains `GIQ_APPS_FILE` and `paths: apps:`.
 - Core gains a dependency on `nvidia-ml-py` for D5's energy counter, with
   the power-sample estimate as the fallback where the counter is missing.
-- D1–D5 and D6's API and CLI are built; the dashboard pages follow.
+- D1–D6 are built: the API, the CLI, and the dashboard's Apps page and
+  by-app Usage.
 - Quotas and rate limits per app become possible on top of this. They are
   not part of this ADR.

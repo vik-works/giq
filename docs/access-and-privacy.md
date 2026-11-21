@@ -123,8 +123,8 @@ giq apps list
 giq apps revoke kompostwars
 ```
 
-or `POST /apps {"name": "kompostwars"}`, whose response is the only place the
-key appears. giq keeps its SHA-256 in `apps.yaml` (`GIQ_APPS_FILE`, default
+or the dashboard's **Apps** page, or `POST /apps {"name": "kompostwars"}`,
+whose response is the only place the key appears. giq keeps its SHA-256 in `apps.yaml` (`GIQ_APPS_FILE`, default
 in the state directory, mode 0600) and rereads the file when it changes, so a
 hand edit needs no restart.
 

@@ -13,6 +13,8 @@ started from that checkout:
     uv run python plugins/giq-3d/scripts/smoke_shape_paint.py \\
         --url http://127.0.0.1:8085 --image character.png --out /tmp/shape-paint
 
+``GIQ_TOKEN`` in the environment is sent as the token, for a giq that has one.
+
 One picture, one seed, one job at a time:
 
   1. ``shape-full``    image2mesh, ``texture: false``: the generated mesh, and its latent
@@ -35,6 +37,7 @@ import argparse
 import base64
 import io
 import json
+import os
 import subprocess
 import threading
 import time
@@ -46,10 +49,14 @@ import numpy as np
 
 def call(url: str, path: str, body: dict | None = None, timeout: float = 1200.0) -> dict:
     data = None if body is None else json.dumps(body).encode()
+    headers = {"Content-Type": "application/json"}
+    # A giq with access.token set asks it of loopback callers too.
+    if os.environ.get("GIQ_TOKEN"):
+        headers["X-Giq-Token"] = os.environ["GIQ_TOKEN"]
     request = urllib.request.Request(
         url.rstrip("/") + path,
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="GET" if body is None else "POST",
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:

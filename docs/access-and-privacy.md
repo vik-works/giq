@@ -143,5 +143,8 @@ OpenAI-compatible server by changing the base URL and the key.
 So with a token set, an app key admits a caller on its own, and admits it to
 exactly what the shared token does, `/apps` included. Every response carries
 `X-Giq-App`, the bucket it was counted under: without a token, that is how a
-mistyped key shows up. Jobs recorded before apps existed have no app and show
+mistyped key shows up, and a key that never reached the client (an
+environment file the process was started without) looks just the same, so
+an app whose usage lands in `anonymous` is worth checking for that first.
+Jobs recorded before apps existed have no app and show
 as `unknown`, never folded into `anonymous`.

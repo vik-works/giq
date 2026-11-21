@@ -326,9 +326,9 @@ curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/jso
   `pixal3d-mv` (Pixal3D's multi-view checkpoints: four views to a mesh);
   from the `giq-3d` plugin, which `giq-defaults` does not install
 - Task: `{id, image_b64 | views_b64[4], mode?, faces?, texture_size?, close?,
-  shell?, seed?, fov?, parts?, part_seeds?}`
+  shell?, seed?, fov?, parts?, part_seeds?, texture?}`
 - Result: `{id, glb_b64, format, mode, faces, vertices, texture_size, seed,
-  parts?, contacts?}`
+  parts?, contacts?, texture?, shape_b64?}`
 - `image_b64` is one picture of the object: PNG, JPEG or WebP, a data URL
   prefix allowed. With an alpha channel the object is what is opaque; without
   one the background is removed first. One object, all of it in frame, on a
@@ -378,6 +378,20 @@ curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/jso
   are laid over one another; more seeds find more cuts, at about 10 s each.
   At most eight pieces are kept. An asset the model sees as one piece comes
   back as one.
+- `texture: false` (`trellis2` and `trellis2-parts` only) stops after the
+  shape: no texture is sampled, unwrapped or baked, and the GLB is geometry
+  only, without a material. `mode` defaults to `full` here, the generated
+  mesh simplified to `faces`; `mode: game` gives the cage instead, with its
+  `faces`, `close` and `shell`. `texture_size` and `parts` do not apply. The
+  same picture and `seed` draw the same shape as a whole job does. The
+  result adds `texture: false` and `shape_b64`, the shape latent the mesh
+  was decoded from, for a `mesh2texture` job to paint that very shape (see
+  below). It is the client's to keep: giq stores nothing between jobs, so
+  an instance evicted in between loses nothing. It does not expire; it is
+  refused by another recipe, by the same recipe after its weights change,
+  and by a giq whose artefact format has moved on. It is 134 bytes a
+  surface voxel of the shape's 64 grid before base64: about 5 MB for an
+  object of 40,000, which is a large one.
 - The GLB is glTF 2.0 with WebP textures (`EXT_texture_webp`), Y up. A
   `game` asset at 3,000 faces is about 1 MB, a `full` one at 100,000 about
   8 MB.
@@ -387,6 +401,71 @@ jq -n --rawfile img <(base64 -w0 cannon.png) '{modality:"image2mesh",
   model:"pixal3d", tasks:[{id:"1", image_b64:$img, faces:1500}]}' \
   | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
   | jq -r '.results[0].glb_b64' | base64 -d > cannon.glb
+```
+
+The shape alone, as a cage of 4,000 faces, and its latent:
+
+```bash
+jq -n --rawfile img <(base64 -w0 pig.png) '{modality:"image2mesh",
+  model:"trellis2", tasks:[{id:"1", image_b64:$img, texture:false,
+  mode:"game", faces:4000, seed:7}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  > shape.json
+jq -r '.results[0].glb_b64' shape.json | base64 -d > pig-shape.glb
+jq -r '.results[0].shape_b64' shape.json > pig-shape.b64
+```
+
+### Mesh2Texture (`mesh2texture`)
+- Recipes: `trellis2`, `trellis2-parts` (TRELLIS.2's texture stage, on the
+  same instance as their `image2mesh`: a paint loads only the 0.7 GB shape
+  encoder beside it); from the `giq-3d` plugin
+- Task: `{id, mesh_b64, image_b64, shape_b64?, texture_size?, seed?,
+  unwrap?}`
+- Result: `{id, glb_b64, format, faces, vertices, texture_size, seed, shape,
+  uv, vertex_map?}`
+- Paints a mesh the client brings from a picture, and gives the mesh back
+  with its vertices, faces and their order as they went in, a PBR texture
+  on them: base colour and metallic-roughness, and a tangent-space normal
+  map when painted on a `shape_b64`. A shape can be checked, healed,
+  simplified and rigged against before it is painted, and a paint that
+  fails its checks drawn again with another `seed` on the same geometry.
+- `mesh_b64` is one mesh as GLB or OBJ, base64, a data URL prefix allowed,
+  up to 64 MB and 1,000,000 faces. A GLB with several meshes is refused
+  (join them first); a node transform is applied. An OBJ is read as
+  trimesh reads it, which splits a vertex wherever its UVs or normals do:
+  GLB is the format that comes back bit for bit.
+- `image_b64` is the picture to paint from, as for `image2mesh`; the one the
+  shape was made from paints closest to it.
+- `shape_b64` is a shape-only job's latent. With it, the texture is sampled
+  on that latent and baked from the surface it decodes to onto the mesh,
+  each texel reading what lies behind it as the game export does, so the
+  mesh must stay in the frame the shape job returned it in (healed and
+  simplified in place, not moved or scaled). Without it, the mesh is the
+  shape: it is encoded afresh (TRELLIS.2's texturing pipeline), in any
+  frame, since it is centred, scaled to the model's unit cube and turned Z
+  up for the model and turned back after. `shape` in the result says which
+  (`given` or `encoded`). A stale `shape_b64` fails the task before the
+  model runs.
+- A mesh with UVs keeps them and is painted through its own atlas, which
+  must lie in 0..1 and should not overlap: where two triangles share a
+  texel, one of them gets it. A mesh without them, or sent with
+  `unwrap: true`, gets an atlas from xatlas. glTF holds one UV a vertex, so
+  a vertex on a seam comes back split: `uv: "unwrapped"`, and
+  `vertex_map[i]` is the input vertex output vertex `i` copies, positions
+  equal and every face the input's face through it. `uv: "kept"` means the
+  vertices are the input's, one for one.
+- `texture_size`: 1024, 2048 (default) or 4096. `seed` (default 42) draws
+  the texture; it is the paint's own, so the same seed paints a shape the
+  same way again, and not as a whole `image2mesh` job with that seed would.
+- `mode`, `faces`, `close`, `shell`, `parts`, `texture` and `fov` are
+  `image2mesh`'s and are refused here: a paint keeps the faces it is given.
+
+```bash
+jq -n --rawfile mesh <(base64 -w0 pig-healed.glb) --rawfile img <(base64 -w0 pig.png) \
+  --rawfile shape pig-shape.b64 '{modality:"mesh2texture", model:"trellis2",
+  tasks:[{id:"1", mesh_b64:$mesh, image_b64:$img, shape_b64:$shape, seed:3}]}' \
+  | curl -s -X POST 'localhost:8084/run?wait=true' -H 'Content-Type: application/json' -d @- \
+  | jq -r '.results[0].glb_b64' | base64 -d > pig-painted.glb
 ```
 
 ### Mesh2Rig (`mesh2rig`)

@@ -99,6 +99,7 @@ def _core() -> Plugin:
             "giq.api.openai_responses:router",
             "giq.api.stats_api:router",
             "giq.api.recipes_api:router",
+            "giq.api.apps_api:router",
         ),
     )
 

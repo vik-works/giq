@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from giq import paths as giq_paths
 from giq import recipes
 from giq.api.dependencies import get_orchestrator
+from giq.apps import UNKNOWN
 from giq.gpus import get_gpus
 from giq.models import JobRequest
 from giq.policy import get_policy_store
@@ -217,13 +218,18 @@ async def stats_usage(
     gpu: str | None = Query(default=None, description="Restrict to one GPU uuid"),
     since: str | None = Query(default=None, description="Range start: epoch or ISO 8601"),
     until: str | None = Query(default=None, description="Range end: epoch or ISO 8601"),
+    app: str | None = Query(
+        default=None, description="Restrict to one app; 'unknown' means jobs from before apps"
+    ),
 ) -> dict:
-    """Token/call rollups per model, plus a bucketed series for the chart.
+    """Token/call rollups per model and per app, plus a bucketed series for the chart.
 
     Windows: day = since local midnight (hourly buckets), week = 7d, month = 30d
     (daily buckets), all = everything (monthly buckets). An explicit
     since/until pair overrides `period` for the range but still uses its
-    bucket size; `gpu` restricts every figure to one card.
+    bucket size; `gpu` restricts every figure to one card, `app` to one app
+    (ADR-006). `apps` is the same rollup by app and recipe; jobs recorded
+    before apps existed carry app null, shown as unknown.
     """
     window, bucket_fmt = _USAGE_PERIODS[period]
     lo, hi = _parse_bound(since), _parse_bound(until)
@@ -245,6 +251,11 @@ async def stats_usage(
     if gpu:
         where += " AND gpu_uuid = ?"
         params.append(gpu)
+    if app == UNKNOWN:
+        where += " AND app IS NULL"
+    elif app:
+        where += " AND app = ?"
+        params.append(app)
 
     models = await get_stats().fetch(
         f"""
@@ -264,9 +275,20 @@ async def stats_usage(
         """,
         tuple(params),
     )
+    by_app = await get_stats().fetch(
+        f"""
+        SELECT app, modality, recipe, COUNT(*),
+               SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END),
+               SUM(tokens_in), SUM(tokens_out), SUM(run_ms), MAX(ts)
+        FROM jobs WHERE {where} GROUP BY app, modality, recipe
+        ORDER BY app, COUNT(*) DESC
+        """,
+        tuple(params),
+    )
     return {
         "period": period,
         "gpu": gpu,
+        "app": app,
         "since": lo,
         "until": hi,
         "totals": {
@@ -291,6 +313,20 @@ async def stats_usage(
         "series": [
             {"b": b, "modality": w, "recipe": m, "jobs": n, "tokens_in": tin, "tokens_out": tout}
             for (b, w, m, n, tin, tout) in series
+        ],
+        "apps": [
+            {
+                "app": a,
+                "modality": w,
+                "recipe": m,
+                "jobs": n,
+                "failed": failed or 0,
+                "tokens_in": tin,
+                "tokens_out": tout,
+                "run_ms": run_ms,
+                "last_ts": last,
+            }
+            for (a, w, m, n, failed, tin, tout, run_ms, last) in by_app
         ],
     }
 

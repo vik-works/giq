@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # ADR-006: Apps — who used the GPU, for what, and how much it cost
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-20
 **Authors:** giq maintainers
 
@@ -49,10 +49,13 @@ An app has a **name** (a slug, its identity, never changed; a rename is a
 new app), an optional description, a creation time, the hash of its key,
 and an optional revocation time. That is all.
 
-Apps live in `apps.yaml`, beside `config.yaml` by default, overridable by
+Apps live in `apps.yaml` in the state directory by default, overridable by
 `GIQ_APPS_FILE` and `paths: apps:` through `giq.paths`. It is a file of its
 own, not a block of `config.yaml`, because giq writes it (D6) and must not
-rewrite a file the operator edits by hand and comments. Writes go to a
+rewrite a file the operator edits by hand and comments; and it sits in the
+state directory because that is where the hardened unit lets the service
+write. The file is mode 0600: with a token set, the hashes stand for keys
+that admit a caller. Writes go to a
 temporary file renamed over the old one; giq rereads the file when its mtime
 changes, so a hand edit takes effect without a restart.
 
@@ -153,11 +156,15 @@ a fair split, not a meter reading per job.
 
 - `POST /apps {name, description?}` returns the app and its key, once.
   `GET /apps` lists apps without keys. `POST /apps/{name}/revoke` revokes;
-  `DELETE /apps/{name}` removes the entry (the history stays, D4). The CLI
-  mirrors them: `giq apps create|list|revoke|delete`.
-- `GET /stats/usage?by=app` aggregates jobs, tokens, GPU-seconds and
-  energy per app, recipe and time bucket, with `anonymous`, "unknown" and
-  idle/residency as their own rows.
+  a revoked entry keeps its name taken. `DELETE /apps/{name}` removes the
+  entry: the history stays (D4), and an app created again under the name
+  adds to it, which is what deleting rather than revoking says. The CLI
+  mirrors them: `giq apps create|list|revoke|delete`, working on the file
+  with or without a running giq.
+- `GET /stats/usage` rolls up jobs, tokens and run time per app and recipe
+  (`apps`), and `?app=` restricts every figure to one app (`unknown` for
+  jobs from before apps). GPU-seconds, energy and the idle/residency line
+  join it with D5.
 - The dashboard's Usage view gets a breakdown by app, and an Apps page to
   create, revoke and copy a key once.
 
@@ -180,7 +187,9 @@ a fair split, not a meter reading per job.
   that also admit a caller when a token is set; identity, roles and audit
   stay out of scope.
 - `docs/configuration.md` gains `GIQ_APPS_FILE` and `paths: apps:`.
-- Core gains a dependency on `nvidia-ml-py`, or energy stays an estimate
-  from power samples on every rig. To be settled before D5 is built.
+- Core gains a dependency on `nvidia-ml-py` for D5's energy counter, with
+  the power-sample estimate as the fallback where the counter is missing.
+- D1–D4 and D6's API and CLI are built first; D5 and the dashboard pages
+  follow.
 - Quotas and rate limits per app become possible on top of this. They are
   not part of this ADR.

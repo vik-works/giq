@@ -35,6 +35,11 @@ opt-in. It is a shared secret, not a credential: everything on the LAN that
 talks to giq carries the same one. Real per-client identity belongs to the
 enterprise overlay, and calling this that would be worse than being plain
 about what it is.
+
+App keys (ADR-006, ``giq.apps``) are labels for counting usage, not that
+identity. With a token set, a valid one admits a caller on its own, to
+exactly what the shared token admits to, so an app carries one secret rather
+than two.
 """
 
 from __future__ import annotations
@@ -48,6 +53,7 @@ from urllib.parse import urlsplit
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from giq import apps
 from giq.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -168,6 +174,19 @@ def token_exempt(request: Request) -> bool:
     return len(parts) > 4 and parts[1] == "plugins" and parts[3] == "ui"
 
 
+def _resolve_app(request: Request) -> str | None:
+    """The app whose key the request carries, or None. Never raises: a
+    broken apps file costs attribution, not service."""
+    try:
+        store = apps.get_apps()
+        for key in apps.presented_keys(request.headers, request.query_params):
+            if name := store.resolve(key):
+                return name
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"apps: could not resolve the request's key: {e}")
+    return None
+
+
 def _deny(reason: str, detail: str) -> JSONResponse:
     logger.warning("access denied (%s): %s", reason, detail)
     return JSONResponse(status_code=403, content={"detail": detail})
@@ -198,14 +217,33 @@ def install(app) -> None:
                 "cannot use this API. Add it to access.allow_origins if you meant it.",
             )
 
-        if access.token and not token_ok(request, access.token) and not token_exempt(request):
+        # The app this request is counted under (ADR-006). Resolved before the
+        # token check because a valid app key also admits: an app carries one
+        # secret, not the shared token and its own key.
+        app_name = _resolve_app(request)
+        if (
+            access.token
+            and app_name is None
+            and not token_ok(request, access.token)
+            and not token_exempt(request)
+        ):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Missing or invalid token."},
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        return await call_next(request)
+        name = app_name or apps.ANONYMOUS
+        reset = apps.current_app.set(name)
+        try:
+            response = await call_next(request)
+        finally:
+            apps.current_app.reset(reset)
+        # Which bucket the request was counted under. Without a token a
+        # mistyped key is served as anonymous, and this is how its app finds
+        # out; other clients ignore an extra header.
+        response.headers["X-Giq-App"] = name
+        return response
 
 
 def posture(bound_host: str | None = None) -> dict:

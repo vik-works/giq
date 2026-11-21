@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     error TEXT,
     tokens_in INTEGER,
     tokens_out INTEGER,
-    gpu_uuid TEXT
+    gpu_uuid TEXT,
+    app TEXT                       -- ADR-006: the app it is counted under; NULL = before apps
 );
 -- NOTE: no index on gpu_uuid here. executescript runs before the ALTER TABLE
 -- migration below, and on a pre-gpu_uuid database CREATE TABLE IF NOT EXISTS
@@ -203,6 +204,10 @@ class StatsRecorder:
                     conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} INTEGER")
             if "gpu_uuid" not in cols:
                 conn.execute("ALTER TABLE jobs ADD COLUMN gpu_uuid TEXT")
+            # Rows from before ADR-006 stay NULL: they were never attributed,
+            # which is not the same as anonymous.
+            if "app" not in cols:
+                conn.execute("ALTER TABLE jobs ADD COLUMN app TEXT")
             # Device bindings were added after the policy table, and existing
             # DBs have rows in it, so add the column rather than relying on
             # CREATE IF NOT EXISTS.
@@ -220,6 +225,7 @@ class StatsRecorder:
             conn.execute("DROP INDEX IF EXISTS idx_jobs_worker_ts")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_modality_ts ON jobs(modality, ts)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_gpu_ts ON jobs(gpu_uuid, ts)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_app_ts ON jobs(app, ts)")
             _migrate_policies(conn)
             conn.commit()
             self._conn = conn
@@ -315,8 +321,8 @@ class StatsRecorder:
             conn = self._connect()
             conn.execute(
                 "INSERT INTO jobs (ts, job_id, modality, recipe, status, queue_wait_ms,"
-                " run_ms, tasks, error, tokens_in, tokens_out, gpu_uuid)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                " run_ms, tasks, error, tokens_in, tokens_out, gpu_uuid, app)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row,
             )
             conn.commit()
@@ -476,6 +482,7 @@ class StatsRecorder:
                 tokens_in,
                 tokens_out,
                 self._primary_gpu,
+                getattr(job, "app", None),
             )
             await asyncio.to_thread(self._record_job_sync, row)
         except Exception as e:  # noqa: BLE001

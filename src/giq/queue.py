@@ -114,6 +114,9 @@ class Job:
     error: str | None = None
     # Set only for streaming requests; None means the ordinary batch path.
     stream: JobStream | None = None
+    # The app the job is counted under (ADR-006), stamped by the orchestrator
+    # from the request's context, never from the request body.
+    app: str | None = None
 
     @property
     def duration_ms(self) -> int | None:

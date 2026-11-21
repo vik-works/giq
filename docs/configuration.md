@@ -75,6 +75,7 @@ Environment variables:
 | `GIQ_GPU_DEVICE` | biggest card | Default GPU, index or NVML UUID |
 | `GIQ_TOKEN` | unset | Shared access token (see [Access](access-and-privacy.md#access)) |
 | `GIQ_STATS_DB` | `<data dir>/stats.db` | Stats database |
+| `GIQ_APPS_FILE` | `<data dir>/apps.yaml` | The apps list, key hashes only (also `paths: apps:`; see [Apps](access-and-privacy.md#apps)) |
 | `GIQ_INFLIGHT_LOG` | `<data dir>/inflight.log` | In-flight job log (job shapes only, see [Privacy](access-and-privacy.md#privacy)) |
 | `GIQ_OCR_MAX_UPLOAD_MB`, `GIQ_OCR_MAX_PAGES` | 64, 200 | Upload limits (see [OCR](api.md#ocr)) |
 

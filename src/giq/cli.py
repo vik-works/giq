@@ -216,8 +216,55 @@ def _plugins(argv: list[str]) -> int:
     return 0
 
 
+def _apps(argv: list[str]) -> int:
+    """``giq apps``: create, list, revoke and delete apps (ADR-006).
+
+    Works on the apps file directly, with or without a running giq: the
+    server rereads the file when it changes.
+    """
+    from giq.apps import AppError, get_apps
+
+    parser = argparse.ArgumentParser(
+        prog="giq apps", description="Apps: a name and a key, for counting usage per app."
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    create = sub.add_parser("create", help="Create an app and print its key (shown once)")
+    create.add_argument("name")
+    create.add_argument("--description", "-d")
+    sub.add_parser("list", help="List apps")
+    for verb, text in (("revoke", "Stop an app's key working"), ("delete", "Remove an app")):
+        sub.add_parser(verb, help=text).add_argument("name")
+    args = parser.parse_args(argv)
+
+    store = get_apps()
+    try:
+        if args.cmd == "create":
+            app, key = store.create(args.name, args.description)
+            print(f"created {app.name}; its key, shown only this once:\n\n  {key}\n")
+            print("Use it as the API key (Authorization: Bearer …).")
+        elif args.cmd == "list":
+            listed = store.entries()
+            if not listed:
+                print(f"no apps in {store.path}")
+            for app in listed:
+                state = f"revoked {app.revoked}" if app.revoked else "active"
+                print(f"{app.name:24} {state:30} {app.description or ''}")
+        elif args.cmd == "revoke":
+            print(f"revoked {store.revoke(args.name).name}")
+        else:
+            store.delete(args.name)
+            print(f"deleted {args.name}; its history stays in the stats")
+    except AppError as e:
+        print(f"giq apps: {e}", file=sys.stderr)
+        return 1
+    except KeyError:
+        print(f"giq apps: no app named {args.name!r}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv: list[str] | None = None) -> None:
-    """Dispatch ``giq [serve|init|prepare|add|plugins] …``; bare options mean ``serve``."""
+    """Dispatch ``giq [serve|init|prepare|add|plugins|apps] …``; bare options mean ``serve``."""
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] == "init":
         sys.exit(_init(args[1:]))
@@ -227,6 +274,8 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(_add(args[1:]))
     if args and args[0] == "plugins":
         sys.exit(_plugins(args[1:]))
+    if args and args[0] == "apps":
+        sys.exit(_apps(args[1:]))
     if args and args[0] == "serve":
         args = args[1:]
     from giq.main import cli

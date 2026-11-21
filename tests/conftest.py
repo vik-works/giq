@@ -40,6 +40,8 @@ os.environ["GIQ_STATS_DB"] = os.path.join(tempfile.mkdtemp(prefix="giq-test-stat
 os.environ["GIQ_INFLIGHT_LOG"] = os.path.join(
     tempfile.mkdtemp(prefix="giq-test-inflight-"), "inflight.log"
 )
+# The apps list (ADR-006) would otherwise land in the checkout's data/.
+os.environ["GIQ_APPS_FILE"] = os.path.join(tempfile.mkdtemp(prefix="giq-test-apps-"), "apps.yaml")
 # Operator recipe files would otherwise come from ~/.config/giq/recipes and
 # change the catalog under test; the built-ins are what the suite checks.
 os.environ["GIQ_RECIPES_DIR"] = tempfile.mkdtemp(prefix="giq-test-recipes-")

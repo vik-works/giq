@@ -62,10 +62,15 @@ vram:
   # its surface. 45-85 s to generate; about 55 s to load.
   gb: 13.5
   measured: true
-  # Not measured: a shape-only task (`texture: false`) and a paint
-  # (mesh2texture) run a part of the same stages, so their peaks are
-  # estimated at or under the figure above. A shape leaves out the texture
-  # flow model and the bake; a paint leaves out the structure and shape
-  # flow models and adds the 0.7 GB shape encoder while it encodes.
+  # The stages apart, measured on an RTX 5090 on one A-pose character
+  # (1024, low-VRAM, seed 42), the child's own peak and the job's time:
+  # shape-only at full detail 8,030 MiB (80 s, the load included),
+  # shape-only game cage at 4,000 faces 5,280 MiB (57 s); a paint of that
+  # cage on its latent 6,900 MiB (40 s), the same cage encoded afresh
+  # 5,380 MiB (37 s), an 18k-face mesh on the latent 7,340 MiB (44 s); the
+  # whole job for the same picture 7,540 MiB (102 s). A shape leaves out
+  # the texture flow model and the bake; a paint leaves out the structure
+  # and shape flow models. All stay under the figure above, which the
+  # crate's whole job sets.
 # One asset per task; a batch generates them one after another.
 max_batch: 2

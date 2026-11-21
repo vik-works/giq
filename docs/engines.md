@@ -264,11 +264,27 @@ generator already holds.
   says which is which (`vertex_map`). Upstream's texturing pipeline would
   return the mesh in its own cube and unwrap with CuMesh; giq does neither.
 
-The stages' own times and peaks are not measured yet: they run parts of the
-measured whole job, so their peaks are estimated at or under its figure.
-`plugins/giq-3d/scripts/smoke_shape_paint.py` measures them against the
-one-job path on one picture: a client of a running giq, for a window in
-which that giq serves nobody else.
+Measured on an RTX 5090 for one A-pose character with a 4,000-face game
+cage, the child's own peak and the job's time: a shape-only job 7.8 GiB at
+full detail (80 s with the load) and 5.2 GiB for the cage (57 s); a paint
+of the cage on its latent 6.7 GiB (40 s), the cage encoded afresh 5.3 GiB
+(37 s); the whole job 7.4 GiB (102 s). Shape, then paint, takes about as
+long as the whole job, and neither half needs more VRAM than the recipe's
+figure. The whole job comes out as before the stages were split: the same
+vertices, faces and UVs, and textures equal up to the GPU's float atomics
+(a few levels on the normal map). A paint on the latent bakes the face's
+detail into the normal map as the whole job does; a paint on the encoded
+mesh has the colours but no normal map, and its surface reads smoother.
+
+The paint takes the mesh's faces to be wound outward, all of them: each
+texel looks inward along the surface's normal for what lies behind it. A
+mesh with faces wound both ways (a vertex-clustered copy whose thin parts
+folded over, say) paints in speckles, its inward-facing faces reading the
+inside of the object.
+
+`plugins/giq-3d/scripts/smoke_shape_paint.py` measures the stages against
+the one-job path on one picture: a client of a running giq, for a window
+in which that giq serves nobody else.
 
 ```bash
 uv run python plugins/giq-3d/scripts/smoke_shape_paint.py \

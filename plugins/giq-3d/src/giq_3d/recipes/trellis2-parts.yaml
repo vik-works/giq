@@ -69,10 +69,12 @@ vram:
   # generator's own. A parts job on the chest took 343 s from a cold start.
   gb: 25.5
   measured: true
-  # Not measured: a shape-only task (`texture: false`) and a paint
-  # (mesh2texture) run a part of the same stages, so their peaks are
-  # estimated at or under the figure above. A shape leaves out the texture
-  # flow model and the bake; a paint leaves out the structure and shape
-  # flow models and adds the 0.7 GB shape encoder while it encodes.
+  # Not measured on this recipe: a shape-only task (`texture: false`) and
+  # a paint (mesh2texture) run a part of the same stages, so their peaks
+  # are estimated at or under the figure above (on `trellis2` they measured
+  # 5.2-7.8 GiB on an RTX 5090, under its whole job). A shape leaves out
+  # the texture flow model and the bake; a paint leaves out the structure
+  # and shape flow models and adds the 0.7 GB shape encoder while it
+  # encodes.
 # One asset per task; a batch generates them one after another.
 max_batch: 2

@@ -433,7 +433,9 @@ jq -r '.results[0].shape_b64' shape.json > pig-shape.b64
   up to 64 MB and 1,000,000 faces. A GLB with several meshes is refused
   (join them first); a node transform is applied. An OBJ is read as
   trimesh reads it, which splits a vertex wherever its UVs or normals do:
-  GLB is the format that comes back bit for bit.
+  GLB is the format that comes back bit for bit. Its faces must be wound
+  outward, all of them: a face turned inward reads the inside of the
+  object, and a mesh wound both ways paints in speckles.
 - `image_b64` is the picture to paint from, as for `image2mesh`; the one the
   shape was made from paints closest to it.
 - `shape_b64` is a shape-only job's latent. With it, the texture is sampled

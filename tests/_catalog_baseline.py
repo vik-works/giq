@@ -237,6 +237,23 @@ BUILTIN_SPECS = [
     },
     {
         "aliases": (),
+        "backend": "llama.cpp",
+        "detail": "chat + vision · 128k ctx",
+        "engine": None,
+        "label": "Inkling 2 Mini",
+        "lane_width": None,
+        "max_batch": 32,
+        "measured": True,
+        "mmproj": "ggml-org-Inkling-2-Mini-GGUF/mmproj-Inkling-2-Mini-Q8_0.gguf",
+        "model": "inkling-2-mini",
+        "resident_priority": None,
+        "vision": True,
+        "voices": (),
+        "vram_gb": 26.0,
+        "worker": "llm",
+    },
+    {
+        "aliases": (),
         "backend": "vllm",
         "detail": "chat + vision · vllm · batch · 16 in parallel · 128k ctx",
         "engine": None,
@@ -599,25 +616,29 @@ LLM_TABLES = {
     "MODEL_CACHE_TYPE_K": {
         "gemma-4-12b": "q8_0",
         "gemma-4-26b-a4b-it": "q8_0",
+        "inkling-2-mini": "q8_0",
         "qwen3.8-27b": "q8_0",
     },
     "MODEL_CACHE_TYPE_V": {
         "gemma-4-12b": "q8_0",
         "gemma-4-26b-a4b-it": "q8_0",
+        "inkling-2-mini": "q8_0",
         "qwen3.8-27b": "q8_0",
     },
-    "MODEL_CTX_SIZE": {"gemma-4-12b": 131072, "qwen3.8-27b": 131072},
+    "MODEL_CTX_SIZE": {"gemma-4-12b": 131072, "inkling-2-mini": 131072, "qwen3.8-27b": 131072},
     "MODEL_LOOP_GUARD": {},
     "MODEL_PARALLEL": {"gemma-4-12b": 4},
     "MODEL_PATHS": {
         "gemma-4-12b": "unsloth-gemma-4-12B-it-qat-GGUF/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
         "gemma-4-26b-a4b-it": "unsloth-gemma-4-26B-A4B-it-GGUF/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf",
         "gemma-4-31b-it": "unsloth-gemma-4-31B-it-GGUF/gemma-4-31B-it-Q4_K_M.gguf",
+        "inkling-2-mini": "ggml-org-Inkling-2-Mini-GGUF/Inkling-2-Mini-IQ4_NL.gguf",
         "qwen3.8-27b": "unsloth-Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf",
     },
     "MODEL_REASONING": {
         "gemma-4-12b": "template",
         "gemma-4-26b-a4b-it": "on",
+        "inkling-2-mini": "on",
         "qwen3.8-27b": "on",
     },
     "MODEL_REASONING_BUDGET": {},
@@ -634,6 +655,7 @@ LLM_TABLES = {
         },
     },
     "MODEL_SPEC_TYPE": {},
+    "MODEL_UBATCH_SIZE": {"inkling-2-mini": 256},
 }
 
 LLM_DEFAULTS = {
@@ -647,4 +669,5 @@ LLM_DEFAULTS = {
     "DEFAULT_REQUEST_DEFAULTS": {},
     "DEFAULT_CHAT_TEMPLATE_FILE": None,
     "DEFAULT_SPEC_TYPE": None,
+    "DEFAULT_UBATCH_SIZE": None,
 }

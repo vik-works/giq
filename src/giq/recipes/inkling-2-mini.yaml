@@ -1,0 +1,78 @@
+# SPDX-FileCopyrightText: 2026 vikworks UG (haftungsbeschränkt)
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Thinking Machines' Inkling 2 Mini: a looped mixture of experts, 26.4B
+# parameters with 3.4B active, whose middle layers run three times per
+# token. The GGUF is ggml-org's IQ4_NL conversion of the official NVFP4/MXFP8
+# checkpoint: the NVFP4 experts of layers 0-19 at IQ4_NL (imatrix-calibrated),
+# everything else at Q8_0, the loop controller at F32.
+#
+# The architecture is new in llama.cpp: it needs a build with ggml-org's
+# Inkling support (#32694, and #32704 for the scale tensors); an older
+# llama-server refuses the GGUF at load. Measured on build 12622.
+#
+# The weights are Apache-2.0. Thinking Machines also publishes a Model
+# Acceptable Use Policy (https://thinkingmachines.ai/model-acceptable-use-policy/)
+# that binds whoever deploys the model; the operator accepts it by serving
+# this recipe, as with any model's own terms.
+#
+# Thinking is graded rather than on/off: the chat template turns
+# `reasoning_effort` (none, minimal, low, medium, high, xhigh, max) into a
+# system line, at 0.9 (high) when the request names none, and the model
+# card says even the lowest level does not switch thinking off entirely.
+# `reasoning: "on"` exposes that channel the way it does for the other
+# thinking models.
+#
+# Thinking Machines' sampling guidance is temperature 1.0; openai_compat
+# always sends a temperature, so it is not a request default here (an entry
+# would never apply).
+name: inkling-2-mini
+modalities: [llm]
+engine: llama.cpp
+label: Inkling 2 Mini
+detail: "chat + vision · 128k ctx"
+weights:
+  path: ggml-org-Inkling-2-Mini-GGUF/Inkling-2-Mini-IQ4_NL.gguf
+  source: hf:ggml-org/Inkling-2-Mini-GGUF/Inkling-2-Mini-IQ4_NL.gguf
+  revision: e8a2cecf0e78914f07cc27b9be711a9b2c7561d9
+  format: gguf
+  licence: apache-2.0
+  parts:
+    # llama.cpp's vision projector, Q8_0 (346 MB; the BF16 one is 642 MB).
+    mmproj:
+      path: ggml-org-Inkling-2-Mini-GGUF/mmproj-Inkling-2-Mini-Q8_0.gguf
+      source: hf:ggml-org/Inkling-2-Mini-GGUF/mmproj-Inkling-2-Mini-Q8_0.gguf
+      revision: e8a2cecf0e78914f07cc27b9be711a9b2c7561d9
+capabilities: [chat, vision]
+params:
+  # What grows with context here is llama.cpp's compute buffer, sized for one
+  # physical batch at the full context, not the KV cache. Peak VRAM on an
+  # RTX 5090, q8_0 KV, one slot, projector loaded (MiB):
+  #
+  #   ctx     -ub 512   -ub 256   -ub 128
+  #   32k      21,464
+  #   64k      25,176
+  #   128k     31,234    26,158    22,970
+  #   256k   no start              28,314
+  #
+  # 128k at the default 512 leaves too little of a 31.8 GiB card for the
+  # load margin; at 256 it is 5 GB smaller and faster, both ways: 88 tok/s
+  # generating and 1,836 tok/s prefill against 79 and 1,634. 128 saves
+  # another 3 GB for 18% slower prefill, and is what 256k would need.
+  ctx_size: 131072
+  ubatch_size: 256
+  # q8_0 as for the other thinking models: exact recall over a long context,
+  # and the symmetric pair keeps the fused attention kernel.
+  cache_type_k: q8_0
+  cache_type_v: q8_0
+  reasoning: "on"
+vram:
+  # Measured 25.5 GiB peak (26,158 MiB) at the parameters above: a 9.8k-token
+  # prompt counted right with thinking on and off, and one small image.
+  # Declared half a gig above, because a large image grows the compute
+  # buffer.
+  gb: 26.0
+  measured: true
+  measured_on: NVIDIA GeForce RTX 5090
+max_batch: 32

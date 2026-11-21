@@ -392,6 +392,20 @@ def test_a_declared_chat_template_reaches_the_command_line(monkeypatch):
     assert "--jinja" in cmd, "minja renders the file only with --jinja"
 
 
+def test_a_declared_ubatch_reaches_the_command_line():
+    """Opt-in: a model that sets none keeps llama.cpp's own -ub. Inkling's
+    measured VRAM figure holds only at the batch it was measured with."""
+    qwen = LlamaCppAdapter(LlamaCppConfig(model="qwen3.8-27b", model_path="/tmp/x.gguf"))
+    assert "-ub" not in qwen.build_command()
+
+    cmd = LlamaCppAdapter(
+        LlamaCppConfig(model="inkling-2-mini", model_path="/tmp/x.gguf")
+    ).build_command()
+    assert cmd[cmd.index("-ub") + 1] == "256"
+    assert cmd[cmd.index("-c") + 1] == "131072"
+    assert cmd[cmd.index("--mmproj") + 1].endswith("mmproj-Inkling-2-Mini-Q8_0.gguf")
+
+
 # --- repetition control ------------------------------------------------------
 #
 # Before this, giq sent three sampler fields and no others, so llama.cpp's

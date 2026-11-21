@@ -279,12 +279,14 @@ async def stats_usage(
         f"""
         SELECT app, modality, recipe, COUNT(*),
                SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END),
-               SUM(tokens_in), SUM(tokens_out), SUM(run_ms), MAX(ts)
+               SUM(tokens_in), SUM(tokens_out), SUM(run_ms), MAX(ts),
+               SUM(gpu_ms), SUM(energy_wh), MAX(energy_measured = 0)
         FROM jobs WHERE {where} GROUP BY app, modality, recipe
         ORDER BY app, COUNT(*) DESC
         """,
         tuple(params),
     )
+    energy = await _energy_split(lo, hi, gpu, app, by_app)
     return {
         "period": period,
         "gpu": gpu,
@@ -296,6 +298,8 @@ async def stats_usage(
             "failed": sum(r[3] or 0 for r in models),
             "tokens_in": sum(r[5] or 0 for r in models),
             "tokens_out": sum(r[6] or 0 for r in models),
+            "gpu_ms": sum(r[9] or 0 for r in by_app),
+            "energy_wh": sum(r[10] or 0.0 for r in by_app),
         },
         "recipes": [
             {
@@ -325,9 +329,63 @@ async def stats_usage(
                 "tokens_out": tout,
                 "run_ms": run_ms,
                 "last_ts": last,
+                "gpu_ms": gpu_ms,
+                "energy_wh": wh,
+                "energy_estimated": bool(est),
             }
-            for (a, w, m, n, failed, tin, tout, run_ms, last) in by_app
+            for (a, w, m, n, failed, tin, tout, run_ms, last, gpu_ms, wh, est) in by_app
         ],
+        "energy": energy,
+    }
+
+
+async def _energy_split(lo, hi, gpu, app, by_app) -> dict:
+    """Attributed energy per card and the idle/residency line (ADR-006 D5).
+
+    Idle energy belongs to nobody, so a view restricted to one app has none.
+    Its hours are whole hours: a range that starts or ends mid-hour counts
+    the idle energy of the hours it touches.
+    """
+    attributed = sum(r[10] or 0.0 for r in by_app)
+    estimated = any(r[11] for r in by_app)
+    if app:
+        return {"attributed_wh": attributed, "idle_wh": None, "estimated": estimated, "cards": []}
+    where, params = "hour >= ?", [lo // 3600 * 3600]
+    if hi is not None:
+        where += " AND hour < ?"
+        params.append(hi)
+    if gpu:
+        where += " AND gpu_uuid = ?"
+        params.append(gpu)
+    idle = await get_stats().fetch(
+        f"SELECT gpu_uuid, SUM(idle_wh), MAX(estimated) FROM card_energy WHERE {where}"
+        " GROUP BY gpu_uuid",
+        tuple(params),
+    )
+    jwhere, jparams = "ts >= ? AND energy_wh IS NOT NULL", [lo]
+    if hi is not None:
+        jwhere += " AND ts < ?"
+        jparams.append(hi)
+    if gpu:
+        jwhere += " AND gpu_uuid = ?"
+        jparams.append(gpu)
+    per_card = await get_stats().fetch(
+        f"SELECT gpu_uuid, SUM(energy_wh) FROM jobs WHERE {jwhere} GROUP BY gpu_uuid",
+        tuple(jparams),
+    )
+    cards: dict[str, dict] = {}
+    for uuid, wh in per_card:
+        cards.setdefault(uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0})
+        cards[uuid]["attributed_wh"] = wh or 0.0
+    for uuid, wh, est in idle:
+        cards.setdefault(uuid, {"gpu_uuid": uuid, "attributed_wh": 0.0, "idle_wh": 0.0})
+        cards[uuid]["idle_wh"] = wh or 0.0
+        estimated = estimated or bool(est)
+    return {
+        "attributed_wh": attributed,
+        "idle_wh": sum(c["idle_wh"] for c in cards.values()),
+        "estimated": estimated,
+        "cards": sorted(cards.values(), key=lambda c: c["gpu_uuid"] or ""),
     }
 
 

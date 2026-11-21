@@ -226,14 +226,17 @@ async def test_usage_by_app_keeps_history_from_before_apps_apart(tmp_path, monke
     never attributed, which is a different statement."""
     import giq.stats as stats_mod
     from giq.api.stats_api import stats_usage
-    from giq.stats import StatsRecorder
+    from giq.stats import JOB_COLUMNS, StatsRecorder
+
+    def _record(rec, values):
+        rec._record_job_sync(dict(zip(JOB_COLUMNS, values, strict=False)))
 
     monkeypatch.setattr(stats_mod, "_recorder", StatsRecorder(db_path=tmp_path / "a.db"))
     rec = stats_mod.get_stats()
     now = time.time()
     for job_id, app in (("j1", "kompost"), ("j2", "kompost"), ("j3", ANONYMOUS), ("j4", None)):
-        rec._record_job_sync(
-            (now, job_id, "llm", "gemma-4-12b", "completed", 5, 100, 1, None, 10, 2, None, app)
+        _record(
+            rec, (now, job_id, "llm", "gemma-4-12b", "completed", 5, 100, 1, None, 10, 2, None, app)
         )
 
     d = await stats_usage(app=None, period="week", gpu=None, since=None, until=None)

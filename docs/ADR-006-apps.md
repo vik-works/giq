@@ -144,10 +144,13 @@ Each job records the card it ran on (fixing `jobs.gpu_uuid`), its
   considered and rejected: tokens mean nothing for image, audio and depth
   jobs.
 - **Idle and residency.** Energy a card draws with no job running is
-  attributed to nobody. Usage reports it as its own line, *idle/residency*,
-  per card: the card's total over the period minus what jobs were charged.
-  Spreading it over the apps would charge an app for recipes it never asked
-  to keep loaded.
+  attributed to nobody. The sampler reads every card each tick, so the
+  intervals with no job are measured, not inferred, and land per card and
+  hour in `card_energy`. Usage reports them as their own line,
+  *idle/residency*, and a view of one app has none. Spreading it over the
+  apps would charge an app for recipes it never asked to keep loaded.
+- **GPU time** is split the same way: a job's `gpu_ms` is its share of the
+  card's time, next to `run_ms`, its wall clock.
 
 Every energy figure giq shows is labelled as attributed by this rule. It is
 a fair split, not a meter reading per job.
@@ -189,7 +192,6 @@ a fair split, not a meter reading per job.
 - `docs/configuration.md` gains `GIQ_APPS_FILE` and `paths: apps:`.
 - Core gains a dependency on `nvidia-ml-py` for D5's energy counter, with
   the power-sample estimate as the fallback where the counter is missing.
-- D1–D4 and D6's API and CLI are built first; D5 and the dashboard pages
-  follow.
+- D1–D5 and D6's API and CLI are built; the dashboard pages follow.
 - Quotas and rate limits per app become possible on top of this. They are
   not part of this ADR.

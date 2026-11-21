@@ -50,6 +50,26 @@ def _sum_tokens(results: list[dict] | None) -> tuple[int | None, int | None]:
     return tin, tout
 
 
+# The jobs table's columns in order, for inserts by name.
+JOB_COLUMNS = (
+    "ts",
+    "job_id",
+    "modality",
+    "recipe",
+    "status",
+    "queue_wait_ms",
+    "run_ms",
+    "tasks",
+    "error",
+    "tokens_in",
+    "tokens_out",
+    "gpu_uuid",
+    "app",
+    "gpu_ms",
+    "energy_wh",
+    "energy_measured",
+)
+
 VRAM_SAMPLE_INTERVAL_SECONDS = 30.0
 VRAM_RETENTION_DAYS = 14
 
@@ -74,7 +94,10 @@ CREATE TABLE IF NOT EXISTS jobs (
     tokens_in INTEGER,
     tokens_out INTEGER,
     gpu_uuid TEXT,
-    app TEXT                       -- ADR-006: the app it is counted under; NULL = before apps
+    app TEXT,                      -- ADR-006: the app it is counted under; NULL = before apps
+    gpu_ms INTEGER,                -- ADR-006 D5: its share of the card's time
+    energy_wh REAL,                -- its share of the card's energy
+    energy_measured INTEGER        -- 1 = from the card's counter, 0 = a power estimate
 );
 -- NOTE: no index on gpu_uuid here. executescript runs before the ALTER TABLE
 -- migration below, and on a pre-gpu_uuid database CREATE TABLE IF NOT EXISTS
@@ -132,6 +155,18 @@ CREATE TABLE IF NOT EXISTS recipe_policy (
     device TEXT                    -- GPU UUID this recipe is bound to; NULL = unbound
 );
 
+-- Energy a card drew with no job running (ADR-006 D5), per hour: recipes kept
+-- resident and idle. Attributed to nobody, reported on its own line. Never
+-- purged: a row per card per hour is small, and the usage view's `all`
+-- period needs it.
+CREATE TABLE IF NOT EXISTS card_energy (
+    hour REAL NOT NULL,            -- start of the hour (unix epoch)
+    gpu_uuid TEXT NOT NULL,
+    idle_wh REAL NOT NULL,
+    estimated INTEGER NOT NULL,    -- 1 when any of it is a power estimate
+    PRIMARY KEY (hour, gpu_uuid)
+);
+
 CREATE TABLE IF NOT EXISTS gpu_samples (
     ts REAL NOT NULL,
     gpu_uuid TEXT NOT NULL,
@@ -180,11 +215,10 @@ class StatsRecorder:
         self._db_path = db_path or stats_db()
         self._lock = threading.Lock()
         self._conn: sqlite3.Connection | None = None
-        # UUID of the lowest-index card, refreshed by the telemetry sampler and
-        # stamped onto each finished job. This is an *era* marker — which card
-        # was installed while a job ran — and NOT where the job executed. Since
-        # models can be bound per device (see policy.device_for), those are
-        # different questions; per-job device attribution is not recorded yet.
+        # UUID of the lowest-index card, refreshed by the telemetry sampler.
+        # A job records the card it ran on (giq.energy stamps it); this is
+        # the fallback for one that never reached a card, such as a failed
+        # load, so its row still says which machine era it belongs to.
         self._primary_gpu: str | None = None
 
     # --- lifecycle (sync, called via to_thread) ---------------------------
@@ -208,6 +242,11 @@ class StatsRecorder:
             # which is not the same as anonymous.
             if "app" not in cols:
                 conn.execute("ALTER TABLE jobs ADD COLUMN app TEXT")
+            for col, kind in (("gpu_ms", "INTEGER"), ("energy_wh", "REAL")):
+                if col not in cols:
+                    conn.execute(f"ALTER TABLE jobs ADD COLUMN {col} {kind}")
+            if "energy_measured" not in cols:
+                conn.execute("ALTER TABLE jobs ADD COLUMN energy_measured INTEGER")
             # Device bindings were added after the policy table, and existing
             # DBs have rows in it, so add the column rather than relying on
             # CREATE IF NOT EXISTS.
@@ -316,14 +355,30 @@ class StatsRecorder:
 
     # --- sync write cores --------------------------------------------------
 
-    def _record_job_sync(self, row: tuple) -> None:
+    def _record_job_sync(self, row: dict) -> None:
+        # By column name: a column added later is one more key, not a shift
+        # of every positional value after it.
+        unknown = set(row) - set(JOB_COLUMNS)
+        if unknown:
+            raise ValueError(f"not a jobs column: {sorted(unknown)}")
+        cols = [c for c in JOB_COLUMNS if c in row]
         with self._lock:
             conn = self._connect()
             conn.execute(
-                "INSERT INTO jobs (ts, job_id, modality, recipe, status, queue_wait_ms,"
-                " run_ms, tasks, error, tokens_in, tokens_out, gpu_uuid, app)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                row,
+                f"INSERT INTO jobs ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})",
+                tuple(row[c] for c in cols),
+            )
+            conn.commit()
+
+    def _record_idle_sync(self, rows: list[tuple[float, str, float, int]]) -> None:
+        with self._lock:
+            conn = self._connect()
+            conn.executemany(
+                "INSERT INTO card_energy (hour, gpu_uuid, idle_wh, estimated) VALUES (?,?,?,?)"
+                " ON CONFLICT (hour, gpu_uuid) DO UPDATE SET"
+                " idle_wh = idle_wh + excluded.idle_wh,"
+                " estimated = MAX(estimated, excluded.estimated)",
+                rows,
             )
             conn.commit()
 
@@ -466,27 +521,44 @@ class StatsRecorder:
             if job.started_at and job.created_at:
                 queue_wait_ms = int((job.started_at - job.created_at).total_seconds() * 1000)
             tokens_in, tokens_out = _sum_tokens(job.results)
-            row = (
-                (job.completed_at or datetime.now()).timestamp(),
-                job.job_id,
-                str(job.request.modality),
-                job.request.model,
-                str(job.status).split(".")[-1],
-                queue_wait_ms,
-                job.duration_ms,
-                len(job.request.tasks) if job.request.tasks else 1,
+            measured = getattr(job, "energy_measured", None)
+            row = {
+                "ts": (job.completed_at or datetime.now()).timestamp(),
+                "job_id": job.job_id,
+                "modality": str(job.request.modality),
+                "recipe": job.request.model,
+                "status": str(job.status).split(".")[-1],
+                "queue_wait_ms": queue_wait_ms,
+                "run_ms": job.duration_ms,
+                "tasks": len(job.request.tasks) if job.request.tasks else 1,
                 # jobs.error is free text and outlives everything else here, so
                 # it gets the same check as the in-flight log: an error may not
                 # quote the request that produced it.
-                safe_detail(job.error, job.request),
-                tokens_in,
-                tokens_out,
-                self._primary_gpu,
-                getattr(job, "app", None),
-            )
+                "error": safe_detail(job.error, job.request),
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                # The card it ran on; a job that never reached one (it failed
+                # to load) keeps the era marker.
+                "gpu_uuid": getattr(job, "gpu_uuid", None) or self._primary_gpu,
+                "app": getattr(job, "app", None),
+                "gpu_ms": getattr(job, "gpu_ms", None),
+                "energy_wh": getattr(job, "energy_wh", None),
+                "energy_measured": None if measured is None else int(measured),
+            }
             await asyncio.to_thread(self._record_job_sync, row)
         except Exception as e:  # noqa: BLE001
             logger.warning(f"stats record_job failed: {e}")
+
+    async def record_idle(self, idle: list) -> None:
+        """Add a sampler tick's idle energy (giq.energy.Idle) to its hour."""
+        if not idle:
+            return
+        try:
+            hour = time.time() // 3600 * 3600
+            rows = [(hour, i.gpu_uuid, i.wh, 0 if i.measured else 1) for i in idle]
+            await asyncio.to_thread(self._record_idle_sync, rows)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"stats record_idle failed: {e}")
 
     async def record_event(self, kind: str, detail: str | None = None) -> None:
         try:

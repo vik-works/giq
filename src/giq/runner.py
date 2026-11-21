@@ -16,6 +16,7 @@ from typing import Any, Protocol
 
 from giq import plugins
 from giq.adapters.engine import ServedLLM, context_size
+from giq.energy import get_meter
 from giq.models import JobRequest, JobStatus
 from giq.paths import inflight_log
 from giq.plugin import AdapterContext
@@ -963,7 +964,12 @@ class Runner:
                 task.add_done_callback(self._on_demand_jobs.discard)
                 handed_off = True
             elif adapter:
-                await self._run_on(adapter, job)
+                meter = get_meter()
+                try:
+                    await meter.begin(job, device)
+                    await self._run_on(adapter, job)
+                finally:
+                    await meter.end(job)
             else:
                 job.status = JobStatus.failed
                 job.error = f"Failed to load adapter: {job.request.modality}"
@@ -1066,9 +1072,14 @@ class Runner:
         """
         cancelled = False
         try:
+            meter = get_meter()
             try:
+                # Inside the try: a pause cancelling the job during the read
+                # must still give the lane back.
+                await meter.begin(job, slot.device)
                 await self._run_on(slot.adapter, job)
             finally:
+                await meter.end(job)
                 slot.active_count -= 1
                 slot.last_active = monotonic()
                 slot.lane.release()
@@ -1194,9 +1205,12 @@ class Runner:
             try:
                 res.active_count += 1
                 res.last_active = monotonic()
+                meter = get_meter()
                 try:
+                    await meter.begin(job, res.device)
                     await self._run_on(res.adapter, job)
                 finally:
+                    await meter.end(job)
                     res.active_count -= 1
                     res.last_active = monotonic()
             finally:

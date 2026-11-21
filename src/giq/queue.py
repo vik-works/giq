@@ -117,6 +117,13 @@ class Job:
     # The app the job is counted under (ADR-006), stamped by the orchestrator
     # from the request's context, never from the request body.
     app: str | None = None
+    # Where it ran and what it cost (ADR-006 D5), filled in by giq.energy:
+    # the card, its share of that card's time and energy, and whether the
+    # energy came from the card's counter (True) or a power estimate (False).
+    gpu_uuid: str | None = None
+    gpu_ms: int | None = None
+    energy_wh: float | None = None
+    energy_measured: bool | None = None
 
     @property
     def duration_ms(self) -> int | None:

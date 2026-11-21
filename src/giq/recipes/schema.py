@@ -211,6 +211,8 @@ class LlamaCppParams(EngineParams):
     reasoning: Literal["on", "off", "auto", "template"] | None = None
     reasoning_budget: int | None = Field(default=None, ge=0)
     parallel: int | None = Field(default=None, ge=1)
+    # -ub, the physical batch a prompt is processed in. Unset = llama.cpp's.
+    ubatch_size: int | None = Field(default=None, ge=1)
     spec_type: Arg | None = None
     # A Jinja chat template file, resolved like weights.path (relative to
     # GIQ_MODELS_DIR, `~`/absolute as written). Replaces the GGUF's embedded

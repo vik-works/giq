@@ -94,6 +94,7 @@ def tables_of(declared: Iterable[Recipe]) -> dict[str, dict]:
         },
         "MODEL_SPEC_TYPE": given("spec_type"),
         "MODEL_PARALLEL": given("parallel"),
+        "MODEL_UBATCH_SIZE": given("ubatch_size"),
         "MODEL_LOOP_GUARD": given("loop_guard"),
         "MODEL_ALIAS": given("alias"),
         "MODEL_READY_TIMEOUT": given("ready_timeout"),
@@ -116,6 +117,17 @@ MODEL_PATHS: dict[str, str] = {}
 # silently rejecting longer prompts.
 DEFAULT_PARALLEL = 1
 MODEL_PARALLEL: dict[str, int] = {}
+
+# params.ubatch_size: -ub, how many prompt tokens go through the model in one
+# physical step. llama.cpp sizes its compute buffer for that step at the full
+# context, so the buffer grows with ctx_size x ubatch_size and, for some
+# architectures, dwarfs the KV cache. Measured on Inkling 2 Mini IQ4_NL at 128k
+# on an RTX 5090: 31.2 GB peak at the default 512, 26.2 GB at 256 (and faster
+# prefill, 1,836 against 1,634 tok/s), 23.0 GB at 128 (1,512 tok/s). Unset
+# leaves llama.cpp's default (512); a recipe sets it when its own measurement
+# says the default does not fit.
+DEFAULT_UBATCH_SIZE: int | None = None
+MODEL_UBATCH_SIZE: dict[str, int] = {}
 
 # params.alias: --alias, the model id served via /v1/models.
 MODEL_ALIAS: dict[str, str] = {}
@@ -351,6 +363,7 @@ _TABLES: dict[str, dict] = {
     "MODEL_REQUEST_DEFAULTS": MODEL_REQUEST_DEFAULTS,
     "MODEL_SPEC_TYPE": MODEL_SPEC_TYPE,
     "MODEL_PARALLEL": MODEL_PARALLEL,
+    "MODEL_UBATCH_SIZE": MODEL_UBATCH_SIZE,
     "MODEL_LOOP_GUARD": MODEL_LOOP_GUARD,
     "MODEL_ALIAS": MODEL_ALIAS,
     "MODEL_READY_TIMEOUT": MODEL_READY_TIMEOUT,
@@ -406,6 +419,8 @@ class LlamaCppConfig:
     # None = giq.engines' llama.cpp build, and MODEL_PARALLEL/MODEL_ALIAS.
     binary: str | None = None
     parallel: int | None = None
+    # None = MODEL_UBATCH_SIZE/DEFAULT_UBATCH_SIZE; still None = llama.cpp's.
+    ubatch_size: int | None = None
     alias: str | None = None
     # Seconds a start may take; None = MODEL_READY_TIMEOUT/DEFAULT_READY_TIMEOUT.
     ready_timeout: float | None = None
@@ -453,6 +468,8 @@ class LlamaCppConfig:
             self.binary = binary_for("llama.cpp")
         if self.reasoning_budget is None:
             self.reasoning_budget = MODEL_REASONING_BUDGET.get(self.model, DEFAULT_REASONING_BUDGET)
+        if self.ubatch_size is None:
+            self.ubatch_size = MODEL_UBATCH_SIZE.get(self.model, DEFAULT_UBATCH_SIZE)
         if self.spec_type is None:
             self.spec_type = MODEL_SPEC_TYPE.get(self.model, DEFAULT_SPEC_TYPE)
         if self.chat_template_file is None:
@@ -558,6 +575,8 @@ class LlamaCppAdapter(ServedLLM):
             cmd += ["--reasoning", self.config.reasoning]
         if self.config.parallel > 1:
             cmd += ["--cont-batching"]
+        if self.config.ubatch_size:
+            cmd += ["-ub", str(self.config.ubatch_size)]
         if self.config.alias:
             cmd += ["--alias", self.config.alias]
         if self.config.reasoning_budget:

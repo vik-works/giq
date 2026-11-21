@@ -6,7 +6,7 @@
 name = "giq-ocr"
 version = "0.12.0"
 description = "Document OCR for giq: GLM-OCR with its layout model, and Unlimited-OCR"
-license = "Apache-2.0"
+license = "Apache-2.0 AND MIT"
 license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"

@@ -8,7 +8,7 @@ version = "0.12.0"
 description = "GPU Inference Queue - efficient GPU worker management for multimodal AI"
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE", "LICENSES/*.txt"]
+license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [

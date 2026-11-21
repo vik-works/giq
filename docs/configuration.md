@@ -160,7 +160,10 @@ llama.cpp `params`: `ctx_size` (shared by the slots), `parallel` (slots;
 more than one turns on continuous batching), `cache_type_k` and
 `cache_type_v` (set together and equal — a mixed pair falls off the fused
 attention kernel), `reasoning` (`on`, `off`, `auto`, or `template` to let the
-chat template decide), `reasoning_budget`, `spec_type`,
+chat template decide), `reasoning_budget`, `ubatch_size` (`-ub`, the
+physical batch a prompt is processed in; llama.cpp's compute buffer grows
+with context × this, so a smaller one can be what makes a long context
+fit), `spec_type`,
 `chat_template_file` (a Jinja file under `GIQ_MODELS_DIR`, replacing the
 GGUF's embedded template; see
 [engines.md](engines.md#chat-templates)), `alias`, `loop_guard`, `ready_timeout` (seconds a

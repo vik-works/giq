@@ -15,6 +15,7 @@
         "gemma-4-12b",
         "gemma-4-26b-a4b-it",
         "gemma-4-31b-it",
+        "inkling-2-mini",
         "qwen3.8-27b"
       ],
       "needs": "the llama-server binary from llama.cpp, built with CUDA"

@@ -99,7 +99,12 @@ def child_pid(url: str, recipe: str) -> int | None:
 
 def decimated(glb: bytes, cells: int) -> bytes:
     """A coarser mesh of another topology: vertices clustered on a grid of
-    ``cells`` a side, the faces that collapse dropped."""
+    ``cells`` a side, the faces that collapse dropped.
+
+    It checks that a paint gives back a mesh it did not make, not how one
+    looks: where thin parts fold over in the clustering, faces end up wound
+    inward (two in five on an A-pose character at 48 cells), and those paint
+    in speckles, since a paint takes every face to be wound outward."""
     import trimesh
 
     mesh = trimesh.load(io.BytesIO(glb), file_type="glb", process=False).to_geometry()

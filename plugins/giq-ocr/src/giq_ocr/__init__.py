@@ -13,7 +13,7 @@ from pathlib import Path
 
 from giq.plugin import API_VERSION, AdapterContext, Modality, Plugin
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 
 
 def _ocr(ctx: AdapterContext):

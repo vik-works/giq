@@ -4,14 +4,14 @@
 
 [project]
 name = "giq-rig"
-version = "0.13.0"
+version = "0.14.0"
 description = "A 3D mesh skinned to a skeleton for giq (SkinTokens)"
 license = "Apache-2.0"
 license-files = ["LICENSES/*.txt"]
 authors = [{ name = "vikworks UG (haftungsbeschränkt)" }]
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "giq==0.13.0",
+    "giq==0.14.0",
 ]
 
 [project.entry-points."giq.plugins"]
